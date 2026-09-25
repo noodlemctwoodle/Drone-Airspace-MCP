@@ -12,6 +12,7 @@ export interface ArcgisFeature {
 
 interface LayerInfo {
   maxRecordCount?: number;
+  objectIdField?: string;
   editingInfo?: { lastEditDate?: number; dataLastEditDate?: number };
   advancedQueryCapabilities?: { supportsPagination?: boolean };
   name?: string;
@@ -38,7 +39,8 @@ export async function* fetchAllFeatures(layerUrl: string, opts: FetchFeaturesOpt
       outFields: '*',
       outSR: '4326',
       f: 'geojson',
-      orderByFields: 'OBJECTID',
+      // Stable paging needs an order; the id field is OBJECTID on most layers but FID on ONS ones.
+      orderByFields: info.objectIdField ?? 'OBJECTID',
       resultOffset: String(offset),
       resultRecordCount: String(pageSize),
     });
