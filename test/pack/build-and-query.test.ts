@@ -63,6 +63,9 @@ describe('mini pack build and repository queries', () => {
     const dorset = await repo.landRestrictionsAt(-2.277, 50.6212);
     expect(dorset.find((r) => r.scope === 'authority')).toMatchObject({ kind: 'policy', entryId: 'test-council-policy', owner: 'Test County Council' });
     expect(await repo.adminAreaAt(-2.6, 51.45)).toMatchObject({ code: 'E06000023' });
+    const dartmoor = await repo.landRestrictionsAt(-3.9, 50.57);
+    expect(dartmoor.map((r) => [r.kind, r.accessClass])).toEqual([['designation', 'national_park']]);
+    expect((await repo.landRestrictionsAt(-3.545, 50.63)).map((r) => [r.kind, r.owner, r.takeoffBanned])).toEqual([['landowner', 'Forestry England', true]]);
   });
   it('answers coverage and land restrictions', async () => {
     expect(await repo.prowCoverageAt(-1.97, 50.69)).toBe('england_wales');

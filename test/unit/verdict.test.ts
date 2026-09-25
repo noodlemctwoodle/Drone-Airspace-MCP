@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildVerdict, rankZones, routeVerdict } from '../../src/services/airspace/verdict.js';
+import { accessLine, advisoryLine, buildVerdict, rankZones, routeVerdict } from '../../src/services/airspace/verdict.js';
 import { isRelevantBelow120m, splitByRelevance } from '../../src/services/airspace/vertical.js';
-import { FIXTURE_RESTRICTIONS, FIXTURE_ZONES } from '../helpers/fake-pack-repository.js';
+import { FIXTURE_ACCESS, FIXTURE_COUNCIL_POLICY, FIXTURE_RESTRICTIONS, FIXTURE_ZONES } from '../helpers/fake-pack-repository.js';
 
 const [frz, prohibited, danger, high, prison] = FIXTURE_ZONES;
 
@@ -23,6 +23,14 @@ describe('verdict', () => {
   it('adds a landowner line', () => {
     const v = buildVerdict([], [FIXTURE_RESTRICTIONS[0]]);
     expect(v.landownerLine).toContain('Landowner rule: Brownsea Island (National Trust (always open land))');
+  });
+  it('keeps access land, designations and council policies out of the landowner line', () => {
+    const v = buildVerdict([], [...FIXTURE_ACCESS, FIXTURE_COUNCIL_POLICY]);
+    expect(v.landownerLine).toBeNull();
+    expect(v.accessLine).toMatch(/^Open access land: Open country \(CRoW Act 2000\)/);
+    expect(v.advisoryLine).toMatch(/^Designation: Bat's Head to Durdle Door \(SSSI\): do not disturb protected wildlife\.$/);
+    expect(accessLine([])).toBeNull();
+    expect(advisoryLine([])).toBeNull();
   });
   it('route verdict counts crossings', () => {
     expect(routeVerdict([frz, danger]).line).toMatch(/^Route crosses 2 restrictions; highest: Enters EGGD/);

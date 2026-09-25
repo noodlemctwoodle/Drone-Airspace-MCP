@@ -31,6 +31,9 @@ import { run as fetchCountries } from './fetch-countries.js';
 import { run as loadByelaws } from './load-byelaws.js';
 import { run as fetchParking } from './fetch-parking.js';
 import { run as fetchLad } from './fetch-lad.js';
+import { run as fetchAccess } from './fetch-access.js';
+import { run as fetchWales } from './fetch-wales.js';
+import { run as fetchForestry } from './fetch-forestry.js';
 import { unlink } from 'node:fs/promises';
 import { writeManifest } from './make-manifest.js';
 
@@ -70,6 +73,9 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     { id: 'nats', files: ['zones.ndjson'], run: fetchNats },
     { id: 'rowmaps', files: ['rights_of_way.ndjson'], run: fetchRowmaps },
     { id: 'nt', files: ['nt.ndjson'], run: fetchNt },
+    { id: 'access', files: ['access.ndjson'], run: fetchAccess },
+    { id: 'wales', files: ['wales.ndjson'], run: fetchWales },
+    { id: 'forestry', files: ['forestry.ndjson'], run: fetchForestry },
     { id: 'countries', files: ['coverage.ndjson'], run: fetchCountries },
     { id: 'lad', files: ['admin_areas.ndjson'], run: fetchLad },
     { id: 'byelaws', files: ['byelaws.ndjson'], run: loadByelaws },

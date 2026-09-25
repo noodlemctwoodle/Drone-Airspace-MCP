@@ -7,7 +7,7 @@ import { splitByRelevance } from '../services/airspace/vertical.js';
 import { buildVerdict } from '../services/airspace/verdict.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { droneSectionLines } from './drone-handlers.js';
-import { localAuthorityLines, splitLandRestrictions } from '../services/land-rules.js';
+import { landPackIds, landSourceIds, localAuthorityLines, splitLandRestrictions } from '../services/land-rules.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
 import { renderRightOfWay, rightOfWayToJson } from '../formatters/rights-of-way.js';
 import { parkingSentence, renderParking } from '../formatters/parking.js';
@@ -48,13 +48,12 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     const used = new Set<SourceId>(['airspace']);
     if (paths.length > 0) used.add('prow');
     if (parking.length > 0) used.add('parking');
-    if (land.rules.some((r) => r.sourceId.startsWith('nt_'))) used.add('landowner');
-    if (land.rules.some((r) => r.sourceId === 'byelaws') || land.policies.length > 0) used.add('byelaws');
+    for (const s of landSourceIds(land)) used.add(s);
     if (council) used.add('lad');
     const s = sourceOfLocation(loc);
     if (s) used.add(s);
     if (droneInfo?.assessment) used.add('caa_rules');
-    const attribution = attributionLines(used, await pack.meta());
+    const attribution = attributionLines(used, await pack.meta(), landPackIds(land));
     // Per-authority attribution is required by the OGL terms.
     for (const a of new Set(paths.map((p) => p.attribution))) attribution.push(a);
 
@@ -70,6 +69,8 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     if (takeoffBanned) headlineParts.push('Take-off restricted by landowner rule.');
     headlineParts.push(verdict.line);
     if (verdict.landownerLine) headlineParts.push(verdict.landownerLine);
+    if (verdict.accessLine) headlineParts.push(verdict.accessLine);
+    if (verdict.advisoryLine) headlineParts.push(verdict.advisoryLine);
     if (paths.length > 0) {
       headlineParts.push(`Nearest public right of way: ${formatDistance(paths[0].distanceM)} away (${paths[0].pathType.replace('_', ' ')}, ${paths[0].authorityName}).`);
     } else if (coverage === 'england_wales' || coverage === 'unknown') {
@@ -85,6 +86,8 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
       zones: relevant.map((z) => zoneToJson(z)),
       zonesAbove120m: above.length,
       landownerRules: land.rules,
+      accessLand: land.accessLand,
+      designations: land.designations,
       localAuthority: council ? { code: council.code, name: council.name, policies: land.policies } : null,
       rightsOfWay: paths.map(rightOfWayToJson),
       parking,
@@ -99,6 +102,8 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
         { title: `Nearest public rights of way (${paths.length} within ${formatDistance(radiusM)})`, lines: paths.map(renderRightOfWay) },
         { title: 'Nearest parking (public, within 2 km)', lines: parking.map(renderParking) },
         { title: `Landowner rules at this point (${land.rules.length})`, lines: land.rules.map(renderRestriction) },
+        { title: `Open access land (${land.accessLand.length})`, lines: land.accessLand.map(renderRestriction) },
+        { title: `Nature and landscape designations (${land.designations.length})`, lines: land.designations.map(renderRestriction) },
         { title: 'Local authority', lines: localAuthorityLines(council, land.policies) },
         { title: `Airspace restrictions at this point (${relevant.length})`, lines: relevant.map(renderZone) },
       ];

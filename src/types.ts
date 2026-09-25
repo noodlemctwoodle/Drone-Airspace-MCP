@@ -235,6 +235,10 @@ export interface NotamHit extends Notam {
 export type Severity = 0 | 1 | 2 | 3 | 4 | 5;
 
 export interface Verdict {
+  /** Open access land at the point: context, never permission. */
+  accessLine?: string | null;
+  /** Advisory designations at the point (SSSI, National Park). */
+  advisoryLine?: string | null;
   severity: Severity;
   line: string;
   zoneId: number | null;

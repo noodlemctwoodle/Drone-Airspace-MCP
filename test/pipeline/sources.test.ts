@@ -5,6 +5,9 @@ import { fetchAllFeatures, normaliseNtFeature } from '../../pipeline/sources/nt/
 import { loadByelaws } from '../../pipeline/sources/byelaws/loader.js';
 import { parseCountries } from '../../pipeline/sources/countries/ons.js';
 import { parseLads } from '../../pipeline/sources/lad/ons.js';
+import { normaliseCrowFeature, normaliseNationalParkFeature, normaliseSssiFeature } from '../../pipeline/sources/access/natural-england.js';
+import { normaliseNrwAccessFeature, normaliseNrwSssiFeature } from '../../pipeline/sources/access/nrw.js';
+import { normaliseForestryFeature } from '../../pipeline/sources/forestry/legal-boundary.js';
 import { bboxIntersects, resolveRegion } from '../../pipeline/lib/regions.js';
 import { encodeLine } from '../../pipeline/lib/geometry.js';
 import { decodeLine } from '../../src/pack/geometry.js';
@@ -162,5 +165,38 @@ describe('local authority districts', () => {
     const without = await loadByelaws(new URL('../fixtures/byelaws/seed.yaml', import.meta.url).pathname);
     expect(without.restrictions.some((x) => x.scope === 'authority')).toBe(false);
     expect(without.warnings.some((w) => w.includes('lad source excluded'))).toBe(true);
+  });
+});
+
+describe('access land and designations', () => {
+  const fx = (p: string) => JSON.parse(readFileSync(new URL(`../fixtures/${p}`, import.meta.url), 'utf8'));
+  const at = '2026-09-26T00:00:00Z';
+  it('normalises Natural England access land, SSSIs and National Parks with the right semantics', () => {
+    const crow = fx('access/crow-page-1.json').features.map((f: never) => normaliseCrowFeature(f, at)!);
+    expect(crow.length).toBe(2);
+    expect(crow[0]).toMatchObject({ sourceId: 'ne_crow_access', kind: 'access_land', accessClass: 'open_country', takeoffBanned: false, scope: 'site', name: 'Open country' });
+    const sssi = normaliseSssiFeature(fx('access/sssi-page-1.json').features[0], at)!;
+    expect(sssi).toMatchObject({ kind: 'designation', accessClass: 'sssi', takeoffBanned: false, landingBanned: null, entryId: '1001805' });
+    expect(sssi.name).toBe('Abbey Wood, Flixton');
+    expect(sssi.sourceUrl).toContain('SiteCode=S1002222');
+    const park = normaliseNationalParkFeature(fx('access/national-parks.json').features[0], at)!;
+    expect(park).toMatchObject({ kind: 'designation', accessClass: 'national_park', name: 'Dartmoor National Park', owner: 'Dartmoor National Park Authority', sourceUrl: 'https://www.dartmoor.gov.uk/' });
+    expect(normaliseCrowFeature({ type: 'Feature', geometry: null, properties: {} }, at)).toBeUndefined();
+  });
+  it('normalises Welsh WFS layers reprojected to WGS84', () => {
+    const common = fx('wales/common-land-wfs.json').features.map((f: never) => normaliseNrwAccessFeature(f, 'common_land', 'nrw_common_land', at)!);
+    expect(common.length).toBe(2);
+    expect(common[0]).toMatchObject({ kind: 'access_land', accessClass: 'common_land', owner: 'Natural Resources Wales', name: 'Registered common land' });
+    const lon = (common[0].geometry as { coordinates: number[][][][] }).coordinates[0][0][0][0];
+    expect(lon).toBeGreaterThan(-6);
+    expect(lon).toBeLessThan(-2);
+    const sssi = normaliseNrwSssiFeature(fx('wales/sssi-wfs.json').features[0], at)!;
+    expect(sssi).toMatchObject({ kind: 'designation', accessClass: 'sssi', owner: 'Natural Resources Wales', entryId: '33WMS' });
+    expect(sssi.name).toBe('Cwrt y Bela a Springdale');
+  });
+  it('marks Forestry England land as banned without a permit', () => {
+    const fe = normaliseForestryFeature(fx('forestry/page-1.json').features[0], at)!;
+    expect(fe).toMatchObject({ kind: 'landowner', owner: 'Forestry England', takeoffBanned: true, landingBanned: true, accessClass: 'forestry', props: { costCentre: 318 } });
+    expect(fe.summary).toContain('permit');
   });
 });

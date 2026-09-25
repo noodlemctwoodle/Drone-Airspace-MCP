@@ -25,7 +25,7 @@ export interface VerifyOptions {
 }
 
 const FLOORS: Record<string, Record<string, number>> = {
-  national: { zones: 800, rights_of_way: 100_000, land_restrictions: 1000, gazetteer: 200, coverage: 4, parking: 50_000, hazards: 0, admin_areas: 300 }, // coverage counts polygon parts; hazards and admin_areas floors rise when their sources land
+  national: { zones: 800, rights_of_way: 100_000, land_restrictions: 20_000, gazetteer: 200, coverage: 4, parking: 50_000, hazards: 0, admin_areas: 300 }, // coverage counts polygon parts; hazards and admin_areas floors rise when their sources land
   'south-west': { zones: 40, rights_of_way: 10_000, land_restrictions: 100, gazetteer: 20, coverage: 1, parking: 3000, hazards: 0, admin_areas: 20 },
   default: { zones: 1, rights_of_way: 0, land_restrictions: 0, gazetteer: 1, coverage: 0, parking: 0, hazards: 0, admin_areas: 0 },
 };

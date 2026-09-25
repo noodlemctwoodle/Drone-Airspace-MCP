@@ -29,6 +29,25 @@ export function splitLandRestrictions(restrictions: LandRestriction[]): LandSpli
   return out;
 }
 
+/** Attribution source ids for a set of land rows. */
+export function landSourceIds(split: LandSplit): Array<'landowner' | 'byelaws' | 'forestry' | 'access_land' | 'designations'> {
+  const out = new Set<'landowner' | 'byelaws' | 'forestry' | 'access_land' | 'designations'>();
+  for (const r of split.rules) {
+    if (r.sourceId.startsWith('nt_')) out.add('landowner');
+    else if (r.sourceId === 'fe_legal_boundary') out.add('forestry');
+    else out.add('byelaws');
+  }
+  if (split.policies.length > 0) out.add('byelaws');
+  if (split.accessLand.length > 0) out.add('access_land');
+  if (split.designations.length > 0) out.add('designations');
+  return [...out];
+}
+
+/** Pack source ids of the land rows present, for precise attribution. */
+export function landPackIds(split: LandSplit): string[] {
+  return [...new Set([...split.rules, ...split.policies, ...split.accessLand, ...split.designations].map((r) => r.sourceId))];
+}
+
 /** Text lines for the "Local authority" section. */
 export function localAuthorityLines(area: AdminArea | null, policies: LandRestriction[]): string[] {
   if (!area) return [];

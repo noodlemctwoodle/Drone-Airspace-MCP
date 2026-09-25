@@ -5,7 +5,7 @@ import { resolveLocation } from '../services/location-resolver.js';
 import { validateLocationArgs, type LocationArgs } from '../tools/schemas.js';
 import { UserFacingError } from '../core/errors.js';
 import { splitByRelevance } from '../services/airspace/vertical.js';
-import { localAuthorityLines, splitLandRestrictions } from '../services/land-rules.js';
+import { landPackIds, landSourceIds, localAuthorityLines, splitLandRestrictions } from '../services/land-rules.js';
 import { buildVerdict } from '../services/airspace/verdict.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
@@ -72,12 +72,11 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
     const land = splitLandRestrictions(restrictions);
     const verdict = buildVerdict(relevant, restrictions);
     const used = new Set<SourceId>(['airspace']);
-    if (land.rules.length > 0) used.add(land.rules.some((r) => r.sourceId === 'byelaws') ? 'byelaws' : 'landowner');
-    if (land.policies.length > 0) used.add('byelaws');
+    for (const s of landSourceIds(land)) used.add(s);
     if (council) used.add('lad');
     const locSource = sourceOfLocation(loc);
     if (locSource) used.add(locSource);
-    const attribution = attributionLines(used, await pack.meta());
+    const attribution = attributionLines(used, await pack.meta(), landPackIds(land));
     const caveats = [CAVEAT_AIRSPACE_ONLY_BELOW_120M, CAVEAT_NOTAMS_NOT_INCLUDED, CAVEAT_BAN_LAYER_INCOMPLETE, CAVEAT_NOT_BRIEFING];
 
     const data = {
@@ -88,6 +87,8 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
       zones: relevant.map((z) => zoneToJson(z)),
       zonesAbove120m: includeAbove ? above.map((z) => zoneToJson(z)) : above.length,
       landownerRules: land.rules,
+      accessLand: land.accessLand,
+      designations: land.designations,
       localAuthority: council ? { code: council.code, name: council.name, policies: land.policies } : null,
       caveats,
       attribution,
@@ -99,14 +100,17 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
       if (includeAbove) sections.push({ title: `Zones only above 400 ft (${above.length})`, lines: above.map(renderZone) });
       else if (above.length > 0) sections.push({ title: 'Zones only above 400 ft', lines: [`${above.length} zone(s) start above 400 ft; pass include_above_120m to list them.`] });
       sections.push({ title: `Landowner rules at this point (${land.rules.length})`, lines: land.rules.map(renderRestriction) });
+      sections.push({ title: `Open access land (${land.accessLand.length})`, lines: land.accessLand.map(renderRestriction) });
+      sections.push({ title: `Nature and landscape designations (${land.designations.length})`, lines: land.designations.map(renderRestriction) });
       sections.push({ title: 'Local authority', lines: localAuthorityLines(council, land.policies) });
-      const headline = verdict.landownerLine ? `${verdict.line}\n${verdict.landownerLine}` : verdict.line;
+      const headline = [verdict.line, verdict.landownerLine, verdict.accessLine, verdict.advisoryLine].filter(Boolean).join('\n');
       return renderReport({ headline, notes: locationNotes(loc), location: locationLine(loc), sections, caveats, attribution });
     }, () =>
       brief(
         loc.resolvedFrom ? `I could not find ${loc.resolvedFrom.original}, so this is for ${loc.resolvedFrom.used}` : null,
         `At ${loc.name.split(',').slice(0, 2).join(',')}: ${verdict.line}`,
         verdict.landownerLine,
+        verdict.accessLine ? 'This is open access land, which is not itself permission to take off' : null,
         relevant.length > 1 ? `${relevant.length} restrictions apply in total` : null,
         'This does not include temporary NOTAMs',
         attributionSentence(used)

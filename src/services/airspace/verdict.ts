@@ -57,6 +57,14 @@ export const SOURCE_LABEL: Record<string, string> = {
   nt_always_open: 'National Trust (always open land)',
   nt_limited_access: 'National Trust (limited access)',
   byelaws: 'Council byelaw',
+  fe_legal_boundary: 'Forestry England',
+  ne_crow_access: 'Open access land',
+  nrw_open_country: 'Open access land',
+  nrw_common_land: 'Registered common land',
+  ne_sssi: 'SSSI',
+  nrw_sssi: 'SSSI',
+  ne_national_parks: 'National Park',
+  nrw_national_parks: 'National Park',
 };
 
 export function restrictionLabel(r: LandRestriction): string {
@@ -68,6 +76,10 @@ export function restrictionLabel(r: LandRestriction): string {
       return 'Public Space Protection Order';
     case 'policy':
       return 'Council policy';
+    case 'access_land':
+      return 'Open access land';
+    case 'designation':
+      return r.accessClass === 'sssi' ? 'SSSI' : 'Designation';
     default:
       return r.owner;
   }
@@ -86,21 +98,42 @@ export function landownerLine(all: LandRestriction[]): string | null {
   return `Landowner rule: ${pick.name} (${restrictionLabel(pick)}) - ${truncate(sentence, 200)}${extra}`;
 }
 
+/** Open access land is context for take-off, never permission: the landowner's rules still apply. */
+export function accessLine(restrictions: LandRestriction[]): string | null {
+  const access = restrictions.filter((r) => r.kind === 'access_land');
+  if (access.length === 0) return null;
+  const names = [...new Set(access.map((r) => r.name))];
+  return `Open access land: ${names.slice(0, 2).join(' and ')} (CRoW Act 2000) - the public may walk here off paths; the access right does not itself permit take-off and landowner rules still apply.`;
+}
+
+/** SSSI and National Park designations: advisory, no blanket ban. */
+export function advisoryLine(restrictions: LandRestriction[]): string | null {
+  const des = restrictions.filter((r) => r.kind === 'designation');
+  if (des.length === 0) return null;
+  const parts = des.slice(0, 2).map((r) => (r.accessClass === 'sssi' ? `${r.name} (SSSI): do not disturb protected wildlife` : `${r.name}: follow the park authority's drone guidance`));
+  const extra = des.length > 2 ? ` (+${des.length - 2} more)` : '';
+  return `Designation: ${parts.join('; ')}${extra}.`;
+}
+
 export function buildVerdict(relevantZones: Zone[], restrictions: LandRestriction[], verb: 'Inside' | 'Enters' = 'Inside'): Verdict {
   const ranked = rankZones(relevantZones);
   const top = ranked[0];
   const landowner = landownerLine(restrictions);
+  const access = accessLine(restrictions);
+  const advisory = advisoryLine(restrictions);
   if (!top) {
     return {
       severity: 0,
       line: verb === 'Inside' ? 'No permanent airspace restriction at this point.' : 'No permanent airspace restriction along this route.',
       zoneId: null,
       landownerLine: landowner,
+      accessLine: access,
+      advisoryLine: advisory,
     };
   }
   const more = ranked.length - 1;
   const suffix = more > 0 ? ` (+${more} further restriction${more > 1 ? 's' : ''} below)` : '';
-  return { severity: severityOf(top), line: `${zoneVerdictLine(top, verb)}${suffix}`, zoneId: top.id, landownerLine: landowner };
+  return { severity: severityOf(top), line: `${zoneVerdictLine(top, verb)}${suffix}`, zoneId: top.id, landownerLine: landowner, accessLine: access, advisoryLine: advisory };
 }
 
 export function routeVerdict(crossings: Zone[], restrictions: LandRestriction[] = []): Verdict {

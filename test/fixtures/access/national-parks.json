@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "id": 3, "geometry": {"type": "Polygon", "coordinates": [[[-4.1, 50.45], [-3.7, 50.45], [-3.7, 50.7], [-4.1, 50.7], [-4.1, 50.45]]]}, "properties": {"OBJECTID": 3, "CODE": 2, "NAME": "DARTMOOR", "MEASURE": 956, "HOTLINK": "https://www.dartmoor.gov.uk/", "STATUS": "Designated"}}]}

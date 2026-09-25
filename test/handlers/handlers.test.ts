@@ -183,6 +183,25 @@ describe('check_takeoff_site', () => {
     const b = json(await handlers.get('preflight_briefing')!({ lat: 50.6212, lon: -2.277, format: 'json' }));
     expect(b.reasons.map((r: { code: string }) => r.code)).not.toContain('landowner_ban');
   });
+  it('reports open access land and designations as context, never as a ban', async () => {
+    const { handlers } = setup();
+    const j = json(await handlers.get('check_location')!({ lat: 50.62, lon: -2.305, format: 'json' }));
+    expect(j.accessLand.map((r: { kind: string }) => r.kind)).toEqual(['access_land']);
+    expect(j.designations[0].accessClass).toBe('sssi');
+    expect(j.landownerRules).toEqual([]);
+    expect(j.verdict.accessLine).toContain('does not itself permit take-off');
+    expect(j.verdict.advisoryLine).toContain('SSSI');
+    expect(j.attribution.join(' ')).toContain('Natural England');
+    expect(j.attribution.join(' ')).not.toContain('Natural Resources Wales'); // only the sources whose rows were returned
+    const t = text(await handlers.get('check_takeoff_site')!({ lat: 50.62, lon: -2.305 }));
+    expect(t).toContain('Open access land (1)');
+    expect(t).toContain('Nature and landscape designations (1)');
+    expect(t).not.toContain('Take-off restricted');
+    const b = json(await handlers.get('preflight_briefing')!({ lat: 50.62, lon: -2.305, format: 'json' }));
+    expect(b.status).toBe('caution'); // live sources are absent in this setup
+    expect(b.reasons.map((r: { code: string }) => r.code)).toEqual(expect.arrayContaining(['access_land', 'designation']));
+    expect(b.reasons.map((r: { code: string }) => r.code)).not.toContain('landowner_ban');
+  });
   it('flags landowner bans in the headline', async () => {
     const { handlers } = setup();
     const t = text(await handlers.get('check_takeoff_site')!({ lat: 51.455, lon: -2.6 }));

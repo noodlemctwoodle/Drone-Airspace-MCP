@@ -75,7 +75,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
   const [zones, paths, land, parking, meta] = await Promise.all([
     pack.zonesInBbox(bbox),
     pack.nearestRightsOfWay(req.lon, req.lat, radiusM, 40),
-    pack.landRestrictionsInBbox(bbox, 100),
+    pack.landRestrictionsInBbox(bbox, 300),
     pack.nearestParking(req.lon, req.lat, Math.max(radiusM, 2000), 15, false),
     pack.meta(),
   ]);
@@ -116,7 +116,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
   }
   const used = new Set<string>(['nats_uas']);
   if (paths.length) used.add('rowmaps');
-  if (land.length) used.add('nt_always_open');
+  for (const l of land) used.add(l.sourceId);
   if (parking.length) used.add('osm_parking');
   return {
     centre: { lat: req.lat, lon: req.lon, ...(req.name ? { name: req.name } : {}) },
@@ -137,7 +137,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
       geometry: z.geometry,
     })),
     rightsOfWay: paths.map((p) => ({ type: 'Feature', properties: { id: p.id, pathType: p.pathType, routeNo: p.routeNo, authority: p.authorityName, distanceM: p.distanceM }, geometry: p.geometry })),
-    landRestrictions: land.map((l) => ({ type: 'Feature', properties: { id: l.id, name: l.name, owner: l.owner, kind: l.kind, takeoffBanned: l.takeoffBanned }, geometry: l.geometry })),
+    landRestrictions: land.filter((l) => l.scope !== 'authority').map((l) => ({ type: 'Feature', properties: { id: l.id, name: l.name, owner: l.owner, kind: l.kind, takeoffBanned: l.takeoffBanned }, geometry: l.geometry })),
     parking: parking.map((p) => ({ lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, fee: p.fee, distanceM: p.distanceM })),
     notams,
     weather,

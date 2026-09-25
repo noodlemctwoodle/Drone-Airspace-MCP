@@ -1,9 +1,9 @@
-import type { LandRestriction, NotamHit, OutputFormat } from '../types.js';
+import type { NotamHit, OutputFormat } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
 import { brief, respond } from './respond.js';
 import { locationLine, locationNotes, resolveOrRespond, sourceOfLocation } from './location-handlers.js';
 import { droneSectionLines } from './drone-handlers.js';
-import { splitLandRestrictions } from '../services/land-rules.js';
+import { landPackIds, landSourceIds, splitLandRestrictions } from '../services/land-rules.js';
 import { overallFlyability, renderHour, renderSpaceWeather, selectWeatherWindow, CAVEAT_WEATHER } from './weather-handlers.js';
 import type { LocationArgs } from '../tools/schemas.js';
 import { UserFacingError } from '../core/errors.js';
@@ -89,7 +89,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
     const notams = notamR.ok ? notamR.value : null;
     const { status, reasons } = deriveBriefingStatus({
       zones: relevant,
-      restrictions: land.rules,
+      restrictions: [...land.rules, ...land.accessLand, ...land.designations],
       frzPermission,
       notams: notams ? { covering: notams.covering, nearby: notams.nearby, unlocated: notams.unlocated.length } : null,
       weather: weatherOverall,
@@ -101,8 +101,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
     });
 
     const used = new Set<SourceId>(['airspace']);
-    if (restrictions.some((r: LandRestriction) => r.sourceId.startsWith('nt_'))) used.add('landowner');
-    if (restrictions.some((r: LandRestriction) => r.sourceId === 'byelaws')) used.add('byelaws');
+    for (const s of landSourceIds(land)) used.add(s);
     if (notams) used.add('notam');
     if (window.length > 0) used.add('weather');
     if (space) used.add('space_weather');
@@ -112,7 +111,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
     if (droneInfo?.assessment) used.add('caa_rules');
     const s = sourceOfLocation(loc);
     if (s) used.add(s);
-    const attribution = attributionLines(used, await pack.meta());
+    const attribution = attributionLines(used, await pack.meta(), landPackIds(land));
     for (const a of new Set(paths.map((p) => p.attribution))) attribution.push(a);
 
     const outages: string[] = [];
@@ -154,6 +153,8 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
       airspace: { verdict, zones: relevant.map((z) => zoneToJson(z)), zonesAbove120m: above.length },
       landownerRules: land.rules,
       councilPolicies: land.policies,
+      accessLand: land.accessLand,
+      designations: land.designations,
       notams: notams
         ? {
             radiusKm: notamRadiusKm,
@@ -179,6 +180,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
           { title: 'Findings', lines: reasons.map((r) => `${tag(r.level)} ${r.text}`) },
           { title: `Airspace restrictions at this point (${relevant.length})`, lines: relevant.map(renderZone) },
           { title: `Landowner rules at this point (${land.rules.length})`, lines: [...land.rules.map(renderRestriction), ...land.policies.map((p) => `Council policy (${p.owner}): ${p.summary ?? ''}`)] },
+          { title: `Access land and designations (${land.accessLand.length + land.designations.length})`, lines: [...land.accessLand, ...land.designations].map(renderRestriction) },
           { title: `NOTAMs covering the point (${notams ? notams.covering.length : 'unavailable'})`, lines: notams ? [...notams.covering.slice(0, 5).map(renderNotam), ...(notams.covering.length > 5 ? [`+${notams.covering.length - 5} more; see check_notams.`] : [])] : ['The bulletin could not be read.'] },
           { title: `NOTAMs within ${notamRadiusKm} km (${notams ? notams.nearby.length : 'unavailable'})`, lines: notams ? notams.nearby.slice(0, 5).map(renderNotam) : [] },
           { title: `Weather ${window.length > 0 ? window[0].hour.time.slice(0, 10) : ''} (local time, wind in m/s)`, lines: [...window.map(renderHour), ...(space ? [renderSpaceWeather(space)] : [])] },

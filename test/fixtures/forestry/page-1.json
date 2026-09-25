@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "id": 1, "geometry": {"type": "Polygon", "coordinates": [[[-3.56, 50.62], [-3.53, 50.62], [-3.53, 50.64], [-3.56, 50.64], [-3.56, 50.62]]]}, "properties": {"OBJECTID": 1, "cost_centre": 318}}]}

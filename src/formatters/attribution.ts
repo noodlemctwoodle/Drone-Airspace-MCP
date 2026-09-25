@@ -1,6 +1,6 @@
 import type { PackMeta } from '../types.js';
 
-export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking' | 'weather' | 'caa_rules' | 'elevation' | 'space_weather' | 'hazards' | 'lad';
+export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking' | 'weather' | 'caa_rules' | 'elevation' | 'space_weather' | 'hazards' | 'lad' | 'access_land' | 'designations' | 'forestry';
 
 const LIVE: Record<string, string> = {
   nominatim: 'Geocoding © OpenStreetMap contributors (ODbL), via Nominatim',
@@ -22,6 +22,9 @@ const PACK_SOURCE_IDS: Record<string, string[]> = {
   parking: ['osm_parking'],
   hazards: ['osm_hazards'],
   lad: ['ons_lad'],
+  access_land: ['ne_crow_access', 'nrw_open_country', 'nrw_common_land'],
+  designations: ['ne_sssi', 'nrw_sssi', 'ne_national_parks', 'nrw_national_parks'],
+  forestry: ['fe_legal_boundary'],
 };
 
 const SHORT: Record<string, string> = {
@@ -41,6 +44,9 @@ const SHORT: Record<string, string> = {
   space_weather: 'NOAA space weather',
   hazards: 'OpenStreetMap hazards',
   lad: 'ONS boundaries',
+  access_land: 'Natural England and Natural Resources Wales access land',
+  designations: 'SSSI and National Park boundaries',
+  forestry: 'Forestry England',
 };
 
 /** One short spoken sentence naming the sources used. */
@@ -49,7 +55,13 @@ export function attributionSentence(used: Iterable<SourceId>): string {
   return names.length > 0 ? `Sources: ${names.join(', ')}.` : '';
 }
 
-export function attributionLines(used: Iterable<SourceId>, meta: PackMeta | null): string[] {
+/**
+ * Attribution strings for the sources used. A group such as `access_land` maps
+ * to several pack sources; pass `packIds` (the source ids of the rows actually
+ * returned) to name only those rather than every source in the group.
+ */
+export function attributionLines(used: Iterable<SourceId>, meta: PackMeta | null, packIds?: Iterable<string>): string[] {
+  const only = packIds ? new Set(packIds) : null;
   const lines: string[] = [];
   const seen = new Set<string>();
   const push = (s: string) => {
@@ -63,8 +75,9 @@ export function attributionLines(used: Iterable<SourceId>, meta: PackMeta | null
       push(LIVE[id]);
       continue;
     }
-    const packIds = PACK_SOURCE_IDS[id] ?? [];
-    for (const packId of packIds) {
+    const groupIds = PACK_SOURCE_IDS[id] ?? [];
+    for (const packId of groupIds) {
+      if (only && only.size > 0 && !only.has(packId) && groupIds.length > 1) continue;
       const source = meta?.sources.find((s) => s.id === packId);
       if (source) push(source.attribution);
     }

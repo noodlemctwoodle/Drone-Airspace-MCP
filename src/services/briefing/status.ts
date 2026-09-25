@@ -80,11 +80,16 @@ export function deriveBriefingStatus(i: BriefingInput): { status: BriefingStatus
   if (nearHazard) add('caution', 'hazard_near', `${nearHazard.kind.replace('_', ' ')}${nearHazard.name ? ` (${nearHazard.name})` : ''} ${nearHazard.distanceM} m away.`);
   if (i.weather === 'caution') add('note', 'weather_marginal', 'Weather in the window is marginal in places; see the hourly ratings.');
   if (i.kp === 'active') add('note', 'geomagnetic_active', 'Raised geomagnetic activity: GPS accuracy may be reduced.');
-  const softRule = i.restrictions.find((r) => !r.takeoffBanned);
-  if (softRule && !i.restrictions.some((r) => r.takeoffBanned)) add('note', 'landowner_rule', `Landowner rule applies: ${softRule.name} (${restrictionLabel(softRule)})${softRule.summary ? ` - ${truncate(softRule.summary.split(/(?<=[.!?])\s/)[0], 160)}` : ''}`);
+  const rules = i.restrictions.filter((r) => r.kind !== 'access_land' && r.kind !== 'designation');
+  const softRule = rules.find((r) => !r.takeoffBanned);
+  if (softRule && !rules.some((r) => r.takeoffBanned)) add('note', 'landowner_rule', `Landowner rule applies: ${softRule.name} (${restrictionLabel(softRule)})${softRule.summary ? ` - ${truncate(softRule.summary.split(/(?<=[.!?])\s/)[0], 160)}` : ''}`);
   if (i.notams && i.notams.nearby.length > 0) add('note', 'notam_nearby', `${i.notams.nearby.length} NOTAM${i.notams.nearby.length > 1 ? 's' : ''} in force nearby; see the NOTAM section.`);
   if (i.notams && i.notams.unlocated > 0) add('note', 'notam_unlocated', `${i.notams.unlocated} NOTAM${i.notams.unlocated > 1 ? 's' : ''} without a usable position are in force; check_notams lists them.`);
   if ((i.coverage === 'england_wales' || i.coverage === 'unknown') && i.pathsWithin1km === 0) add('note', 'no_prow', 'No public right of way within 1 km; confirm you have the landowner\'s permission to take off.');
+  const access = i.restrictions.filter((r) => r.kind === 'access_land');
+  if (access.length > 0) add('note', 'access_land', 'Open access land: the public may walk here off paths; that is not itself permission to take off, so check the landowner rules above.');
+  const des = i.restrictions.filter((r) => r.kind === 'designation');
+  if (des.length > 0) add('note', 'designation', `${des.map((r) => r.name).slice(0, 2).join(' and ')}: ${des.some((r) => r.accessClass === 'sssi') ? 'protected wildlife, do not disturb it' : 'follow the park authority\'s drone guidance'}.`);
   if (i.droneSubcategory === 'A3') add('note', 'a3_separation', 'Your drone flies in A3: keep 150 m from residential, commercial, industrial and recreational areas; this server has no built-up-area layer to check that for you.');
   if (status === 'go') add('go', 'clear', `No permanent restriction at this point, no NOTAM covering it${i.weather ? `, weather ${i.weather} for the window` : ''}.`);
   return { status, reasons };

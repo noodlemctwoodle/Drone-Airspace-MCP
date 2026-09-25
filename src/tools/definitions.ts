@@ -73,7 +73,7 @@ export const toolDefinitions: ToolDefinition[] = [
     name: 'check_takeoff_site',
     description:
       'Assess a potential drone take-off spot in the UK. Returns the airspace verdict at the point, the nearest public rights of way (footpaths, bridleways, byways) with distances and the responsible council, ' +
-      'and any known landowner rule (National Trust land, council byelaw) at the point. A public right of way is a strong indicator of legal access; rights-of-way data covers England and Wales only.',
+      'and any known landowner rule (National Trust and Forestry England land, council byelaw or policy) at the point, plus open access land and SSSI or National Park designations as context. A public right of way is a strong indicator of legal access; rights-of-way data covers England and Wales only.',
     inputSchema: {
       ...locationInput,
       max_paths: z.number().int().min(1).max(20).default(5).describe('Maximum rights of way to return.'),

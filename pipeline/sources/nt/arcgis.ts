@@ -1,6 +1,6 @@
 import simplify from '@turf/simplify';
 import booleanValid from '@turf/boolean-valid';
-import type { BBox, MultiPolygon, Polygon } from '../../../src/types.js';
+import type { BBox, MultiPolygon, Polygon, RestrictionKind } from '../../../src/types.js';
 import { roundGeometry } from '../../lib/geometry.js';
 
 export interface ArcgisFeature {
@@ -66,7 +66,7 @@ export interface NormalisedRestriction {
   scope?: 'site' | 'authority';
   sourceId: string;
   entryId: string | null;
-  kind: 'landowner' | 'byelaw' | 'pspo' | 'policy';
+  kind: RestrictionKind;
   owner: string;
   name: string;
   accessClass: string | null;

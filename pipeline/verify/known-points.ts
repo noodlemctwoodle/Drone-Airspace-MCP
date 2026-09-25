@@ -23,6 +23,8 @@ export const KNOWN_POINTS: KnownPoint[] = [
   { name: 'Durdle Door car park', lon: -2.2765, lat: 50.6227, expect: { layer: 'parking', withinMetres: 1200 } },
   { name: 'Brownsea Island is National Trust', lon: -1.9737, lat: 50.6905, expect: { layer: 'land_restrictions', owner: 'National Trust' } },
   { name: 'Durdle Door is in Dorset Council', lon: -2.277, lat: 50.6212, expect: { layer: 'admin_areas', code: 'E06000059' } },
+  { name: 'Haytor is open access land on Dartmoor', lon: -3.756, lat: 50.581, expect: { layer: 'land_restrictions', owner: 'Natural England' } },
+  { name: 'Haldon Forest is Forestry England', lon: -3.545, lat: 50.63, expect: { layer: 'land_restrictions', owner: 'Forestry England' } },
   { name: 'Corfe Castle is National Trust', lon: -2.0577, lat: 50.6407, expect: { layer: 'land_restrictions', owner: 'National Trust' } },
   // Well beyond any UK danger area (offshore Cornwall zones stop around 7W).
   { name: 'Atlantic negative control', lon: -12.0, lat: 50.5, expect: { layer: 'none' } },

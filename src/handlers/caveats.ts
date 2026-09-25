@@ -5,7 +5,7 @@ export const CAVEAT_PROW_INTERPRETATION =
 export const CAVEAT_NO_PROW_HERE =
   'No public rights-of-way data here: Scotland has no definitive map (access rights apply under the Land Reform (Scotland) Act 2003) and Northern Ireland has very few recorded rights of way.';
 export const CAVEAT_BAN_LAYER_INCOMPLETE =
-  'The landowner rule layer is incomplete: it holds National Trust land and a hand-curated list of known council byelaws. Absence of a rule here does not mean take-off is permitted.';
+  'The landowner rule layer is incomplete: it holds National Trust and Forestry England land and a hand-curated list of council byelaws and policies. Absence of a rule here does not mean take-off is permitted, and open access land is shown as context, not as permission.';
 export const CAVEAT_NOTAM_SCHEDULE = 'One or more NOTAMs carry a daily schedule (item D); check the times before flying.';
 export const CAVEAT_NOTAMS_NOT_INCLUDED = 'Temporary restrictions (NOTAMs) are not included here; call check_notams.';
 export const CAVEAT_AIRSPACE_ONLY_BELOW_120M = 'Only zones reaching below 400 ft (120 m) count towards the verdict.';

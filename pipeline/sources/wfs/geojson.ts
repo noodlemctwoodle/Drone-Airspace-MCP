@@ -31,10 +31,12 @@ export async function* fetchAllWfsFeatures(baseUrl: string, typeName: string, op
       request: 'GetFeature',
       typeNames: typeName,
       outputFormat: 'application/json',
-      srsName: 'EPSG:4326',
+      // The URN form: GeoServer reprojects British National Grid layers for it where the short code fails.
+      srsName: 'urn:ogc:def:crs:EPSG::4326',
       count: String(pageSize),
       startIndex: String(start),
-      ...(opts.bbox ? { bbox: `${opts.bbox[1]},${opts.bbox[0]},${opts.bbox[3]},${opts.bbox[2]},EPSG:4326` } : {}),
+      // The bbox keeps the short code: with the URN form GeoServer would read it as lat,lon.
+      ...(opts.bbox ? { bbox: `${opts.bbox[0]},${opts.bbox[1]},${opts.bbox[2]},${opts.bbox[3]},EPSG:4326` } : {}),
       ...(opts.extra ?? {}),
     });
     const sep = baseUrl.includes('?') ? '&' : '?';

@@ -9,6 +9,8 @@ import { loadByelaws } from '../../pipeline/sources/byelaws/loader.js';
 import { parseCountries } from '../../pipeline/sources/countries/ons.js';
 import { normaliseNtFeature } from '../../pipeline/sources/nt/arcgis.js';
 import { parseLads } from '../../pipeline/sources/lad/ons.js';
+import { normaliseCrowFeature, normaliseNationalParkFeature, normaliseSssiFeature } from '../../pipeline/sources/access/natural-england.js';
+import { normaliseForestryFeature } from '../../pipeline/sources/forestry/legal-boundary.js';
 import { SCHEMA_VERSION } from '../../src/pack/schema.js';
 
 const fx = (p: string) => new URL(`../fixtures/${p}`, import.meta.url);
@@ -29,6 +31,7 @@ export async function buildMiniPack(dir: string): Promise<string> {
   insertSource(db, src('ons_countries', 'ONS test'));
   insertSource(db, src('osm_hazards', 'OSM hazards test'));
   insertSource(db, src('ons_lad', 'ONS LAD test'));
+  for (const id of ['ne_crow_access', 'ne_sssi', 'ne_national_parks', 'fe_legal_boundary']) insertSource(db, src(id, `${id} test`));
 
   const zones = parseAixmAirspaces(readFileSync(fx('aixm/mini-uas.xml'), 'utf8')).zones;
   const nZones = await insertZones(db, 'nats_uas', zones);
@@ -38,7 +41,13 @@ export async function buildMiniPack(dir: string): Promise<string> {
   const nt = JSON.parse(readFileSync(fx('nt/page-1.json'), 'utf8')).features.map((f: never) => normaliseNtFeature(f, 'nt_always_open', 'always_open', 'x', now)!);
   const lads = parseLads(JSON.parse(readFileSync(fx('lad/lad-thin.geojson'), 'utf8')));
   const byelaws = (await loadByelaws(fx('byelaws/seed.yaml').pathname, (code) => lads.find((a) => a.code === code)?.geometry)).restrictions;
-  const nLand = await insertLandRestrictions(db, [...nt, ...byelaws]);
+  const access = [
+    ...JSON.parse(readFileSync(fx('access/crow-page-1.json'), 'utf8')).features.map((f: never) => normaliseCrowFeature(f, now)!),
+    ...JSON.parse(readFileSync(fx('access/sssi-page-1.json'), 'utf8')).features.map((f: never) => normaliseSssiFeature(f, now)!),
+    ...JSON.parse(readFileSync(fx('access/national-parks.json'), 'utf8')).features.map((f: never) => normaliseNationalParkFeature(f, now)!),
+    ...JSON.parse(readFileSync(fx('forestry/page-1.json'), 'utf8')).features.map((f: never) => normaliseForestryFeature(f, now)!),
+  ];
+  const nLand = await insertLandRestrictions(db, [...nt, ...byelaws, ...access]);
   const nCov = insertCoverage(db, parseCountries(JSON.parse(readFileSync(fx('countries/countries-thin.geojson'), 'utf8'))));
   const nParking = await insertParking(db, [
     { osmId: 'w1', kind: 'car_park', name: 'Durdle Door Car Park', access: null, fee: 'yes', capacity: 400, surface: null, operator: null, lon: -2.2765, lat: 50.6227 },

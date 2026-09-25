@@ -13,7 +13,7 @@ export function renderZone(zone: Zone): string {
 
 export function renderRestriction(r: LandRestriction): string {
   const parts = [`${r.name} (${restrictionLabel(r)})`];
-  parts.push(r.takeoffBanned ? 'take-off and landing not permitted' : 'see rule');
+  parts.push(r.kind === 'access_land' ? 'public access on foot; not a take-off permission' : r.kind === 'designation' ? 'advisory' : r.takeoffBanned ? 'take-off and landing not permitted' : 'see rule');
   if (r.summary) parts.push(truncate(r.summary, 200));
   if (r.lastVerified) parts.push(`verified ${r.lastVerified.slice(0, 10)}`);
   if (r.sourceUrl) parts.push(r.sourceUrl);

@@ -206,6 +206,9 @@ export const FIXTURE_META: PackMeta = {
     { id: 'rowmaps', name: 'rowmaps rights of way', url: 'https://www.rowmaps.com/', licence: 'OGL-3.0', attribution: 'Rights of way: council open data via rowmaps.com (OGL v3). Contains Ordnance Survey data © Crown copyright and database right 2026.', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 2, notes: null },
     { id: 'nt_always_open', name: 'National Trust Land - Always Open', url: 'https://open-data-national-trust.hub.arcgis.com/', licence: 'OGL-3.0', attribution: 'National Trust Open Data (OGL v3)', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 1, notes: null },
     { id: 'osm_parking', name: 'OpenStreetMap parking', url: 'https://download.geofabrik.de/', licence: 'ODbL-1.0', attribution: 'Parking and laybys: © OpenStreetMap contributors (ODbL)', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 3, notes: null },
+    { id: 'ne_crow_access', name: 'CRoW Act 2000 Access Layer (England)', url: 'https://naturalengland-defra.opendata.arcgis.com/', licence: 'OGL-3.0', attribution: 'Open access land: Natural England open data, Open Government Licence v3', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: '2026-07-21', featureCount: 1, notes: null },
+    { id: 'ne_sssi', name: 'Sites of Special Scientific Interest (England)', url: 'https://naturalengland-defra.opendata.arcgis.com/', licence: 'OGL-3.0', attribution: 'SSSI boundaries: Natural England open data, Open Government Licence v3', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: '2026-08-15', featureCount: 1, notes: null },
+    { id: 'nrw_open_country', name: 'NRW Open Access: Open Country', url: 'https://datamap.gov.wales/', licence: 'OGL-3.0', attribution: 'Open access land: Natural Resources Wales open data via DataMapWales, Open Government Licence v3', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 0, notes: null },
     { id: 'byelaws', name: 'Council byelaw seed list', url: 'https://github.com/noodlemctwoodle/Drone-Airspace-MCP', licence: 'MIT', attribution: 'Council byelaws: community-maintained list in this repository', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 1, notes: null },
   ],
 };
@@ -229,6 +232,12 @@ export const FIXTURE_COUNCIL_POLICY: LandRestriction & { geometry: Polygon } = {
   geometry: square(-2.6, 50.5, -1.9, 50.9),
 };
 
+/** Open access land and an SSSI on the cliffs west of Durdle Door; the test point at Durdle Door itself is inside neither. */
+export const FIXTURE_ACCESS: Array<LandRestriction & { geometry: Polygon }> = [
+  { id: 4, sourceId: 'ne_crow_access', entryId: '7001', kind: 'access_land', owner: 'Natural England', name: 'Open country', accessClass: 'open_country', takeoffBanned: false, landingBanned: false, summary: 'Open access land under the CRoW Act 2000: the public may walk here off paths. The access right does not itself ban take-off, but landowner byelaws and any local restriction still apply.', sourceUrl: 'https://www.gov.uk/right-of-way-open-access-land/use-your-right-to-roam', lastVerified: '2026-09-01', scope: 'site', geometry: square(-2.32, 50.61, -2.29, 50.63) },
+  { id: 5, sourceId: 'ne_sssi', entryId: '1000000', kind: 'designation', owner: 'Natural England', name: 'Bat\'s Head to Durdle Door', accessClass: 'sssi', takeoffBanned: false, landingBanned: null, summary: 'Site of Special Scientific Interest: intentionally or recklessly disturbing protected wildlife is an offence.', sourceUrl: 'https://designatedsites.naturalengland.org.uk/', lastVerified: '2026-09-01', scope: 'site', geometry: square(-2.32, 50.61, -2.29, 50.63) },
+];
+
 export const FIXTURE_HAZARDS: Array<Hazard & { geometry: Geometry }> = [
   { id: 900, osmId: 'w900', kind: 'power_line', name: null, operator: 'SSEN', ref: null, lon: -2.277, lat: 50.6265, geometry: { type: 'LineString', coordinates: [[-2.29, 50.6265], [-2.264, 50.6265]] } },
   { id: 901, osmId: 'n901', kind: 'helipad', name: 'Lulworth Camp helipad', operator: 'MOD', ref: null, lon: -2.25, lat: 50.63, geometry: { type: 'Point', coordinates: [-2.25, 50.63] } },
@@ -247,7 +256,7 @@ export class FakePackRepository implements PackRepository {
   constructor(
     private readonly zones: Zone[] = FIXTURE_ZONES,
     private readonly prow: RightOfWay[] = FIXTURE_PROW,
-    private readonly restrictions: Array<LandRestriction & { geometry: Polygon }> = [...FIXTURE_RESTRICTIONS, FIXTURE_COUNCIL_POLICY],
+    private readonly restrictions: Array<LandRestriction & { geometry: Polygon }> = [...FIXTURE_RESTRICTIONS, FIXTURE_COUNCIL_POLICY, ...FIXTURE_ACCESS],
     private readonly metaValue: PackMeta = FIXTURE_META
   ) {}
 

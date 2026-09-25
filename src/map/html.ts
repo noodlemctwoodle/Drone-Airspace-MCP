@@ -72,6 +72,8 @@ export const OVERLAYS = [
   { key: 'notam', label: 'NOTAM (temporary)', colour: '#6a1b9a', section: 'airspace', shape: 'area' },
   { key: 'prow', label: 'Public right of way', colour: '#2e7d32', section: 'ground', shape: 'line' },
   { key: 'land', label: 'Landowner rules', colour: '#00838f', section: 'ground', shape: 'area' },
+  { key: 'access', label: 'Open access land', colour: '#7cb342', section: 'ground', shape: 'area' },
+  { key: 'designation', label: 'Nature and park designations', colour: '#9e9d24', section: 'ground', shape: 'area' },
   { key: 'parking', label: 'Parking / layby', colour: '#1a56c4', section: 'ground', shape: 'parking' },
   { key: 'route', label: 'Route and location', colour: '#2a81cb', section: 'ground', shape: 'pin' },
   { key: 'conditions', label: 'Conditions now', colour: '#4fc3f7', section: 'weather', shape: 'badge' },
@@ -606,10 +608,13 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 
   function render(view) {
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
+    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length };
     var b = view.bbox;
     map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [20, 20] });
     view.landRestrictions.forEach(function (f) {
-      L.geoJSON(f, { style: { color: COLOUR.land, weight: 1, fillOpacity: 0.18 } }).bindPopup('<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : '')).addTo(groups.land);
+      var key = f.properties.kind === 'access_land' ? 'access' : f.properties.kind === 'designation' ? 'designation' : 'land';
+      counts[key]++;
+      L.geoJSON(f, { style: { color: COLOUR[key], weight: 1, fillOpacity: key === 'land' ? 0.18 : 0.1 } }).bindPopup('<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '')).addTo(groups[key]);
     });
     view.zones.forEach(function (f) {
       var key = zoneGroup(f.properties);
@@ -633,12 +638,11 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     currentCentre = [view.centre.lat, view.centre.lon];
     loaded = true;
     setStatus(view.centre.name || (view.route ? 'Your route' : 'Your location'));
-    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: view.landRestrictions.length, parking: view.parking.length };
     view.zones.forEach(function (f) { counts[zoneGroup(f.properties)]++; });
     setCounts(counts);
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
     chipsEl.innerHTML = [
-      [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [view.landRestrictions.length, 'landowner rule', 'landowner rules']
+      [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas']
     ].map(function (c) { return '<span class="chip' + (c[0] ? '' : ' zero') + '"><b>' + c[0] + '</b> ' + (c[0] === 1 ? c[1] : c[2]) + (c[3] ? ' ' + c[3] : '') + '</span>'; }).join('');
     dataSources = view.attribution || [];
     updateSources();
