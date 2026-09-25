@@ -1,6 +1,6 @@
 import type { OutputFormat, ResolvedLocation, Zone } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
-import { ambiguousResponse, notFoundResponse, respond } from './respond.js';
+import { ambiguousResponse, brief, notFoundResponse, respond } from './respond.js';
 import { resolveLocation } from '../services/location-resolver.js';
 import { validateLocationArgs, type LocationArgs } from '../tools/schemas.js';
 import { UserFacingError } from '../core/errors.js';
@@ -8,7 +8,7 @@ import { splitByRelevance } from '../services/airspace/vertical.js';
 import { buildVerdict } from '../services/airspace/verdict.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
-import { attributionLines, type SourceId } from '../formatters/attribution.js';
+import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
 import { formatCoord } from '../formatters/units.js';
 import { CAVEAT_AIRSPACE_ONLY_BELOW_120M, CAVEAT_BAN_LAYER_INCOMPLETE, CAVEAT_NOTAMS_NOT_INCLUDED, CAVEAT_NOT_BRIEFING } from './caveats.js';
 
@@ -63,15 +63,15 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
     const loc = resolved.location;
     const pack = deps.pack.require();
 
-    const zones = deps.airspace.atPoint(loc.lon, loc.lat);
+    const zones = await deps.airspace.atPoint(loc.lon, loc.lat);
     const { relevant, above } = splitByRelevance(zones);
-    const restrictions = pack.landRestrictionsAt(loc.lon, loc.lat);
+    const restrictions = await pack.landRestrictionsAt(loc.lon, loc.lat);
     const verdict = buildVerdict(relevant, restrictions);
     const used = new Set<SourceId>(['airspace']);
     if (restrictions.length > 0) used.add(restrictions.some((r) => r.sourceId === 'byelaws') ? 'byelaws' : 'landowner');
     const locSource = sourceOfLocation(loc);
     if (locSource) used.add(locSource);
-    const attribution = attributionLines(used, pack.meta());
+    const attribution = attributionLines(used, await pack.meta());
     const caveats = [CAVEAT_AIRSPACE_ONLY_BELOW_120M, CAVEAT_NOTAMS_NOT_INCLUDED, CAVEAT_BAN_LAYER_INCOMPLETE, CAVEAT_NOT_BRIEFING];
 
     const data = {
@@ -94,7 +94,16 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
       sections.push({ title: `Landowner rules at this point (${restrictions.length})`, lines: restrictions.map(renderRestriction) });
       const headline = verdict.landownerLine ? `${verdict.line}\n${verdict.landownerLine}` : verdict.line;
       return renderReport({ headline, notes: locationNotes(loc), location: locationLine(loc), sections, caveats, attribution });
-    });
+    }, () =>
+      brief(
+        loc.resolvedFrom ? `I could not find ${loc.resolvedFrom.original}, so this is for ${loc.resolvedFrom.used}` : null,
+        `At ${loc.name.split(',').slice(0, 2).join(',')}: ${verdict.line}`,
+        verdict.landownerLine,
+        relevant.length > 1 ? `${relevant.length} restrictions apply in total` : null,
+        'This does not include temporary NOTAMs',
+        attributionSentence(used)
+      )
+    );
   };
 }
 
@@ -110,7 +119,7 @@ export function createGeocodeHandler(deps: HandlerDependencies): ToolHandler {
       const s = sourceOfLocation({ ...c, source: c.source } as ResolvedLocation);
       if (s) used.add(s);
     }
-    const attribution = attributionLines(used, deps.pack.metaOrNull());
+    const attribution = attributionLines(used, await deps.pack.metaOrNull());
     const data = { tool: 'geocode', ...result, attribution };
     return respond(format, data, () => {
       if (result.candidates.length === 0) return `No UK location found for "${query}". Try a nearby town or postcode.\n\nAttribution: none`;
@@ -121,7 +130,11 @@ export function createGeocodeHandler(deps: HandlerDependencies): ToolHandler {
       lines.push('');
       lines.push(`Attribution: ${attribution.join('; ') || 'none'}`);
       return lines.join('\n');
-    });
+    }, () =>
+      result.candidates.length === 0
+        ? brief(`I could not find ${query} in the UK`)
+        : brief(`Best match for ${query}: ${result.candidates[0].name}`, result.candidates.length > 1 ? `${result.candidates.length - 1} other possible matches` : null)
+    );
   };
 }
 

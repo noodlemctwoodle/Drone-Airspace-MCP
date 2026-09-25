@@ -1,4 +1,4 @@
-import type { DiskCache } from '../../core/disk-cache.js';
+import type { CacheStore } from '../../core/cache-store.js';
 import { UpstreamError, UserFacingError } from '../../core/errors.js';
 import type { Logger } from '../../core/logger.js';
 import { silentLogger } from '../../core/logger.js';
@@ -8,7 +8,7 @@ import { normaliseQuery } from './query-normaliser.js';
 
 export interface GeocoderOptions {
   providers: GeocodeProvider[];
-  cache?: DiskCache;
+  cache?: CacheStore;
   cacheTtlSeconds?: number;
   emptyTtlSeconds?: number;
   logger?: Logger;
@@ -23,7 +23,7 @@ const CACHE_VERSION = 'v1';
  */
 export class Geocoder {
   private readonly providers: GeocodeProvider[];
-  private readonly cache?: DiskCache;
+  private readonly cache?: CacheStore;
   private readonly ttl: number;
   private readonly emptyTtl: number;
   private readonly logger: Logger;

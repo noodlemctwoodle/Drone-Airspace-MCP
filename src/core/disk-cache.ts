@@ -2,25 +2,15 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-export interface CacheEntry<T> {
-  key: string;
-  storedAt: number;
-  ttlSeconds: number;
-  etag?: string;
-  lastModified?: string;
-  value: T;
-}
+import type { CacheEntry, CacheMeta, CacheStore } from './cache-store.js';
 
-export interface CacheMeta {
-  etag?: string;
-  lastModified?: string;
-}
+export type { CacheEntry, CacheMeta } from './cache-store.js';
 
 /**
  * Small JSON-on-disk cache. Every read and write is defensive: a missing,
  * corrupt or unreadable file is a miss, never an exception.
  */
-export class DiskCache {
+export class DiskCache implements CacheStore {
   constructor(
     private readonly dir: string,
     private readonly now: () => number = () => Date.now()

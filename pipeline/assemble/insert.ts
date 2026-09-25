@@ -1,11 +1,21 @@
 import type { SqliteDriver } from '../../src/pack/driver.js';
 import type { PackSource } from '../../src/types.js';
-import { encodeLine, geometryBbox } from '../lib/geometry.js';
+import { encodeLine, geometryBbox, shrinkPolygon } from '../lib/geometry.js';
 import type { NormalisedZone } from '../sources/nats/aixm-parser.js';
 import type { NormalisedPath } from '../sources/rowmaps/geojson-parser.js';
 import type { NormalisedRestriction } from '../sources/nt/arcgis.js';
 import type { CountryPolygon } from '../sources/countries/ons.js';
 import { bboxOfPositions } from '../../src/pack/geometry.js';
+import type { MultiPolygon, Polygon } from '../../src/types.js';
+
+/**
+ * One row per polygon part. Point-in-any semantics are unchanged and every
+ * row stays under Cloudflare D1's 100 KB statement limit.
+ */
+function polygonParts(geom: Polygon | MultiPolygon): Polygon[] {
+  const parts: Polygon[] = geom.type === 'Polygon' ? [geom] : geom.coordinates.map((c) => ({ type: 'Polygon', coordinates: c }));
+  return parts.map((p) => shrinkPolygon(p));
+}
 
 const BATCH = 5000;
 
@@ -27,8 +37,8 @@ export async function insertZones(db: SqliteDriver, sourceId: string, zones: Asy
   const ins = db.prepare(
     `INSERT INTO zones (source_id, aixm_id, designator, name, zone_type, raw_type, icao, aerodrome_name,
        lower_ft, lower_ref, lower_raw, upper_ft, upper_ref, upper_raw, activation, contact, notes, valid_from, valid_to,
-       centroid_lon, centroid_lat, geom)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       centroid_lon, centroid_lat, min_lon, max_lon, min_lat, max_lat, geom)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   const rtree = db.prepare('INSERT INTO zones_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)');
   let n = 0;
@@ -38,12 +48,12 @@ export async function insertZones(db: SqliteDriver, sourceId: string, zones: Asy
     batch = [];
     db.transaction(() => {
       for (const z of rows) {
+        const [w, s, e, nn] = geometryBbox(z.geometry);
         const r = ins.run(
           sourceId, z.aixmId, z.designator, z.name, z.zoneType, z.rawType, z.icao, z.aerodromeName,
           z.lowerFt, z.lowerRef, z.lowerRaw, z.upperFt, z.upperRef, z.upperRaw, z.activation, z.contact, z.notes, z.validFrom, z.validTo,
-          z.centroid[0], z.centroid[1], JSON.stringify(z.geometry)
+          z.centroid[0], z.centroid[1], w, e, s, nn, JSON.stringify(z.geometry)
         );
-        const [w, s, e, nn] = geometryBbox(z.geometry);
         rtree.run(Number(r.lastInsertRowid), w, e, s, nn);
         n += 1;
       }
@@ -65,8 +75,8 @@ export function insertAuthority(db: SqliteDriver, a: { code: string; name: strin
 
 export async function insertRightsOfWay(db: SqliteDriver, paths: AsyncIterable<NormalisedPath> | Iterable<NormalisedPath>): Promise<number> {
   const ins = db.prepare(
-    `INSERT INTO rights_of_way (authority_code, source_ref, path_type, route_no, route_name, parish, length_m, geom_fmt, geom)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'polyline6', ?)`
+    `INSERT INTO rights_of_way (authority_code, source_ref, path_type, route_no, route_name, parish, length_m, min_lon, max_lon, min_lat, max_lat, geom_fmt, geom)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'polyline6', ?)`
   );
   const rtree = db.prepare('INSERT INTO rights_of_way_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)');
   let n = 0;
@@ -76,8 +86,8 @@ export async function insertRightsOfWay(db: SqliteDriver, paths: AsyncIterable<N
     batch = [];
     db.transaction(() => {
       for (const p of rows) {
-        const r = ins.run(p.authorityCode, p.sourceRef, p.pathType, p.routeNo, p.routeName, p.parish, p.lengthM, encodeLine(p.coordinates));
         const [w, s, e, nn] = bboxOfPositions(p.coordinates);
+        const r = ins.run(p.authorityCode, p.sourceRef, p.pathType, p.routeNo, p.routeName, p.parish, p.lengthM, w, e, s, nn, encodeLine(p.coordinates));
         rtree.run(Number(r.lastInsertRowid), w, e, s, nn);
         n += 1;
       }
@@ -93,8 +103,8 @@ export async function insertRightsOfWay(db: SqliteDriver, paths: AsyncIterable<N
 
 export async function insertLandRestrictions(db: SqliteDriver, items: AsyncIterable<NormalisedRestriction> | Iterable<NormalisedRestriction>): Promise<number> {
   const ins = db.prepare(
-    `INSERT INTO land_restrictions (source_id, entry_id, kind, owner, name, access_class, takeoff_banned, landing_banned, summary, source_url, last_verified, props, geom)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO land_restrictions (source_id, entry_id, kind, owner, name, access_class, takeoff_banned, landing_banned, summary, source_url, last_verified, props, min_lon, max_lon, min_lat, max_lat, geom)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   const rtree = db.prepare('INSERT INTO land_restrictions_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)');
   let n = 0;
@@ -104,35 +114,39 @@ export async function insertLandRestrictions(db: SqliteDriver, items: AsyncItera
     batch = [];
     db.transaction(() => {
       for (const x of rows) {
+        const [w, s, e, nn] = geometryBbox(x.geometry);
         const r = ins.run(
           x.sourceId, x.entryId, x.kind, x.owner, x.name, x.accessClass, x.takeoffBanned ? 1 : 0,
           x.landingBanned === null ? null : x.landingBanned ? 1 : 0, x.summary, x.sourceUrl, x.lastVerified,
-          x.props ? JSON.stringify(x.props) : null, JSON.stringify(x.geometry)
+          x.props ? JSON.stringify(x.props) : null, w, e, s, nn, JSON.stringify(x.geometry)
         );
-        const [w, s, e, nn] = geometryBbox(x.geometry);
         rtree.run(Number(r.lastInsertRowid), w, e, s, nn);
         n += 1;
       }
     });
   };
   for await (const x of items as AsyncIterable<NormalisedRestriction>) {
-    batch.push(x);
-    if (batch.length >= BATCH) flush();
+    for (const part of polygonParts(x.geometry)) {
+      batch.push({ ...x, geometry: part });
+      if (batch.length >= BATCH) flush();
+    }
   }
   if (batch.length > 0) flush();
   return n;
 }
 
 export function insertCoverage(db: SqliteDriver, countries: CountryPolygon[]): number {
-  const ins = db.prepare('INSERT INTO coverage (country, geom) VALUES (?, ?)');
+  const ins = db.prepare('INSERT INTO coverage (country, min_lon, max_lon, min_lat, max_lat, geom) VALUES (?, ?, ?, ?, ?, ?)');
   const rtree = db.prepare('INSERT INTO coverage_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)');
   let n = 0;
   db.transaction(() => {
     for (const c of countries) {
-      const r = ins.run(c.country, JSON.stringify(c.geometry));
-      const [w, s, e, nn] = geometryBbox(c.geometry);
-      rtree.run(Number(r.lastInsertRowid), w, e, s, nn);
-      n += 1;
+      for (const part of polygonParts(c.geometry)) {
+        const [w, s, e, nn] = geometryBbox(part);
+        const r = ins.run(c.country, w, e, s, nn, JSON.stringify(part));
+        rtree.run(Number(r.lastInsertRowid), w, e, s, nn);
+        n += 1;
+      }
     }
   });
   return n;

@@ -11,10 +11,11 @@ import { fakeFetch, type Route } from '../helpers/fake-fetch.js';
 import { tempDir, testConfig } from '../helpers/build-deps.js';
 import { buildMiniPack } from '../helpers/mini-pack.js';
 import { UpstreamError } from '../../src/core/errors.js';
+import { SCHEMA_VERSION } from '../../src/pack/schema.js';
 
 const sha = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 
-function manifestFor(tag: string, sqlite: Buffer, gz: Buffer, schema = 1) {
+function manifestFor(tag: string, sqlite: Buffer, gz: Buffer, schema = SCHEMA_VERSION) {
   return {
     kind: 'uk-drone-airspace-pack',
     manifest_version: 1,
@@ -76,7 +77,7 @@ describe('pack manifest and loader', () => {
     expect(await pm.init()).toBe(false);
     expect(pm.status().state).toBe('downloading');
     const repo = await pm.ready(10_000);
-    expect(repo.meta().packTag).toBe('pack-20260903-test');
+    expect((await repo.meta()).packTag).toBe('pack-20260903-test');
     expect(pm.status()).toMatchObject({ state: 'ready', tag: 'pack-20260903-1' });
     expect(existsSync(path.join(dir, 'pack.sqlite'))).toBe(true);
     expect(JSON.parse(readFileSync(path.join(dir, 'installed.json'), 'utf8')).tag).toBe('pack-20260903-1');
@@ -85,7 +86,7 @@ describe('pack manifest and loader', () => {
     const ff2 = fakeFetch([]);
     const pm2 = new PackManager({ config, http: new HttpClient({ userAgent: 't', fetchImpl: ff2.fetch, retries: 0 }), logger: createLogger('silent'), fetchImpl: ff2.fetch });
     expect(await pm2.init()).toBe(true);
-    expect(pm2.require().meta().packTag).toBe('pack-20260903-test');
+    expect((await pm2.require().meta()).packTag).toBe('pack-20260903-test');
     expect(ff2.calls.length).toBe(0);
     pm2.close();
   });

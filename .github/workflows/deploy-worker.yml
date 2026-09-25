@@ -1,0 +1,31 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'wrangler.toml', 'package.json', 'package-lock.json', '.github/workflows/deploy-worker.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Skipped on forks without Cloudflare credentials.
+    if: ${{ vars.CLOUDFLARE_DEPLOY == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Stamp version into the Worker build
+        run: |
+          V=$(node -p "require('./package.json').version")
+          sed -i "s/__PKG_VERSION__ = .*/__PKG_VERSION__ = \"\\\\\"$V\\\\\"\"/" wrangler.toml
+          grep __PKG_VERSION__ wrangler.toml
+      - name: Deploy
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

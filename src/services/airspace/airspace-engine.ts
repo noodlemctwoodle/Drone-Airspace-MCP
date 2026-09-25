@@ -34,12 +34,12 @@ export interface AerodromeMatch {
 export class AirspaceEngine {
   constructor(private readonly pack: PackRepository) {}
 
-  atPoint(lon: number, lat: number): Zone[] {
+  atPoint(lon: number, lat: number): Promise<Zone[]> {
     return this.pack.zonesAt(lon, lat);
   }
 
-  alongRoute(line: LineString): RouteHit[] {
-    const candidates = this.pack.zonesAlongLine(line);
+  async alongRoute(line: LineString): Promise<RouteHit[]> {
+    const candidates = await this.pack.zonesAlongLine(line);
     const hits: RouteHit[] = [];
     const seen = new Set<number>();
     for (const zone of candidates) {
@@ -53,10 +53,10 @@ export class AirspaceEngine {
     return hits;
   }
 
-  inArea(poly: Polygon): Zone[] {
+  async inArea(poly: Polygon): Promise<Zone[]> {
     const box = bboxOfGeometry(poly);
     const feature = polygon(poly.coordinates);
-    return this.pack.zonesInBbox(box).filter((z) => {
+    return (await this.pack.zonesInBbox(box)).filter((z) => {
       try {
         return booleanIntersects(feature, z.geometry);
       } catch {
@@ -85,18 +85,18 @@ export class AirspaceEngine {
     return { zone, centre, radiusKm, bbox: box, areaKm2 };
   }
 
-  aerodrome(nameOrIcao: string, n = 5): AerodromeMatch[] {
-    const hits = this.pack.findAerodrome(nameOrIcao, n * 2);
+  async aerodrome(nameOrIcao: string, n = 5): Promise<AerodromeMatch[]> {
+    const hits = await this.pack.findAerodrome(nameOrIcao, n * 2);
     const out: AerodromeMatch[] = [];
     const seen = new Set<string>();
     for (const hit of hits) {
       if (hit.zoneId === null) continue;
-      const primaryZone = this.pack.zoneById(hit.zoneId);
+      const primaryZone = await this.pack.zoneById(hit.zoneId);
       if (!primaryZone) continue;
       const key = hit.kind === 'aerodrome' ? `a:${hit.name}` : `z:${primaryZone.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      const zones = hit.kind === 'aerodrome' ? this.pack.zonesByAerodrome(hit.name) : [primaryZone];
+      const zones = hit.kind === 'aerodrome' ? await this.pack.zonesByAerodrome(hit.name) : [primaryZone];
       const components = (zones.length > 0 ? zones : [primaryZone]).map((z) => this.describe(z));
       const primary = components.find((c) => c.zone.id === primaryZone.id) ?? components[0];
       const bbox: BBox = [

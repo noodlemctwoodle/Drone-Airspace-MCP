@@ -1,9 +1,18 @@
 import { createRequire } from 'node:module';
 
-const require = createRequire(import.meta.url);
-const pkg = require('../package.json') as { name: string; version: string };
+declare const __PKG_VERSION__: string | undefined;
 
-export const NAME: string = pkg.name;
-export const VERSION: string = pkg.version;
+function readVersion(): string {
+  if (typeof __PKG_VERSION__ === 'string') return __PKG_VERSION__;
+  try {
+    const require = createRequire(import.meta.url);
+    return (require('../package.json') as { version: string }).version;
+  } catch {
+    return '0.0.0';
+  }
+}
+
+export const NAME = 'uk-drone-airspace-mcp';
+export const VERSION: string = readVersion();
 export const REPO_URL = 'https://github.com/noodlemctwoodle/Drone-Airspace-MCP';
 export const USER_AGENT = `${NAME}/${VERSION} (+${REPO_URL})`;

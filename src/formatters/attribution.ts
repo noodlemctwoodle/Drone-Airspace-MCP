@@ -17,6 +17,24 @@ const PACK_SOURCE_IDS: Record<string, string[]> = {
   coverage: ['ons_countries'],
 };
 
+const SHORT: Record<string, string> = {
+  airspace: 'NATS UK AIP',
+  prow: 'council rights of way data via rowmaps',
+  landowner: 'National Trust open data',
+  byelaws: 'the council byelaw list',
+  coverage: 'ONS boundaries',
+  nominatim: 'OpenStreetMap',
+  os_names: 'Ordnance Survey',
+  postcodes_io: 'postcodes.io',
+  notam: 'the NATS NOTAM bulletin',
+};
+
+/** One short spoken sentence naming the sources used. */
+export function attributionSentence(used: Iterable<SourceId>): string {
+  const names = [...new Set([...used].map((u) => SHORT[u]).filter(Boolean))];
+  return names.length > 0 ? `Sources: ${names.join(', ')}.` : '';
+}
+
 export function attributionLines(used: Iterable<SourceId>, meta: PackMeta | null): string[] {
   const lines: string[] = [];
   const seen = new Set<string>();

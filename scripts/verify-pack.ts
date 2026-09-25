@@ -11,7 +11,7 @@ if (!file) {
 }
 (async () => {
   const sizeBytes = (await stat(file)).size;
-  const result = verifyPack(file, { region: args.region.name, strict: args.strict, sizeBytes });
+  const result = await verifyPack(file, { region: args.region.name, strict: args.strict, sizeBytes });
   console.log(JSON.stringify(result, null, 2));
   if (!result.ok) process.exit(1);
 })().catch((e) => {

@@ -95,6 +95,28 @@ export function roundGeometry<T extends Polygon | MultiPolygon>(geom: T): T {
   return { ...geom, coordinates: geom.coordinates.map((poly) => poly.map(roundCoords)) } as T;
 }
 
+import simplify from '@turf/simplify';
+
+/**
+ * Simplify a polygon until its JSON is under `maxBytes` (Cloudflare D1 caps a
+ * statement at 100 KB). Tolerance doubles each pass from ~2 m; gives up after
+ * eight passes and returns the smallest result.
+ */
+export function shrinkPolygon(poly: Polygon, maxBytes = 50_000): Polygon {
+  let current = poly;
+  let tolerance = 0.00002;
+  for (let i = 0; i < 8 && JSON.stringify(current).length > maxBytes; i += 1) {
+    try {
+      const next = simplify(current, { tolerance, highQuality: false }) as Polygon;
+      if (next.coordinates.length > 0 && next.coordinates[0].length >= 4) current = roundGeometry(next);
+    } catch {
+      break;
+    }
+    tolerance *= 2;
+  }
+  return current;
+}
+
 export function geometryBbox(geom: Polygon | MultiPolygon) {
   const rings = geom.type === 'Polygon' ? geom.coordinates : geom.coordinates.flat();
   return bboxOfPositions(rings.flat());

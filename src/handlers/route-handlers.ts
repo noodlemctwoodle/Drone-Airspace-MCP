@@ -1,6 +1,6 @@
 import type { BBox, OutputFormat, Polygon, Position, ResolvedLocation } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
-import { ambiguousResponse, notFoundResponse, respond } from './respond.js';
+import { ambiguousResponse, brief, notFoundResponse, respond } from './respond.js';
 import { locationNotes, sourceOfLocation } from './location-handlers.js';
 import { resolveLocation } from '../services/location-resolver.js';
 import { UserFacingError } from '../core/errors.js';
@@ -9,7 +9,7 @@ import { routeVerdict } from '../services/airspace/verdict.js';
 import { bboxToPolygon, routeLengthKm, toLineString } from '../services/airspace/geometry.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { renderZone, zoneToJson } from '../formatters/zones.js';
-import { attributionLines, type SourceId } from '../formatters/attribution.js';
+import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
 import { formatCoord, formatKm } from '../formatters/units.js';
 import area from '@turf/area';
 import { CAVEAT_AIRSPACE_ONLY_BELOW_120M, CAVEAT_NOTAMS_NOT_INCLUDED, CAVEAT_NOT_BRIEFING } from './caveats.js';
@@ -51,12 +51,12 @@ export function createCheckRouteHandler(deps: HandlerDependencies): ToolHandler 
       const line = toLineString(resolved.map((l): Position => [l.lon, l.lat]));
       const lengthKm = routeLengthKm(line);
       if (lengthKm > MAX_ROUTE_KM) throw new UserFacingError(`Route is ${lengthKm.toFixed(0)} km; the maximum is ${MAX_ROUTE_KM} km. Split it into shorter legs.`);
-      const hits = deps.airspace.alongRoute(line);
+      const hits = await deps.airspace.alongRoute(line);
       const { relevant, above } = splitByRelevance(hits.map((h) => h.zone));
       const relevantIds = new Set(relevant.map((z) => z.id));
       const crossings = hits.filter((h) => relevantIds.has(h.zone.id));
       const verdict = routeVerdict(relevant);
-      const attribution = attributionLines(used, pack.meta());
+      const attribution = attributionLines(used, await pack.meta());
       const data = {
         tool: 'check_route',
         generatedAt: deps.now().toISOString(),
@@ -87,12 +87,19 @@ export function createCheckRouteHandler(deps: HandlerDependencies): ToolHandler 
         if (includeAbove) sections.push({ title: `Zones only above 400 ft (${above.length})`, lines: above.map(renderZone) });
         else if (above.length > 0) sections.push({ title: 'Zones only above 400 ft', lines: [`${above.length} zone(s) start above 400 ft; pass include_above_120m to list them.`] });
         return renderReport({ headline: verdict.line, notes, sections, caveats, attribution });
-      });
+      }, () =>
+        brief(
+          `${resolved.every((l) => l.source === 'input') ? 'Your route' : `Route ${resolved.map((l) => l.name.split(',')[0]).join(' to ')}`}, ${formatKm(lengthKm)}: ${verdict.line}`,
+          crossings.length > 0 ? `First entered ${crossings[0].crossing.startsInside ? 'at the start' : `after ${formatKm(crossings[0].crossing.entersAtKm)}`}` : null,
+          'Temporary NOTAMs are not included',
+          attributionSentence(used)
+        )
+      );
     }
 
     const areaInput = areaArg as { bbox: BBox } | Polygon;
     const polygon: Polygon = 'bbox' in areaInput ? bboxToPolygon(areaInput.bbox as BBox) : areaInput;
-    const zones = deps.airspace.inArea(polygon);
+    const zones = await deps.airspace.inArea(polygon);
     const { relevant, above } = splitByRelevance(zones);
     const verdict = routeVerdict(relevant);
     let areaKm2 = 0;
@@ -101,7 +108,7 @@ export function createCheckRouteHandler(deps: HandlerDependencies): ToolHandler 
     } catch {
       areaKm2 = 0;
     }
-    const attribution = attributionLines(used, pack.meta());
+    const attribution = attributionLines(used, await pack.meta());
     const data = {
       tool: 'check_route',
       generatedAt: deps.now().toISOString(),
@@ -117,6 +124,6 @@ export function createCheckRouteHandler(deps: HandlerDependencies): ToolHandler 
       const sections: ReportSection[] = [{ title: `Restrictions intersecting the area (${relevant.length}, area ${areaKm2.toFixed(1)} km2)`, lines: relevant.map(renderZone) }];
       if (includeAbove) sections.push({ title: `Zones only above 400 ft (${above.length})`, lines: above.map(renderZone) });
       return renderReport({ headline: data.verdict.line, sections, caveats, attribution });
-    });
+    }, () => brief(`Area of ${areaKm2.toFixed(1)} square kilometres: ${data.verdict.line}`, 'Temporary NOTAMs are not included', attributionSentence(used)));
   };
 }

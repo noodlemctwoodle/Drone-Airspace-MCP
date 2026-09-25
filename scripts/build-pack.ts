@@ -50,7 +50,7 @@ export interface BuildResult {
   gzPath: string | null;
   tag: string;
   counts: Record<string, number>;
-  verify: ReturnType<typeof verifyPack>;
+  verify: Awaited<ReturnType<typeof verifyPack>>;
 }
 
 export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
@@ -153,7 +153,7 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
   const sizeBytes = (await stat(finalPath)).size;
   log.info(`pack ${finalPath} (${(sizeBytes / 1048576).toFixed(1)} MB)`);
 
-  const verify = verifyPack(finalPath, { region: args.region.name, strict: args.strict, sizeBytes });
+  const verify = await verifyPack(finalPath, { region: args.region.name, strict: args.strict, sizeBytes });
   for (const w of verify.warnings) log.warn(`verify: ${w}`);
   for (const f of verify.failures) log.error(`verify: ${f}`);
   await writeReport(args.reportsDir, 'verify', verify);

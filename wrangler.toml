@@ -1,0 +1,26 @@
+name = "uk-drone-airspace-mcp"
+main = "src/worker/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[define]
+__PKG_VERSION__ = "\"0.0.0-worker\""
+
+[vars]
+LOG_LEVEL = "info"
+NOTAM_CACHE_TTL_SECONDS = "1800"
+# PUBLIC_URL = "https://uk-drone-airspace-mcp.<your-subdomain>.workers.dev"
+# OS_NAMES_API_KEY is a secret: `wrangler secret put OS_NAMES_API_KEY`
+
+[[d1_databases]]
+binding = "DB"
+database_name = "uk-drone-airspace"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[observability]
+enabled = true

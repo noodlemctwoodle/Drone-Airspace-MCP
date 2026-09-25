@@ -193,7 +193,7 @@ export type ToolResponse = {
   isError?: boolean;
 };
 
-export type OutputFormat = 'text' | 'json';
+export type OutputFormat = 'text' | 'json' | 'brief';
 
 export type BBox = [number, number, number, number];
 export type { Geometry, LineString, MultiPolygon, Polygon, Position };

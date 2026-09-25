@@ -38,7 +38,7 @@ export class StaticPackAccess implements PackAccess {
   status() {
     return this.state;
   }
-  metaOrNull() {
+  async metaOrNull() {
     return this.repo ? this.repo.meta() : null;
   }
 }

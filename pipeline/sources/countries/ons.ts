@@ -29,7 +29,8 @@ export function parseCountries(json: unknown): CountryPolygon[] {
     if (!country || !f.geometry || (f.geometry.type !== 'Polygon' && f.geometry.type !== 'MultiPolygon')) continue;
     let geometry = f.geometry;
     try {
-      geometry = simplify(f.geometry, { tolerance: 0.001, highQuality: false }) as Polygon | MultiPolygon;
+      // ~300 m: only used to tell countries apart for the rights-of-way caveat.
+      geometry = simplify(f.geometry, { tolerance: 0.003, highQuality: false }) as Polygon | MultiPolygon;
     } catch {
       geometry = f.geometry;
     }

@@ -1,7 +1,9 @@
 // Bundle the server into a single ESM file with no runtime dependencies, so
 // `npx uk-drone-airspace-mcp` downloads one small tarball and starts in seconds.
 import { build } from 'esbuild';
-import { chmod, mkdir, rm } from 'node:fs/promises';
+import { chmod, mkdir, readFile, rm } from 'node:fs/promises';
+
+const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
@@ -16,6 +18,7 @@ await build({
   minify: false,
   legalComments: 'none',
   logLevel: 'info',
+  define: { __PKG_VERSION__: JSON.stringify(version) },
   banner: {
     // CommonJS dependencies (express and friends) need require/__dirname inside an ESM bundle.
     js: [

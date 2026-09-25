@@ -1,13 +1,13 @@
 import type { OutputFormat } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
-import { respond } from './respond.js';
+import { brief, respond } from './respond.js';
 import { locationLine, locationNotes, resolveOrRespond, sourceOfLocation } from './location-handlers.js';
 import type { LocationArgs } from '../tools/schemas.js';
 import { parseUserDate } from '../services/notam/validity.js';
 import { UserFacingError } from '../core/errors.js';
 import { renderReport } from '../formatters/report.js';
 import { notamToJson, renderNotam, renderUnlocated } from '../formatters/notams.js';
-import { attributionLines, type SourceId } from '../formatters/attribution.js';
+import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
 import { formatAgeSeconds, formatDateTime } from '../formatters/units.js';
 import { CAVEAT_NOTAM_SCHEDULE, CAVEAT_NOT_BRIEFING } from './caveats.js';
 
@@ -32,7 +32,7 @@ export function createCheckNotamsHandler(deps: HandlerDependencies): ToolHandler
     const used = new Set<SourceId>(['notam']);
     const s = sourceOfLocation(loc);
     if (s) used.add(s);
-    const attribution = attributionLines(used, deps.pack.metaOrNull());
+    const attribution = attributionLines(used, await deps.pack.metaOrNull());
     const caveats = [CAVEAT_NOT_BRIEFING];
     if ([...covering, ...nearby].some((n) => n.schedule)) caveats.push(CAVEAT_NOTAM_SCHEDULE);
     if (q.bulletin.stale) caveats.push(`The bulletin could not be refreshed (${q.bulletin.lastError ?? 'unknown error'}); showing a cached copy.`);
@@ -52,11 +52,11 @@ export function createCheckNotamsHandler(deps: HandlerDependencies): ToolHandler
       caveats,
       attribution,
     };
+    const headline =
+      covering.length === 0
+        ? `No NOTAM covers this point at ${formatDateTime(at)}.`
+        : `${covering.length} NOTAM${covering.length > 1 ? 's' : ''} cover${covering.length > 1 ? '' : 's'} this point at ${formatDateTime(at)}.`;
     return respond(format, data, () => {
-      const headline =
-        covering.length === 0
-          ? `No NOTAM covers this point at ${formatDateTime(at)}.`
-          : `${covering.length} NOTAM${covering.length > 1 ? 's' : ''} cover${covering.length > 1 ? '' : 's'} this point at ${formatDateTime(at)}.`;
       const notes = locationNotes(loc);
       notes.push(`Bulletin fetched ${formatDateTime(q.bulletin.fetchedAt)} (cache age ${formatAgeSeconds(q.bulletin.ageSeconds)}), ${q.bulletin.count} NOTAMs in force or upcoming.`);
       const sections = [
@@ -68,6 +68,16 @@ export function createCheckNotamsHandler(deps: HandlerDependencies): ToolHandler
         },
       ];
       return renderReport({ headline, notes, location: locationLine(loc), sections, caveats, attribution });
+    }, () => {
+      const say = (n: (typeof covering)[number]) => `${n.id}: ${n.itemE.split(/[.;]/)[0].toLowerCase()}`;
+      return brief(
+        `${headline.replace(/ at \d{4}-\d{2}-\d{2} \d{2}:\d{2}Z/, '')}`,
+        covering.length > 0 ? `Covering: ${covering.slice(0, 3).map(say).join('; ')}` : null,
+        nearby.length > 0 ? `${nearby.length} more within ${radiusKm} km, nearest ${nearby[0].distanceKm} km away: ${say(nearby[0])}` : null,
+        [...covering, ...nearby].some((n) => n.schedule) ? 'At least one has daily hours, so check the times' : null,
+        'This is not an official pre-flight briefing',
+        attributionSentence(used)
+      );
     });
   };
 }

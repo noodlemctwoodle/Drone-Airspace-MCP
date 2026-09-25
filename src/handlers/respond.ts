@@ -11,9 +11,23 @@ export function jsonResponse(value: unknown): ToolResponse {
   return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] };
 }
 
-/** Render `data` as JSON or via `renderText`, according to `format`. */
-export function respond(format: OutputFormat, data: unknown, renderText: () => string): ToolResponse {
-  return format === 'json' ? jsonResponse(data) : textResponse(renderText());
+/**
+ * Render `data` as JSON, as the full text report, or as a brief spoken-friendly
+ * summary (falls back to the full report when a tool has no brief renderer).
+ */
+export function respond(format: OutputFormat, data: unknown, renderText: () => string, renderBrief?: () => string): ToolResponse {
+  if (format === 'json') return jsonResponse(data);
+  if (format === 'brief' && renderBrief) return textResponse(renderBrief());
+  return textResponse(renderText());
+}
+
+/** Join sentences for speech: one paragraph, no bullets, no coordinates. */
+export function brief(...sentences: Array<string | null | undefined | false>): string {
+  return sentences
+    .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
+    .map((s) => s.trim().replace(/\s+/g, ' '))
+    .map((s) => (/[.!?]$/.test(s) ? s : `${s}.`))
+    .join(' ');
 }
 
 export function errorResponse(error: unknown, logger?: Logger): ToolResponse {
@@ -30,7 +44,7 @@ export function ambiguousResponse(format: OutputFormat, tool: string, query: str
       lines.push(`  ${i + 1}. ${c.name} (${formatCoord(c.lat, c.lon)}) [${c.source}]`);
     });
     return lines.join('\n');
-  });
+  }, () => brief(`Several places match ${query}: ${candidates.slice(0, 3).map((c) => c.name.split(',').slice(0, 2).join(',')).join('; ')}`, 'Which one did you mean?'));
 }
 
 export function notFoundResponse(format: OutputFormat, tool: string, query: string): ToolResponse {

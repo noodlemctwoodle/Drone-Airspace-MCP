@@ -3,7 +3,7 @@
  * Bump SCHEMA_VERSION on any incompatible change; the loader refuses packs whose
  * `PRAGMA user_version` does not match.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 export const APPLICATION_ID = 0x44524e41; // 'DRNA'
 
 export const ZONE_TYPES = ['frz', 'prohibited', 'restricted', 'danger', 'other'] as const;
@@ -54,6 +54,7 @@ export const DDL: string[] = [
     notes TEXT,
     valid_from TEXT, valid_to TEXT,
     centroid_lon REAL NOT NULL, centroid_lat REAL NOT NULL,
+    min_lon REAL NOT NULL, max_lon REAL NOT NULL, min_lat REAL NOT NULL, max_lat REAL NOT NULL,
     geom TEXT NOT NULL
   )`,
   `CREATE VIRTUAL TABLE zones_rtree USING rtree(id, min_lon, max_lon, min_lat, max_lat)`,
@@ -75,6 +76,7 @@ export const DDL: string[] = [
     path_type TEXT NOT NULL CHECK (path_type IN (${list(PATH_TYPES)})),
     route_no TEXT, route_name TEXT, parish TEXT,
     length_m INTEGER NOT NULL,
+    min_lon REAL NOT NULL, max_lon REAL NOT NULL, min_lat REAL NOT NULL, max_lat REAL NOT NULL,
     geom_fmt TEXT NOT NULL DEFAULT 'polyline6',
     geom TEXT NOT NULL
   )`,
@@ -94,6 +96,7 @@ export const DDL: string[] = [
     source_url TEXT,
     last_verified TEXT,
     props TEXT,
+    min_lon REAL NOT NULL, max_lon REAL NOT NULL, min_lat REAL NOT NULL, max_lat REAL NOT NULL,
     geom TEXT NOT NULL
   )`,
   `CREATE VIRTUAL TABLE land_restrictions_rtree USING rtree(id, min_lon, max_lon, min_lat, max_lat)`,
@@ -101,6 +104,7 @@ export const DDL: string[] = [
   `CREATE TABLE coverage (
     id INTEGER PRIMARY KEY,
     country TEXT NOT NULL CHECK (country IN (${list(COUNTRIES)})),
+    min_lon REAL NOT NULL, max_lon REAL NOT NULL, min_lat REAL NOT NULL, max_lat REAL NOT NULL,
     geom TEXT NOT NULL
   )`,
   `CREATE VIRTUAL TABLE coverage_rtree USING rtree(id, min_lon, max_lon, min_lat, max_lat)`,
@@ -116,6 +120,9 @@ export const DDL: string[] = [
   `CREATE INDEX gazetteer_icao ON gazetteer(icao)`,
   `CREATE VIRTUAL TABLE gazetteer_fts USING fts5(name, aliases, content='gazetteer', content_rowid='id', tokenize='unicode61')`,
 ];
+
+/** Tables that carry a bbox and a companion `<table>_rtree`; used to rebuild rtrees after a D1 import. */
+export const SPATIAL_TABLES = ['zones', 'rights_of_way', 'land_restrictions', 'coverage'] as const;
 
 export const META_KEYS = [
   'schema_version',

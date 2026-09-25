@@ -3,9 +3,9 @@ import { z } from 'zod';
 export const UK_BBOX = { west: -9, south: 49.5, east: 2.5, north: 61 } as const;
 
 export const formatArg = z
-  .enum(['text', 'json'])
+  .enum(['text', 'json', 'brief'])
   .default('text')
-  .describe('text for a readable report (default), json for structured output.');
+  .describe('text for a readable report (default), json for structured output, brief for two or three spoken-friendly sentences (use in voice conversations).');
 
 export const placeArg = z
   .string()

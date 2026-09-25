@@ -1,6 +1,6 @@
 import type { OutputFormat } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
-import { respond } from './respond.js';
+import { brief, respond } from './respond.js';
 import { locationLine, locationNotes, resolveOrRespond, sourceOfLocation } from './location-handlers.js';
 import type { LocationArgs } from '../tools/schemas.js';
 import { splitByRelevance } from '../services/airspace/vertical.js';
@@ -8,7 +8,7 @@ import { buildVerdict } from '../services/airspace/verdict.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
 import { renderRightOfWay, rightOfWayToJson } from '../formatters/rights-of-way.js';
-import { attributionLines, type SourceId } from '../formatters/attribution.js';
+import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
 import { formatDistance } from '../formatters/units.js';
 import {
   CAVEAT_BAN_LAYER_INCOMPLETE,
@@ -28,12 +28,12 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     const radiusM = typeof args.search_radius_m === 'number' ? args.search_radius_m : 1000;
     const pack = deps.pack.require();
 
-    const zones = deps.airspace.atPoint(loc.lon, loc.lat);
+    const zones = await deps.airspace.atPoint(loc.lon, loc.lat);
     const { relevant, above } = splitByRelevance(zones);
-    const restrictions = pack.landRestrictionsAt(loc.lon, loc.lat);
+    const restrictions = await pack.landRestrictionsAt(loc.lon, loc.lat);
     const verdict = buildVerdict(relevant, restrictions);
-    const coverage = deps.rightsOfWay.coverageAt(loc.lon, loc.lat);
-    const paths = coverage === 'scotland' || coverage === 'northern_ireland' ? [] : deps.rightsOfWay.nearest(loc.lon, loc.lat, radiusM, maxPaths);
+    const coverage = await deps.rightsOfWay.coverageAt(loc.lon, loc.lat);
+    const paths = coverage === 'scotland' || coverage === 'northern_ireland' ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, radiusM, maxPaths);
     const takeoffBanned = restrictions.some((r) => r.takeoffBanned);
 
     const used = new Set<SourceId>(['airspace']);
@@ -42,7 +42,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     if (restrictions.some((r) => r.sourceId === 'byelaws')) used.add('byelaws');
     const s = sourceOfLocation(loc);
     if (s) used.add(s);
-    const attribution = attributionLines(used, pack.meta());
+    const attribution = attributionLines(used, await pack.meta());
     // Per-authority attribution is required by the OGL terms.
     for (const a of new Set(paths.map((p) => p.attribution))) attribution.push(a);
 
@@ -87,6 +87,15 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
       ];
       if (above.length > 0) sections.push({ title: 'Zones only above 400 ft', lines: [`${above.length} zone(s) start above 400 ft; see check_location with include_above_120m.`] });
       return renderReport({ headline: headlineParts.join('\n'), notes: locationNotes(loc), location: locationLine(loc), sections, caveats, attribution });
-    });
+    }, () =>
+      brief(
+        loc.resolvedFrom ? `I could not find ${loc.resolvedFrom.original}, so this is for ${loc.resolvedFrom.used}` : null,
+        `For take-off near ${loc.name.split(',').slice(0, 2).join(',')}: ${headlineParts.join(' ')}`,
+        paths.length > 1 ? `${paths.length} public rights of way within ${formatDistance(radiusM)} in total` : null,
+        coverage === 'scotland' || coverage === 'northern_ireland' ? 'There is no rights-of-way data for this area' : 'Rights of way are an interpretation of the council definitive map',
+        'Check NOTAMs separately and remember the landowner rule layer is incomplete',
+        attributionSentence(used)
+      )
+    );
   };
 }

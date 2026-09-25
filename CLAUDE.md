@@ -27,6 +27,8 @@ PACK_PATH=build/pack/pack-dev.sqlite npm run dev
 Node 22.13+ is required: the server uses the built-in `node:sqlite` (no native
 module) and silences its ExperimentalWarning in `src/index.ts`.
 
+`PackRepository` is async everywhere (D1 has no sync API); the query core lives in `QueryPackRepository` over the tiny `AsyncQuery` interface with node:sqlite and D1 adapters.
+
 `npm run build` typechecks then bundles everything into a single `dist/index.js`
 with esbuild (`scripts/bundle.mjs`). The published package has **no runtime
 dependencies**, so `npx` starts it in seconds instead of resolving 200+
@@ -53,7 +55,14 @@ scripts/                   tsx CLIs: fetch-*, build-pack, verify-pack, make-mani
 data/byelaws/seed.yaml     community-maintained council byelaw list
 test/                      fixtures/ (real NATS excerpts, PIB excerpt, rowmaps, NT, byelaws), helpers/ (FakePackRepository, mini-pack, fake-fetch)
 ```
-Flow: tool -> `resolveOrRespond` (geocode) -> `pack.require()` -> engine/service -> formatter -> `respond(format, data, renderText)`.
+  worker/                  Cloudflare Worker entry (fetch handler, WebStandard streamable HTTP), d1-pack.ts (PackAccess over D1), kv-cache.ts
+Flow: tool -> `resolveOrRespond` (geocode) -> `pack.require()` -> engine/service -> formatter -> `respond(format, data, renderText, renderBrief)`.
+
+Three runtimes share everything above `pack/` and `core/`:
+- **npx / .mcpb**: node:sqlite pack downloaded from GitHub Releases (`pack/loader.ts`).
+- **Cloudflare Worker**: the same pack loaded into D1 by `scripts/export-d1.ts` (rtree and FTS5 rebuilt after import; rows split so no statement exceeds D1's 100 KB limit), KV for caches. `npm run worker:dev` runs it locally against `.wrangler/state`; `wrangler d1 execute uk-drone-airspace --local --file build/d1.sql` loads a pack for local dev.
+- **Docker / --transport http**: Express in `transport/http.ts`.
+`format: "brief"` exists for voice: two or three sentences, no coordinates, one short "Sources:" sentence.
 
 ## Conventions (follow these)
 - Tool descriptions and zod schemas in `src/tools/` are the model-facing contract. Keep them tight, en-GB, no emoji, no em-dashes.

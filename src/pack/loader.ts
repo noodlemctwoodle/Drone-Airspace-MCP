@@ -74,9 +74,9 @@ export class PackManager implements PackAccess {
     return this.state;
   }
 
-  metaOrNull(): PackMeta | null {
+  async metaOrNull(): Promise<PackMeta | null> {
     try {
-      return this.repo ? this.repo.meta() : null;
+      return this.repo ? await this.repo.meta() : null;
     } catch {
       return null;
     }

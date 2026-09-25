@@ -31,14 +31,14 @@ describe('crossingOf', () => {
 
 describe('AirspaceEngine', () => {
   const engine = new AirspaceEngine(new FakePackRepository());
-  it('dedupes and sorts crossings along a route', () => {
-    const hits = engine.alongRoute(toLineString([[-3.3, 51.207], [-2.7191, 51.207], [-2.7191, 51.3827]]));
+  it('dedupes and sorts crossings along a route', async () => {
+    const hits = await engine.alongRoute(toLineString([[-3.3, 51.207], [-2.7191, 51.207], [-2.7191, 51.3827]]));
     // starts inside the high-level square (4), then Hinkley (2), then Bristol FRZ (1)
     expect(hits.map((h) => h.zone.id)).toEqual([4, 2, 1]);
     expect(new Set(hits.map((h) => h.zone.id)).size).toBe(hits.length);
   });
-  it('describes an aerodrome zone', () => {
-    const [z] = engine.aerodrome('EGGD');
+  it('describes an aerodrome zone', async () => {
+    const [z] = await engine.aerodrome('EGGD');
     expect(z.icao).toBe('EGGD');
     expect(z.primary.radiusKm).toBeCloseTo(4.6, 1);
     expect(z.areaKm2).toBeGreaterThan(60);

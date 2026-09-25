@@ -69,7 +69,7 @@ if (process.argv[1] && /make-manifest\.ts$/.test(process.argv[1])) {
     const { readFile } = await import('node:fs/promises');
     const { SqlitePackRepository } = await import('../src/pack/repository.js');
     const repo = new SqlitePackRepository(packPath);
-    const meta = repo.meta();
+    const meta = await repo.meta();
     repo.close();
     const gzPath = `${packPath}.gz`;
     await stat(gzPath).catch(() => {

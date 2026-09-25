@@ -1,4 +1,4 @@
-import type { DiskCache } from '../../core/disk-cache.js';
+import type { CacheStore } from '../../core/cache-store.js';
 import { UpstreamError, UserFacingError } from '../../core/errors.js';
 import type { HttpClient } from '../../core/http-client.js';
 import type { Logger } from '../../core/logger.js';
@@ -20,7 +20,7 @@ export class PibFetcher {
 
   constructor(
     private readonly http: HttpClient,
-    private readonly cache: DiskCache,
+    private readonly cache: CacheStore,
     private readonly url: string,
     private readonly ttlSeconds: number,
     private readonly logger: Logger = silentLogger,

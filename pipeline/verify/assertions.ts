@@ -23,7 +23,7 @@ export interface VerifyOptions {
 }
 
 const FLOORS: Record<string, Record<string, number>> = {
-  national: { zones: 800, rights_of_way: 100_000, land_restrictions: 1000, gazetteer: 200, coverage: 4 },
+  national: { zones: 800, rights_of_way: 100_000, land_restrictions: 1000, gazetteer: 200, coverage: 4 }, // coverage counts polygon parts
   'south-west': { zones: 40, rights_of_way: 10_000, land_restrictions: 100, gazetteer: 20, coverage: 1 },
   default: { zones: 1, rights_of_way: 0, land_restrictions: 0, gazetteer: 1, coverage: 0 },
 };
@@ -31,7 +31,7 @@ const FLOORS: Record<string, Record<string, number>> = {
 const SIZE_WARN = 400 * 1024 * 1024;
 const SIZE_FAIL = 600 * 1024 * 1024;
 
-export function verifyPack(file: string, opts: VerifyOptions): VerifyResult {
+export async function verifyPack(file: string, opts: VerifyOptions): Promise<VerifyResult> {
   const failures: string[] = [];
   const warnings: string[] = [];
   const counts: Record<string, number> = {};
@@ -91,26 +91,26 @@ export function verifyPack(file: string, opts: VerifyOptions): VerifyResult {
       const e = kp.expect;
       if (e.layer === 'zones') {
         if (counts.zones === 0) continue;
-        const zones = repo.zonesAt(kp.lon, kp.lat);
+        const zones = await repo.zonesAt(kp.lon, kp.lat);
         const hit = zones.find((z) => (!e.zoneType || z.zoneType === e.zoneType) && (!e.icao || z.icao === e.icao) && (!e.designatorPrefix || (z.designator ?? '').startsWith(e.designatorPrefix)));
         if (!hit) failures.push(`known point "${kp.name}": no matching zone (found ${zones.map((z) => `${z.designator} ${z.name} ${z.zoneType} ${z.icao ?? ''}`).join('; ') || 'nothing'})`);
       } else if (e.layer === 'rights_of_way') {
         if (counts.rights_of_way === 0) continue;
-        const hits = repo.nearestRightsOfWay(kp.lon, kp.lat, e.withinMetres, 3);
+        const hits = await repo.nearestRightsOfWay(kp.lon, kp.lat, e.withinMetres, 3);
         const hit = hits.find((h) => !e.authorityCode || h.authorityCode === e.authorityCode);
         if (!hit) failures.push(`known point "${kp.name}": no right of way within ${e.withinMetres} m`);
       } else if (e.layer === 'land_restrictions') {
         if (counts.land_restrictions === 0) continue;
-        const hits = repo.landRestrictionsAt(kp.lon, kp.lat);
+        const hits = await repo.landRestrictionsAt(kp.lon, kp.lat);
         if (!hits.some((h) => h.owner === e.owner)) failures.push(`known point "${kp.name}": expected ${e.owner} land`);
       } else {
-        if (repo.zonesAt(kp.lon, kp.lat).length > 0) failures.push(`known point "${kp.name}": unexpected zone`);
-        if (repo.landRestrictionsAt(kp.lon, kp.lat).length > 0) failures.push(`known point "${kp.name}": unexpected land restriction`);
+        if ((await repo.zonesAt(kp.lon, kp.lat)).length > 0) failures.push(`known point "${kp.name}": unexpected zone`);
+        if ((await repo.landRestrictionsAt(kp.lon, kp.lat)).length > 0) failures.push(`known point "${kp.name}": unexpected land restriction`);
       }
     }
     if (opts.region === 'national' && counts.gazetteer > 0) {
-      if (repo.findAerodrome('EGLL').length === 0) failures.push('gazetteer cannot resolve EGLL');
-      if (repo.findAerodrome('heathrow').length === 0) failures.push('gazetteer cannot resolve "heathrow"');
+      if ((await repo.findAerodrome('EGLL')).length === 0) failures.push('gazetteer cannot resolve EGLL');
+      if ((await repo.findAerodrome('heathrow')).length === 0) failures.push('gazetteer cannot resolve "heathrow"');
     }
 
     if (opts.sizeBytes > SIZE_FAIL) failures.push(`pack is ${(opts.sizeBytes / 1048576).toFixed(0)} MB, over the ${SIZE_FAIL / 1048576} MB limit`);

@@ -190,25 +190,25 @@ export class FakePackRepository implements PackRepository {
     private readonly metaValue: PackMeta = FIXTURE_META
   ) {}
 
-  meta(): PackMeta {
+  async meta(): Promise<PackMeta> {
     return this.metaValue;
   }
-  zonesAt(lon: number, lat: number, opts: ZonesAtOptions = {}): Zone[] {
+  async zonesAt(lon: number, lat: number, opts: ZonesAtOptions = {}): Promise<Zone[]> {
     const pt = point([lon, lat]);
     return this.zones.filter((z) => (!opts.types || opts.types.includes(z.zoneType)) && booleanPointInPolygon(pt, z.geometry));
   }
-  zonesInBbox(bbox: BBox): Zone[] {
+  async zonesInBbox(bbox: BBox): Promise<Zone[]> {
     const poly = bboxPolygon(bbox);
     return this.zones.filter((z) => booleanIntersects(poly, z.geometry));
   }
-  zonesAlongLine(line: LineString): Zone[] {
+  async zonesAlongLine(line: LineString): Promise<Zone[]> {
     const f = lineString(line.coordinates);
     return this.zones.filter((z) => booleanIntersects(f, z.geometry));
   }
-  zoneById(id: number): Zone | undefined {
+  async zoneById(id: number): Promise<Zone | undefined> {
     return this.zones.find((z) => z.id === id);
   }
-  nearestRightsOfWay(lon: number, lat: number, limitMetres = 500, n = 5): RightOfWayHit[] {
+  async nearestRightsOfWay(lon: number, lat: number, limitMetres = 500, n = 5): Promise<RightOfWayHit[]> {
     const pt = point([lon, lat]);
     return this.prow
       .map((p) => {
@@ -220,25 +220,25 @@ export class FakePackRepository implements PackRepository {
       .sort((a, b) => a.distanceM - b.distanceM)
       .slice(0, n);
   }
-  prowCoverageAt(lon: number, lat: number): ProwCoverage {
+  async prowCoverageAt(lon: number, lat: number): Promise<ProwCoverage> {
     const pt = point([lon, lat]);
     for (const c of COVERAGE) {
       if (booleanPointInPolygon(pt, c.geometry)) return c.country === 'england' || c.country === 'wales' ? 'england_wales' : c.country;
     }
     return 'unknown';
   }
-  landRestrictionsAt(lon: number, lat: number): LandRestriction[] {
+  async landRestrictionsAt(lon: number, lat: number): Promise<LandRestriction[]> {
     const pt = point([lon, lat]);
     return this.restrictions.filter((r) => booleanPointInPolygon(pt, r.geometry)).map(({ geometry: _g, ...rest }) => rest);
   }
-  findAerodrome(nameOrIcao: string, n = 5): GazetteerHit[] {
+  async findAerodrome(nameOrIcao: string, n = 5): Promise<GazetteerHit[]> {
     const q = nameOrIcao.trim().toLowerCase();
     return this.zones
       .filter((z) => z.icao && (z.icao.toLowerCase() === q || (z.aerodromeName ?? '').toLowerCase().includes(q)))
       .slice(0, n)
       .map((z) => ({ id: z.id, name: z.aerodromeName ?? z.name, icao: z.icao, kind: 'aerodrome', lon: z.centroid[0], lat: z.centroid[1], zoneId: z.id }));
   }
-  zonesByAerodrome(aerodromeName: string): Zone[] {
+  async zonesByAerodrome(aerodromeName: string): Promise<Zone[]> {
     return this.zones.filter((z) => (z.aerodromeName ?? '').toLowerCase() === aerodromeName.toLowerCase());
   }
   close(): void {

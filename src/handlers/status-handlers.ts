@@ -1,6 +1,6 @@
 import type { OutputFormat } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
-import { respond } from './respond.js';
+import { brief, respond } from './respond.js';
 import { NAME, VERSION } from '../version.js';
 import { sqliteCapabilities } from '../pack/driver.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
@@ -11,7 +11,7 @@ export function createGetDataStatusHandler(deps: HandlerDependencies): ToolHandl
   return async (args) => {
     const format = (args.format as OutputFormat) ?? 'text';
     const packStatus = deps.pack.status();
-    const meta = deps.pack.metaOrNull();
+    const meta = await deps.pack.metaOrNull();
     const notam = deps.notams.status();
     let sqlite: ReturnType<typeof sqliteCapabilities> | { error: string };
     try {
@@ -44,6 +44,7 @@ export function createGetDataStatusHandler(deps: HandlerDependencies): ToolHandl
       },
       attribution,
     };
+    const headline = packStatus.state === 'ready' ? `Data pack ready${airacExpired ? ' but AIRAC cycle has expired' : ''}.` : packStatus.state === 'downloading' ? 'Data pack downloading.' : 'Data pack unavailable; only NOTAM and geocoding tools will work.';
     return respond(format, data, () => {
       const sections: ReportSection[] = [];
       const packLines: string[] = [];
@@ -78,8 +79,14 @@ export function createGetDataStatusHandler(deps: HandlerDependencies): ToolHandl
         title: 'Runtime',
         lines: [`${NAME} ${VERSION} on Node ${process.version}, transport ${deps.config.transport}`, 'error' in sqlite ? `sqlite: ${sqlite.error}` : `SQLite ${sqlite.version} (rtree ${sqlite.rtree ? 'yes' : 'NO'}, fts5 ${sqlite.fts5 ? 'yes' : 'NO'})`],
       });
-      const headline = packStatus.state === 'ready' ? `Data pack ready${airacExpired ? ' but AIRAC cycle has expired' : ''}.` : packStatus.state === 'downloading' ? 'Data pack downloading.' : 'Data pack unavailable; only NOTAM and geocoding tools will work.';
       return renderReport({ headline, sections, attribution });
-    });
+    }, () =>
+      brief(
+        headline,
+        meta ? `Pack ${meta.packTag} covers AIRAC ${formatDate(meta.airacEffective)} to ${formatDate(meta.airacNext)} with ${meta.counts.zones ?? 0} zones and ${meta.counts.rights_of_way ?? 0} rights of way` : null,
+        notam.cachedAt ? `The NOTAM bulletin is ${formatAgeSeconds(notam.ageSeconds)} old` : 'No NOTAM bulletin fetched yet',
+        `Server version ${VERSION}`
+      )
+    );
   };
 }

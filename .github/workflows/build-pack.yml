@@ -95,6 +95,14 @@ jobs:
             build/manifest.json
             build/ATTRIBUTION.md
             build/reports/*.json
+      - name: Load the pack into Cloudflare D1
+        if: ${{ vars.CLOUDFLARE_DEPLOY == 'true' }}
+        run: |
+          npx tsx scripts/export-d1.ts build/pack/*.sqlite --out build/d1.sql
+          npx wrangler d1 execute uk-drone-airspace --remote --yes --file build/d1.sql
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Prune old pack releases
         run: npx tsx scripts/prune-releases.ts --keep 6
         env:

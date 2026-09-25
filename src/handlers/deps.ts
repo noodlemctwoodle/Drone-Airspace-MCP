@@ -18,7 +18,7 @@ export interface PackAccess {
   require(): PackRepository;
   current(): PackRepository | undefined;
   status(): PackState;
-  metaOrNull(): PackMeta | null;
+  metaOrNull(): Promise<PackMeta | null>;
 }
 
 export interface HandlerDependencies {

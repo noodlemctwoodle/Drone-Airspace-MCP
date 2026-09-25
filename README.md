@@ -55,7 +55,23 @@ Each release also ships `uk-drone-airspace.mcpb`. Download it from the [releases
 claude mcp add uk-drone-airspace -- npx -y uk-drone-airspace-mcp
 ```
 
-### Hosted (streamable HTTP)
+### Remote connector (Claude web, mobile and voice)
+
+The same server runs as a Cloudflare Worker, which is what Claude's mobile app and voice mode can reach: they cannot run local servers, only remote connectors. Add it on claude.ai under Settings > Connectors > Add custom connector with the Worker's `/mcp` URL, and it becomes available on every surface, including voice conversations. Every tool accepts `format: "brief"`, which returns two or three spoken-friendly sentences instead of the full report.
+
+Hosting your own copy:
+
+```bash
+npx wrangler login
+```
+
+```bash
+npm run worker:setup
+```
+
+The setup script creates the D1 database and KV namespace, writes their ids into `wrangler.toml`, and loads the latest national pack into D1. Then `npm run worker:deploy` prints the URL. With the repository variable `CLOUDFLARE_DEPLOY=true` and the `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets set, GitHub Actions deploys on every push to `main` and reloads D1 whenever a new data pack is built.
+
+### Hosted (streamable HTTP on your own server)
 
 ```bash
 npx -y uk-drone-airspace-mcp --transport http --port 8080
@@ -67,7 +83,7 @@ docker build -t uk-drone-airspace-mcp . && docker run -p 8080:8080 -v drone-data
 
 ## Tools
 
-Every tool accepts `format: "text"` (default, a plain-text report) or `format: "json"` (the same data as structured JSON). Tools that take a location accept either `place` (name, postcode or landmark) or `lat` and `lon`. When a place name matches several places, the tool returns the candidates instead of guessing.
+Every tool accepts `format: "text"` (default, a plain-text report), `format: "json"` (the same data as structured JSON) or `format: "brief"` (two or three sentences written to be read aloud, for voice). Tools that take a location accept either `place` (name, postcode or landmark) or `lat` and `lon`. When a place name matches several places, the tool returns the candidates instead of guessing.
 
 ### `check_location`
 

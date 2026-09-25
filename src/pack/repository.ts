@@ -22,27 +22,30 @@ import { openDatabase, type Row, type SqliteDriver } from './driver.js';
 import { PackIncompatibleError } from '../core/errors.js';
 import { SCHEMA_VERSION } from './schema.js';
 import { LruCache, bboxOfGeometry, decodeLine, metresToDegrees, parseGeometry } from './geometry.js';
+import type { AsyncQuery, SqlValue } from './query.js';
 
 export interface ZonesAtOptions {
   types?: ZoneType[];
 }
 
 /**
- * Everything the tools need from the data pack. `FakePackRepository` in the
- * tests implements the same interface over fixtures.
+ * Everything the tools need from the data pack. All methods are async so the
+ * same interface serves node:sqlite (npx, the desktop extension) and
+ * Cloudflare D1 (the hosted Worker). `FakePackRepository` in the tests
+ * implements it over fixtures.
  */
 export interface PackRepository {
-  meta(): PackMeta;
-  zonesAt(lon: number, lat: number, opts?: ZonesAtOptions): Zone[];
-  zonesInBbox(bbox: BBox): Zone[];
-  zonesAlongLine(line: LineString): Zone[];
-  zoneById(id: number): Zone | undefined;
-  nearestRightsOfWay(lon: number, lat: number, limitMetres?: number, n?: number): RightOfWayHit[];
-  prowCoverageAt(lon: number, lat: number): ProwCoverage;
-  landRestrictionsAt(lon: number, lat: number): LandRestriction[];
-  findAerodrome(nameOrIcao: string, n?: number): GazetteerHit[];
+  meta(): Promise<PackMeta>;
+  zonesAt(lon: number, lat: number, opts?: ZonesAtOptions): Promise<Zone[]>;
+  zonesInBbox(bbox: BBox): Promise<Zone[]>;
+  zonesAlongLine(line: LineString): Promise<Zone[]>;
+  zoneById(id: number): Promise<Zone | undefined>;
+  nearestRightsOfWay(lon: number, lat: number, limitMetres?: number, n?: number): Promise<RightOfWayHit[]>;
+  prowCoverageAt(lon: number, lat: number): Promise<ProwCoverage>;
+  landRestrictionsAt(lon: number, lat: number): Promise<LandRestriction[]>;
+  findAerodrome(nameOrIcao: string, n?: number): Promise<GazetteerHit[]>;
   /** Every zone component (FRZ circle plus runway protection zones) for an aerodrome name. */
-  zonesByAerodrome(aerodromeName: string): Zone[];
+  zonesByAerodrome(aerodromeName: string): Promise<Zone[]>;
   close(): void;
 }
 
@@ -55,8 +58,7 @@ function num(v: unknown): number | null {
   return v === null || v === undefined ? null : Number(v);
 }
 
-function zoneFromRow(row: Row, withGeometry: boolean): Zone {
-  const geometry = withGeometry ? parseGeometry(String(row.geom)) : undefined;
+export function zoneFromRow(row: Row, geometry: Zone['geometry']): Zone {
   return {
     id: Number(row.id),
     sourceId: String(row.source_id),
@@ -74,36 +76,40 @@ function zoneFromRow(row: Row, withGeometry: boolean): Zone {
     validFrom: str(row.valid_from),
     validTo: str(row.valid_to),
     centroid: [Number(row.centroid_lon), Number(row.centroid_lat)],
-    geometry: geometry ?? { type: 'Polygon', coordinates: [] },
+    geometry,
   };
 }
 
-export class SqlitePackRepository implements PackRepository {
-  private readonly db: SqliteDriver;
+export function restrictionFromRow(row: Row): LandRestriction {
+  return {
+    id: Number(row.id),
+    sourceId: String(row.source_id),
+    entryId: str(row.entry_id),
+    kind: String(row.kind) as LandRestriction['kind'],
+    owner: String(row.owner),
+    name: String(row.name),
+    accessClass: str(row.access_class),
+    takeoffBanned: Number(row.takeoff_banned) === 1,
+    landingBanned: row.landing_banned === null || row.landing_banned === undefined ? null : Number(row.landing_banned) === 1,
+    summary: str(row.summary),
+    sourceUrl: str(row.source_url),
+    lastVerified: str(row.last_verified),
+  };
+}
+
+/**
+ * Repository logic shared by every backend: rtree bbox prefilter in SQL, exact
+ * geometry tests with turf in JS.
+ */
+export class QueryPackRepository implements PackRepository {
   private readonly geomCache = new LruCache<string, Zone['geometry']>(500);
   private metaCache: PackMeta | undefined;
 
-  constructor(pathOrDriver: string | SqliteDriver) {
-    this.db = typeof pathOrDriver === 'string' ? openDatabase(pathOrDriver, { readonly: true }) : pathOrDriver;
-    const version = Number(this.db.pragma('user_version') ?? 0);
-    if (version !== SCHEMA_VERSION) {
-      this.db.close();
-      throw new PackIncompatibleError(version, SCHEMA_VERSION);
-    }
-    try {
-      this.db.exec('PRAGMA query_only = 1');
-    } catch {
-      // read-only connections already enforce this
-    }
-  }
+  constructor(protected readonly q: AsyncQuery) {}
 
-  get path(): string {
-    return this.db.path;
-  }
-
-  meta(): PackMeta {
+  async meta(): Promise<PackMeta> {
     if (this.metaCache) return this.metaCache;
-    const rows = this.db.prepare('SELECT key, value FROM meta').all();
+    const rows = await this.q.all('SELECT key, value FROM meta');
     const kv: Record<string, unknown> = {};
     for (const r of rows) {
       try {
@@ -112,22 +118,19 @@ export class SqlitePackRepository implements PackRepository {
         kv[String(r.key)] = String(r.value);
       }
     }
-    const sources: PackSource[] = this.db
-      .prepare('SELECT * FROM sources ORDER BY id')
-      .all()
-      .map((r) => ({
-        id: String(r.id),
-        name: String(r.name),
-        url: String(r.url),
-        licence: String(r.licence),
-        attribution: String(r.attribution),
-        fetchedAt: String(r.fetched_at),
-        effectiveFrom: str(r.effective_from),
-        effectiveTo: str(r.effective_to),
-        version: str(r.version),
-        featureCount: Number(r.feature_count),
-        notes: str(r.notes),
-      }));
+    const sources: PackSource[] = (await this.q.all('SELECT * FROM sources ORDER BY id')).map((r) => ({
+      id: String(r.id),
+      name: String(r.name),
+      url: String(r.url),
+      licence: String(r.licence),
+      attribution: String(r.attribution),
+      fetchedAt: String(r.fetched_at),
+      effectiveFrom: str(r.effective_from),
+      effectiveTo: str(r.effective_to),
+      version: str(r.version),
+      featureCount: Number(r.feature_count),
+      notes: str(r.notes),
+    }));
     const asStringArray = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
     this.metaCache = {
       schemaVersion: Number(kv.schema_version ?? SCHEMA_VERSION),
@@ -156,75 +159,69 @@ export class SqlitePackRepository implements PackRepository {
     return geom;
   }
 
-  private zonesInBox(bbox: BBox): Row[] {
-    return this.db
-      .prepare(
-        `SELECT z.* FROM zones_rtree r JOIN zones z ON z.id = r.id
-         WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?`
-      )
-      .all(bbox[2], bbox[0], bbox[3], bbox[1]);
+  private zonesInBox(bbox: BBox): Promise<Row[]> {
+    return this.q.all(
+      `SELECT z.* FROM zones_rtree r JOIN zones z ON z.id = r.id
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?`,
+      [bbox[2], bbox[0], bbox[3], bbox[1]]
+    );
   }
 
-  zonesAt(lon: number, lat: number, opts: ZonesAtOptions = {}): Zone[] {
+  async zonesAt(lon: number, lat: number, opts: ZonesAtOptions = {}): Promise<Zone[]> {
     const pt = point([lon, lat]);
     const out: Zone[] = [];
-    for (const row of this.zonesInBox([lon, lat, lon, lat])) {
-      const zone = zoneFromRow(row, false);
-      if (opts.types && !opts.types.includes(zone.zoneType)) continue;
+    for (const row of await this.zonesInBox([lon, lat, lon, lat])) {
+      if (opts.types && !opts.types.includes(String(row.zone_type) as ZoneType)) continue;
       const geometry = this.zoneGeometry(row);
       if (geometry.coordinates.length === 0) continue;
-      if (booleanPointInPolygon(pt, geometry)) {
-        out.push({ ...zone, geometry });
-      }
+      if (booleanPointInPolygon(pt, geometry)) out.push(zoneFromRow(row, geometry));
     }
     return out;
   }
 
-  zonesInBbox(bbox: BBox): Zone[] {
+  async zonesInBbox(bbox: BBox): Promise<Zone[]> {
     const poly = bboxPolygon(bbox);
     const out: Zone[] = [];
-    for (const row of this.zonesInBox(bbox)) {
+    for (const row of await this.zonesInBox(bbox)) {
       const geometry = this.zoneGeometry(row);
       if (geometry.coordinates.length === 0) continue;
-      if (booleanIntersects(poly, geometry)) {
-        out.push({ ...zoneFromRow(row, false), geometry });
-      }
+      if (booleanIntersects(poly, geometry)) out.push(zoneFromRow(row, geometry));
     }
     return out;
   }
 
-  zonesAlongLine(line: LineString): Zone[] {
-    const bbox = bboxOfGeometry(line);
+  async zonesAlongLine(line: LineString): Promise<Zone[]> {
     const feature = lineString(line.coordinates);
     const out: Zone[] = [];
-    for (const row of this.zonesInBox(bbox)) {
+    for (const row of await this.zonesInBox(bboxOfGeometry(line))) {
       const geometry = this.zoneGeometry(row);
       if (geometry.coordinates.length === 0) continue;
-      if (booleanIntersects(feature, geometry)) {
-        out.push({ ...zoneFromRow(row, false), geometry });
-      }
+      if (booleanIntersects(feature, geometry)) out.push(zoneFromRow(row, geometry));
     }
     return out;
   }
 
-  zoneById(id: number): Zone | undefined {
-    const row = this.db.prepare('SELECT * FROM zones WHERE id = ?').get(id);
-    if (!row) return undefined;
-    return { ...zoneFromRow(row, false), geometry: this.zoneGeometry(row) };
+  async zoneById(id: number): Promise<Zone | undefined> {
+    const row = await this.q.get('SELECT * FROM zones WHERE id = ?', [id]);
+    return row ? zoneFromRow(row, this.zoneGeometry(row)) : undefined;
   }
 
-  nearestRightsOfWay(lon: number, lat: number, limitMetres = 500, n = 5): RightOfWayHit[] {
+  async zonesByAerodrome(aerodromeName: string): Promise<Zone[]> {
+    const rows = await this.q.all('SELECT * FROM zones WHERE aerodrome_name = ? ORDER BY raw_type DESC, designator', [aerodromeName]);
+    return rows.map((row) => zoneFromRow(row, this.zoneGeometry(row)));
+  }
+
+  async nearestRightsOfWay(lon: number, lat: number, limitMetres = 500, n = 5): Promise<RightOfWayHit[]> {
     const { dLat, dLon } = metresToDegrees(limitMetres, lat);
-    const rows = this.db
-      .prepare(
-        `SELECT p.*, a.name AS authority_name, a.attribution AS attribution
-         FROM rights_of_way_rtree r
-         JOIN rights_of_way p ON p.id = r.id
-         JOIN authorities a ON a.code = p.authority_code
-         WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?
-         LIMIT ?`
-      )
-      .all(lon + dLon, lon - dLon, lat + dLat, lat - dLat, ROW_CANDIDATE_CAP);
+    const rows = await this.q.all(
+      `SELECT p.*, a.name AS authority_name, a.attribution AS attribution
+       FROM rights_of_way_rtree r
+       JOIN rights_of_way p ON p.id = r.id
+       JOIN authorities a ON a.code = p.authority_code
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?
+       LIMIT ?`,
+      [lon + dLon, lon - dLon, lat + dLat, lat - dLat, ROW_CANDIDATE_CAP]
+    );
     const pt = point([lon, lat]);
     const hits: RightOfWayHit[] = [];
     for (const row of rows) {
@@ -258,17 +255,12 @@ export class SqlitePackRepository implements PackRepository {
     return hits.slice(0, n);
   }
 
-  prowCoverageAt(lon: number, lat: number): ProwCoverage {
-    const rows = this.db
-      .prepare(
-        `SELECT c.country, c.geom FROM coverage_rtree r JOIN coverage c ON c.id = r.id
-         WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?`
-      )
-      .all(lon, lon, lat, lat);
-    if (rows.length === 0) {
-      const any = this.db.prepare('SELECT COUNT(*) AS c FROM coverage').get();
-      return Number(any?.c ?? 0) === 0 ? 'unknown' : 'unknown';
-    }
+  async prowCoverageAt(lon: number, lat: number): Promise<ProwCoverage> {
+    const rows = await this.q.all(
+      `SELECT c.country, c.geom FROM coverage_rtree r JOIN coverage c ON c.id = r.id
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?`,
+      [lon, lon, lat, lat]
+    );
     const pt = point([lon, lat]);
     for (const row of rows) {
       const geom = parseGeometry(String(row.geom));
@@ -282,37 +274,22 @@ export class SqlitePackRepository implements PackRepository {
     return 'unknown';
   }
 
-  landRestrictionsAt(lon: number, lat: number): LandRestriction[] {
-    const rows = this.db
-      .prepare(
-        `SELECT l.* FROM land_restrictions_rtree r JOIN land_restrictions l ON l.id = r.id
-         WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?`
-      )
-      .all(lon, lon, lat, lat);
+  async landRestrictionsAt(lon: number, lat: number): Promise<LandRestriction[]> {
+    const rows = await this.q.all(
+      `SELECT l.* FROM land_restrictions_rtree r JOIN land_restrictions l ON l.id = r.id
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?`,
+      [lon, lon, lat, lat]
+    );
     const pt = point([lon, lat]);
     const out: LandRestriction[] = [];
     for (const row of rows) {
       const geom = parseGeometry(String(row.geom));
-      if (!geom || !booleanPointInPolygon(pt, geom)) continue;
-      out.push({
-        id: Number(row.id),
-        sourceId: String(row.source_id),
-        entryId: str(row.entry_id),
-        kind: String(row.kind) as LandRestriction['kind'],
-        owner: String(row.owner),
-        name: String(row.name),
-        accessClass: str(row.access_class),
-        takeoffBanned: Number(row.takeoff_banned) === 1,
-        landingBanned: row.landing_banned === null || row.landing_banned === undefined ? null : Number(row.landing_banned) === 1,
-        summary: str(row.summary),
-        sourceUrl: str(row.source_url),
-        lastVerified: str(row.last_verified),
-      });
+      if (geom && booleanPointInPolygon(pt, geom)) out.push(restrictionFromRow(row));
     }
     return out;
   }
 
-  findAerodrome(nameOrIcao: string, n = 5): GazetteerHit[] {
+  async findAerodrome(nameOrIcao: string, n = 5): Promise<GazetteerHit[]> {
     const q = nameOrIcao.trim();
     if (!q) return [];
     const toHit = (r: Row): GazetteerHit => ({
@@ -325,7 +302,7 @@ export class SqlitePackRepository implements PackRepository {
       zoneId: r.zone_id === null || r.zone_id === undefined ? null : Number(r.zone_id),
     });
     if (/^[A-Za-z]{4}$/.test(q)) {
-      const rows = this.db.prepare('SELECT * FROM gazetteer WHERE icao = ? ORDER BY kind LIMIT ?').all(q.toUpperCase(), n);
+      const rows = await this.q.all('SELECT * FROM gazetteer WHERE icao = ? ORDER BY kind LIMIT ?', [q.toUpperCase(), n]);
       if (rows.length > 0) return rows.map(toHit);
     }
     const terms = q
@@ -335,30 +312,56 @@ export class SqlitePackRepository implements PackRepository {
     if (terms.length > 0) {
       const match = terms.map((t) => `"${t}"*`).join(' ');
       try {
-        const rows = this.db
-          .prepare(
-            `SELECT g.* FROM gazetteer_fts f JOIN gazetteer g ON g.id = f.rowid
-             WHERE gazetteer_fts MATCH ? ORDER BY bm25(gazetteer_fts), g.kind LIMIT ?`
-          )
-          .all(match, n);
+        const rows = await this.q.all(
+          `SELECT g.* FROM gazetteer_fts f JOIN gazetteer g ON g.id = f.rowid
+           WHERE gazetteer_fts MATCH ? ORDER BY bm25(gazetteer_fts), g.kind LIMIT ?`,
+          [match, n]
+        );
         if (rows.length > 0) return rows.map(toHit);
       } catch {
         // fall through to LIKE
       }
     }
-    const rows = this.db
-      .prepare(`SELECT * FROM gazetteer WHERE name LIKE ? OR aliases LIKE ? ORDER BY kind, name LIMIT ?`)
-      .all(`%${q}%`, `%${q}%`, n);
+    const rows = await this.q.all(`SELECT * FROM gazetteer WHERE name LIKE ? OR aliases LIKE ? ORDER BY kind, name LIMIT ?`, [`%${q}%`, `%${q}%`, n]);
     return rows.map(toHit);
-  }
-
-  zonesByAerodrome(aerodromeName: string): Zone[] {
-    const rows = this.db.prepare('SELECT * FROM zones WHERE aerodrome_name = ? ORDER BY raw_type DESC, designator').all(aerodromeName);
-    return rows.map((row) => ({ ...zoneFromRow(row, false), geometry: this.zoneGeometry(row) }));
   }
 
   close(): void {
     this.geomCache.clear();
+    this.q.close();
+  }
+}
+
+/** node:sqlite adapter: synchronous underneath, async on the surface. */
+export class SqliteQuery implements AsyncQuery {
+  constructor(private readonly db: SqliteDriver) {}
+  async all(sql: string, params: SqlValue[] = []): Promise<Row[]> {
+    return this.db.prepare(sql).all(...(params as never[]));
+  }
+  async get(sql: string, params: SqlValue[] = []): Promise<Row | undefined> {
+    return this.db.prepare(sql).get(...(params as never[]));
+  }
+  close(): void {
     this.db.close();
+  }
+}
+
+export class SqlitePackRepository extends QueryPackRepository {
+  readonly path: string;
+
+  constructor(pathOrDriver: string | SqliteDriver) {
+    const db = typeof pathOrDriver === 'string' ? openDatabase(pathOrDriver, { readonly: true }) : pathOrDriver;
+    const version = Number(db.pragma('user_version') ?? 0);
+    if (version !== SCHEMA_VERSION) {
+      db.close();
+      throw new PackIncompatibleError(version, SCHEMA_VERSION);
+    }
+    try {
+      db.exec('PRAGMA query_only = 1');
+    } catch {
+      // read-only connections already enforce this
+    }
+    super(new SqliteQuery(db));
+    this.path = db.path;
   }
 }

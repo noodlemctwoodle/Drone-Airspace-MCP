@@ -1,11 +1,11 @@
 import type { OutputFormat } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
-import { respond } from './respond.js';
+import { brief, respond } from './respond.js';
 import { UserFacingError } from '../core/errors.js';
 import { renderReport } from '../formatters/report.js';
 import { renderZone, zoneToJson } from '../formatters/zones.js';
-import { attributionLines } from '../formatters/attribution.js';
-import { formatCoord } from '../formatters/units.js';
+import { attributionLines, attributionSentence } from '../formatters/attribution.js';
+import { formatCoord, formatLimits } from '../formatters/units.js';
 
 export function createGetAerodromeZoneHandler(deps: HandlerDependencies): ToolHandler {
   return async (args) => {
@@ -14,8 +14,8 @@ export function createGetAerodromeZoneHandler(deps: HandlerDependencies): ToolHa
     if (!query) throw new UserFacingError('aerodrome is required.');
     const includeGeojson = args.include_geojson === true;
     const pack = deps.pack.require();
-    const matches = deps.airspace.aerodrome(query, 5);
-    const attribution = attributionLines(['airspace'], pack.meta());
+    const matches = await deps.airspace.aerodrome(query, 5);
+    const attribution = attributionLines(['airspace'], await pack.meta());
     const data = {
       tool: 'get_aerodrome_zone',
       query,
@@ -55,6 +55,16 @@ export function createGetAerodromeZoneHandler(deps: HandlerDependencies): ToolHa
         ],
       }));
       return renderReport({ headline: `${matches.length} zone${matches.length > 1 ? 's' : ''} for "${query}"`, sections, attribution });
+    }, () => {
+      if (matches.length === 0) return brief(`I could not find an aerodrome zone for ${query}`);
+      const m = matches[0];
+      const z = m.primary.zone;
+      return brief(
+        `${m.name}${m.icao ? ` (${m.icao})` : ''} has a flight restriction zone from ${formatLimits(z.lower, z.upper)}, about ${m.primary.radiusKm.toFixed(1)} km around the aerodrome${m.components.length > 1 ? ` plus ${m.components.length - 1} runway protection zones` : ''}`,
+        z.contact ? `Permission comes from ${z.contact}` : null,
+        matches.length > 1 ? `${matches.length - 1} other aerodromes also matched` : null,
+        attributionSentence(['airspace'])
+      );
     });
   };
 }
