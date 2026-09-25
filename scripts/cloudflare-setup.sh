@@ -12,10 +12,12 @@ echo "== Cloudflare account"
 npx wrangler whoami | sed -n '1,6p'
 
 echo "== D1 database ($DB_NAME)"
-if ! npx wrangler d1 info "$DB_NAME" >/dev/null 2>&1; then
+find_db() { npx wrangler d1 list --json 2>/dev/null | node -p "const l=JSON.parse(require('fs').readFileSync(0,'utf8')); (l.find(d=>d.name==='$DB_NAME')||{}).uuid||''"; }
+DB_ID=$(find_db)
+if [ -z "$DB_ID" ]; then
   npx wrangler d1 create "$DB_NAME" >/dev/null
+  DB_ID=$(find_db)
 fi
-DB_ID=$(npx wrangler d1 info "$DB_NAME" --json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).uuid")
 echo "   id: $DB_ID"
 
 echo "== KV namespace ($KV_TITLE)"
