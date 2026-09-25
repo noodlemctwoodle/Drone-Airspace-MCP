@@ -43,7 +43,7 @@ Add to `claude_desktop_config.json` (Settings > Developer > Edit Config):
 
 `OS_NAMES_API_KEY` is optional. Without it, geocoding uses OpenStreetMap's Nominatim. With a free key from the [OS Data Hub](https://osdatahub.os.uk/), Ordnance Survey place names are tried first.
 
-On first use the server downloads the current airspace data pack (a compressed SQLite file, tens of MB) into `~/.cache/uk-drone-airspace-mcp` and reports progress on stderr. NOTAM and geocoding tools work while it downloads. The pack is refreshed automatically when a new AIRAC cycle is published.
+On first use the server downloads the current airspace data pack (about 49 MB compressed, 115 MB on disk: 1,050 restriction zones, 520,391 rights of way, 1,694 landowner polygons) into `~/.cache/uk-drone-airspace-mcp` and reports progress on stderr. NOTAM and geocoding tools work while it downloads. The pack is refreshed automatically when a new AIRAC cycle is published.
 
 ### Claude Desktop extension (.mcpb)
 

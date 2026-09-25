@@ -51,7 +51,7 @@
     "cache_dir": {
       "type": "directory",
       "title": "Data cache folder",
-      "description": "Where the airspace data pack (tens of MB) and geocoding cache are stored.",
+      "description": "Where the airspace data pack (about 49 MB download, 115 MB on disk) and geocoding cache are stored.",
       "required": false,
       "default": "${HOME}/.cache/uk-drone-airspace-mcp"
     }
