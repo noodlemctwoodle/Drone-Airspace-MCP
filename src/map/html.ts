@@ -86,16 +86,19 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     if (view.route && view.route.length > 1) {
       L.polyline(view.route.map(function (p) { return [p[1], p[0]]; }), { color: '#111', weight: 3, dashArray: '8 6' }).addTo(layers);
     }
-    L.marker([view.centre.lat, view.centre.lon]).bindPopup('Your location').addTo(layers);
+    L.marker([view.centre.lat, view.centre.lon]).bindPopup(esc(view.centre.name || 'Your location')).addTo(layers);
     document.getElementById('attrib').textContent = (view.attribution || []).join(' · ');
     status.textContent = view.zones.length + ' zone' + (view.zones.length === 1 ? '' : 's') + ', ' + view.rightsOfWay.length + ' paths, ' + view.parking.length + ' parking, ' + view.notams.length + ' NOTAMs';
   }
 
   function load(req) {
-    if (!API_BASE) { status.textContent = 'Map data needs the hosted server'; map.setView([req.lat, req.lon], 13); L.marker([req.lat, req.lon]).addTo(layers); return; }
-    var q = new URLSearchParams({ lat: req.lat, lon: req.lon });
+    if (!API_BASE) { status.textContent = 'Map data needs the hosted server'; if (typeof req.lat === 'number') { map.setView([req.lat, req.lon], 13); L.marker([req.lat, req.lon]).addTo(layers); } return; }
+    var q = new URLSearchParams();
+    if (typeof req.lat === 'number' && typeof req.lon === 'number') { q.set('lat', req.lat); q.set('lon', req.lon); }
+    if (req.place) q.set('place', req.place);
     if (req.radiusM) q.set('radius', req.radiusM);
     if (req.route && req.route.length > 1) q.set('route', req.route.map(function (p) { return p[0] + ',' + p[1]; }).join(';'));
+    if (req.waypoints && req.waypoints.length > 1) q.set('waypoints', req.waypoints.map(function (w) { return Array.isArray(w) ? w[0] + ',' + w[1] : w; }).join(';'));
     status.textContent = 'Loading…';
     fetch(API_BASE + '/api/view?' + q.toString()).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(render).catch(function (e) { status.textContent = 'Could not load map data: ' + e.message; });
   }
@@ -103,12 +106,12 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   if (MODE === 'page') {
     var qs = new URLSearchParams(location.search);
     var lat = parseFloat(qs.get('lat')), lon = parseFloat(qs.get('lon'));
-    if (isFinite(lat) && isFinite(lon)) {
-      var route = (qs.get('route') || '').split(';').filter(Boolean).map(function (s) { return s.split(',').map(parseFloat); });
-      load({ lat: lat, lon: lon, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined });
-    } else {
-      status.textContent = 'Add ?lat=&lon= to the URL';
-    }
+    var route = (qs.get('route') || '').split(';').filter(Boolean).map(function (s) { return s.split(',').map(parseFloat); });
+    var wps = (qs.get('waypoints') || '').split(';').filter(Boolean);
+    if (isFinite(lat) && isFinite(lon)) load({ lat: lat, lon: lon, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined });
+    else if (qs.get('place')) load({ place: qs.get('place'), radiusM: parseFloat(qs.get('radius')) || undefined });
+    else if (wps.length > 1) load({ waypoints: wps });
+    else status.textContent = 'Add ?lat=&lon= or ?place= to the URL';
   } else {
     // MCP App: JSON-RPC over postMessage with the host (ui/initialize, then ui/notifications/tool-result).
     var nextId = 1;
@@ -117,11 +120,13 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       var m = ev.data;
       if (!m || m.jsonrpc !== '2.0') return;
       if (m.method === 'ui/notifications/tool-result' && m.params) {
-        var sc = m.params.structuredContent || {};
-        if (sc.view) load(sc.view);
+        var meta = (m.params._meta && m.params._meta.ui) || {};
+        if (meta.view) load(meta.view);
       } else if (m.method === 'ui/notifications/tool-input' && m.params && m.params.arguments) {
         var a = m.params.arguments;
-        if (typeof a.lat === 'number' && typeof a.lon === 'number') load({ lat: a.lat, lon: a.lon });
+        if (typeof a.lat === 'number' && typeof a.lon === 'number') load({ lat: a.lat, lon: a.lon, radiusM: a.search_radius_m });
+        else if (typeof a.place === 'string') load({ place: a.place, radiusM: a.search_radius_m });
+        else if (Array.isArray(a.waypoints)) load({ waypoints: a.waypoints });
       }
     });
     send({ jsonrpc: '2.0', id: nextId++, method: 'ui/initialize', params: { protocolVersion: '2026-01-26', appInfo: { name: 'uk-drone-airspace-map', version: '1' }, appCapabilities: {} } });

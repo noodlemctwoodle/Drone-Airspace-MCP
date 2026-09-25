@@ -3,10 +3,13 @@ import { metresToDegrees } from '../pack/geometry.js';
 import { severityOf, TYPE_LABEL } from '../services/airspace/verdict.js';
 import { isRelevantBelow120m } from '../services/airspace/vertical.js';
 import type { BBox, LineString, Position } from '../types.js';
+import { resolveLocation } from '../services/location-resolver.js';
 
 export interface ViewRequest {
   lat: number;
   lon: number;
+  /** Set when the point came from a place name; shown on the marker. */
+  name?: string;
   /** Metres around the point to draw rights of way and parking. */
   radiusM?: number;
   /** Optional route to draw and to derive the bbox from. */
@@ -16,7 +19,7 @@ export interface ViewRequest {
 
 /** Everything the map needs, as plain GeoJSON-ish JSON. Kept small: no notes, no attribution text. */
 export interface ViewData {
-  centre: { lat: number; lon: number };
+  centre: { lat: number; lon: number; name?: string };
   bbox: BBox;
   route: Position[] | null;
   zones: Array<{ type: 'Feature'; properties: { id: number; designator: string | null; name: string; zoneType: string; label: string; severity: number; relevant: boolean; limits: string }; geometry: unknown }>;
@@ -59,7 +62,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
   if (land.length) used.add('nt_always_open');
   if (parking.length) used.add('osm_parking');
   return {
-    centre: { lat: req.lat, lon: req.lon },
+    centre: { lat: req.lat, lon: req.lon, ...(req.name ? { name: req.name } : {}) },
     bbox,
     route: req.route ?? null,
     zones: zones.map((z) => ({
@@ -85,7 +88,47 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
   };
 }
 
-/** Parse `/api/view` or `/map` query parameters. Returns undefined when the point is missing or malformed. */
+/**
+ * Parse `/api/view` or `/map` query parameters. Accepts lat/lon, or `place`
+ * (geocoded), plus `route` (lon,lat pairs) or `waypoints` (names or pairs,
+ * geocoded). Returns undefined when nothing usable is given.
+ */
+export async function resolveViewQuery(params: URLSearchParams, deps: HandlerDependencies): Promise<ViewRequest | undefined> {
+  const direct = parseViewQuery(params);
+  const waypointsRaw = params.get('waypoints');
+  let route: Position[] | undefined = direct?.route;
+  let name: string | undefined;
+  if (waypointsRaw) {
+    const pts: Position[] = [];
+    for (const wp of waypointsRaw.split(';').map((s) => s.trim()).filter(Boolean)) {
+      const pair = wp.split(',').map(Number);
+      if (pair.length === 2 && pair.every(Number.isFinite)) {
+        pts.push([pair[0], pair[1]]);
+        continue;
+      }
+      const r = await resolveLocation({ place: wp }, deps.geocoder);
+      if (r.status === 'resolved') pts.push([r.location.lon, r.location.lat]);
+      else if (r.status === 'ambiguous' && r.candidates[0]) pts.push([r.candidates[0].lon, r.candidates[0].lat]);
+    }
+    if (pts.length >= 2) route = pts;
+  }
+  if (direct) return { ...direct, route, name };
+  const place = params.get('place')?.trim();
+  if (place) {
+    const r = await resolveLocation({ place }, deps.geocoder);
+    const c = r.status === 'resolved' ? r.location : r.status === 'ambiguous' ? r.candidates[0] : undefined;
+    if (c) {
+      const radius = Number(params.get('radius'));
+      return { lat: c.lat, lon: c.lon, name: c.name, radiusM: Number.isFinite(radius) ? radius : undefined, route, includeNotams: params.get('notams') !== '0' };
+    }
+  }
+  if (route && route.length >= 2) {
+    const radius = Number(params.get('radius'));
+    return { lat: route[0][1], lon: route[0][0], radiusM: Number.isFinite(radius) ? radius : undefined, route, includeNotams: params.get('notams') !== '0' };
+  }
+  return undefined;
+}
+
 export function parseViewQuery(params: URLSearchParams): ViewRequest | undefined {
   const lat = Number(params.get('lat'));
   const lon = Number(params.get('lon'));

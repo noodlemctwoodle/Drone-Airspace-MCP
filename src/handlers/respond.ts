@@ -26,7 +26,8 @@ export function respond(format: OutputFormat, data: unknown, renderText: () => s
   if (format === 'json') res = jsonResponse(extras.mapUrl ? { ...(data as object), mapUrl: extras.mapUrl } : data);
   else if (format === 'brief' && renderBrief) res = textResponse(renderBrief());
   else res = textResponse(extras.mapUrl ? `${renderText()}\nMap: ${extras.mapUrl}` : renderText());
-  if (extras.view) res.structuredContent = { view: extras.view };
+  // Never structuredContent: Claude's connector shows the model structuredContent instead of the text.
+  if (extras.view) res._meta = { ui: { view: extras.view } };
   return res;
 }
 

@@ -19,7 +19,7 @@ import { NAME, REPO_URL, USER_AGENT, VERSION } from '../version.js';
 import { D1PackAccess } from './d1-pack.js';
 import type { WorkerEnv } from './env.js';
 import { KvCacheStore } from './kv-cache.js';
-import { buildViewData, mapHtml, parseViewQuery } from '../map/index.js';
+import { buildViewData, mapHtml, resolveViewQuery } from '../map/index.js';
 
 // One Nominatim bucket per isolate; the platform may run several isolates, so
 // prefer an OS Names key on the Worker for heavy use.
@@ -81,10 +81,10 @@ export default {
     }
     if (url.pathname === '/api/view') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-      const req = parseViewQuery(url.searchParams);
-      if (!req) return new Response(JSON.stringify({ error: 'lat and lon query parameters are required' }), { status: 400, headers: { ...JSON_HEADERS, ...CORS } });
       const { deps } = buildDeps(env);
       try {
+        const req = await resolveViewQuery(url.searchParams, deps);
+        if (!req) return new Response(JSON.stringify({ error: 'lat and lon, place, or waypoints query parameters are required' }), { status: 400, headers: { ...JSON_HEADERS, ...CORS } });
         const view = await buildViewData(deps, req);
         return new Response(JSON.stringify(view), { headers: { ...JSON_HEADERS, ...CORS, 'cache-control': 'public, max-age=300' } });
       } catch (error) {

@@ -179,7 +179,8 @@ describe('find_parking', () => {
     const { handlers } = setup([], { config: testConfig({ PUBLIC_URL: 'https://x.test/' }) });
     const r = await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 });
     expect(r.content[0].text).toMatch(/\nMap: https:\/\/x\.test\/map\?lat=50\.62120&lon=-2\.27700&radius=1000$/);
-    expect(r.structuredContent).toEqual({ view: { lat: 50.6212, lon: -2.277, radiusM: 1000 } });
+    expect((r as { structuredContent?: unknown }).structuredContent).toBeUndefined();
+    expect(r._meta).toEqual({ ui: { view: { lat: 50.6212, lon: -2.277, radiusM: 1000 } } });
     const plain = await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 });
     const { handlers: noUrl } = setup();
     const p = await noUrl.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 });

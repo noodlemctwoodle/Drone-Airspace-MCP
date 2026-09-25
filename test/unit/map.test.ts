@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildViewData, mapUrl, parseViewQuery } from '../../src/map/view-data.js';
+import { buildViewData, mapUrl, parseViewQuery, resolveViewQuery } from '../../src/map/view-data.js';
+import { fakeFetch } from '../helpers/fake-fetch.js';
+import { readFileSync } from 'node:fs';
 import { mapHtml } from '../../src/map/html.js';
 import { buildTestDeps } from '../helpers/build-deps.js';
 
@@ -27,6 +29,17 @@ describe('map view', () => {
     expect(bristol.zones.map((z) => z.properties.zoneType)).toContain('frz');
     expect(bristol.zones.find((z) => z.properties.zoneType === 'restricted')!.properties.relevant).toBe(false);
   });
+  it('resolves a place or named waypoints server-side', async () => {
+    const bristol = JSON.parse(readFileSync(new URL('../fixtures/geocode/nominatim-bristol.json', import.meta.url), 'utf8'));
+    const ff = fakeFetch([{ match: 'q=Bristol', body: bristol }]);
+    const { deps } = buildTestDeps({ fetchImpl: ff.fetch });
+    const byPlace = await resolveViewQuery(new URLSearchParams('place=Bristol&radius=800'), deps);
+    expect(byPlace).toMatchObject({ lat: 51.4545, lon: -2.5879, radiusM: 800 });
+    expect(byPlace!.name).toContain('Bristol');
+    const byWaypoints = await resolveViewQuery(new URLSearchParams('waypoints=Bristol;-2.72,51.383'), deps);
+    expect(byWaypoints!.route).toEqual([[-2.5879, 51.4545], [-2.72, 51.383]]);
+    expect(await resolveViewQuery(new URLSearchParams('foo=bar'), deps)).toBeUndefined();
+  });
   it('renders both html modes with the api base baked in', () => {
     const page = mapHtml({ mode: 'page', apiBase: 'https://x.test' });
     expect(page).toContain('var API_BASE = "https://x.test"');
@@ -34,5 +47,7 @@ describe('map view', () => {
     const app = mapHtml({ mode: 'app', apiBase: null });
     expect(app).toContain('ui/initialize');
     expect(app).toContain('ui/notifications/tool-result');
+    expect(app).toContain('ui/notifications/tool-input');
+    expect(app).not.toContain('structuredContent');
   });
 });

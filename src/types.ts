@@ -211,7 +211,7 @@ export interface Verdict {
 
 export type ToolResponse = {
   content: Array<{ type: 'text'; text: string }>;
-  structuredContent?: Record<string, unknown>;
+  _meta?: Record<string, unknown>;
   isError?: boolean;
 };
 
