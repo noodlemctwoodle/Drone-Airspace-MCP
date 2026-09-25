@@ -97,6 +97,19 @@ export const toolDefinitions: ToolDefinition[] = [
     annotations: { readOnlyHint: true, openWorldHint: true, title: 'Find parking near a location' },
   },
   {
+    name: 'check_weather',
+    description:
+      'Drone-relevant weather forecast for a UK point from Open-Meteo: wind and gusts at 10 m, wind at 120 m, rain, visibility, cloud, temperature and daylight hours, with an advisory flyability rating per hour ' +
+      '(good / caution / poor against typical small-drone limits). Give a place or lat/lon and optionally a date or date-time; defaults to the next few hours.',
+    inputSchema: {
+      ...locationInput,
+      date: dateArg,
+      hours: z.number().int().min(1).max(24).default(6).describe('How many hours to report from the start time (a bare date reports daylight hours).'),
+      format: formatArg,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true, title: 'Check drone weather' },
+  },
+  {
     name: 'geocode',
     description:
       'Resolve a UK place name, postcode or landmark to coordinates. Use it to disambiguate before running a check when a name could match several places. ' +

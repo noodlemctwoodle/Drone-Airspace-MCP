@@ -17,6 +17,7 @@ import type { GeocodeProvider } from '../../src/services/geocoder/provider.js';
 import { NotamService } from '../../src/services/notam/index.js';
 import { PibFetcher } from '../../src/services/notam/pib-fetcher.js';
 import { RightsOfWayService } from '../../src/services/rights-of-way.js';
+import { OpenMeteoClient } from '../../src/services/weather/open-meteo.js';
 import { PackUnavailableError } from '../../src/core/errors.js';
 import { FakePackRepository } from './fake-pack-repository.js';
 import type { FetchLike } from '../../src/core/http-client.js';
@@ -78,6 +79,7 @@ export function buildTestDeps(opts: { fetchImpl?: FetchLike; config?: Config; re
     notams,
     airspace: new AirspaceEngine(repo),
     rightsOfWay: new RightsOfWayService(repo),
+    weather: new OpenMeteoClient(http, cache, config.openMeteoUrl, config.weatherCacheTtlSeconds, now),
     now,
   };
   return { deps, repo, config };

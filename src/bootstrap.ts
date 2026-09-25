@@ -16,6 +16,7 @@ import type { GeocodeProvider } from './services/geocoder/provider.js';
 import { NotamService } from './services/notam/index.js';
 import { PibFetcher } from './services/notam/pib-fetcher.js';
 import { RightsOfWayService } from './services/rights-of-way.js';
+import { OpenMeteoClient } from './services/weather/open-meteo.js';
 import { StreamableHttpTransport } from './transport/http.js';
 import type { MCPTransport } from './transport/index.js';
 import { StdioTransport } from './transport/stdio.js';
@@ -89,6 +90,7 @@ export function buildDeps(config: Config, logger: Logger, overrides: Partial<{ f
     notams,
     airspace: new AirspaceEngine(liveRepo),
     rightsOfWay: new RightsOfWayService(liveRepo),
+    weather: new OpenMeteoClient(http, cache, config.openMeteoUrl, config.weatherCacheTtlSeconds, now),
     now,
   };
   return { deps, packManager };

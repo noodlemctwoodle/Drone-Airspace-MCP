@@ -1,12 +1,13 @@
 import type { PackMeta } from '../types.js';
 
-export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking';
+export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking' | 'weather';
 
 const LIVE: Record<string, string> = {
   nominatim: 'Geocoding © OpenStreetMap contributors (ODbL), via Nominatim',
   os_names: 'Geocoding: OS Names API, contains OS data © Crown copyright and database right (OGL v3)',
   postcodes_io: 'Postcode lookup: postcodes.io, contains OS and ONS data (OGL v3)',
   notam: 'NOTAMs: NATS AIS UK PIB (informational only; obtain an official pre-flight briefing)',
+  weather: 'Weather: Open-Meteo.com (CC BY 4.0)',
 };
 
 const PACK_SOURCE_IDS: Record<string, string[]> = {
@@ -29,6 +30,7 @@ const SHORT: Record<string, string> = {
   os_names: 'Ordnance Survey',
   postcodes_io: 'postcodes.io',
   notam: 'the NATS NOTAM bulletin',
+  weather: 'Open-Meteo',
 };
 
 /** One short spoken sentence naming the sources used. */

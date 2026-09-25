@@ -5,6 +5,7 @@ import type { AirspaceEngine } from '../services/airspace/airspace-engine.js';
 import type { Geocoder } from '../services/geocoder/index.js';
 import type { NotamService } from '../services/notam/index.js';
 import type { RightsOfWayService } from '../services/rights-of-way.js';
+import type { OpenMeteoClient } from '../services/weather/open-meteo.js';
 import type { PackMeta, ToolResponse } from '../types.js';
 
 export type PackState =
@@ -29,6 +30,7 @@ export interface HandlerDependencies {
   notams: NotamService;
   airspace: AirspaceEngine;
   rightsOfWay: RightsOfWayService;
+  weather: OpenMeteoClient;
   now: () => Date;
 }
 

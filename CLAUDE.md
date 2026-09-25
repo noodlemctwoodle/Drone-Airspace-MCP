@@ -47,6 +47,7 @@ src/
     notam/                 pib-schema.ts (ALL element names), pib-parser, q-line, validity, fetcher (30 min cache), service
     airspace/              engine (point / route / area), verdict.ts (exact wording + severity), vertical.ts (400 ft rule)
     rights-of-way.ts
+    weather/               open-meteo.ts (client, 15 min cache per 5 km cell), assessment.ts (advisory flyability thresholds)
   pack/                    schema.ts (DDL, SCHEMA_VERSION), driver.ts (node:sqlite), repository.ts (rtree + turf), loader.ts, manifest.ts
   formatters/              report.ts (plain text), units.ts, attribution.ts
   transport/               stdio.ts, http.ts (Express, stateless POST /mcp, GET /healthz)

@@ -33,6 +33,8 @@ const envSchema = z.object({
   OS_NAMES_URL: z.string().url().default('https://api.os.uk/search/names/v1/find'),
   POSTCODES_IO_URL: z.string().url().default('https://api.postcodes.io'),
   NOTAM_PIB_URL: z.string().url().default('https://pibs.nats.co.uk/operational/pibs/PIB.xml'),
+  OPEN_METEO_URL: z.string().url().default('https://api.open-meteo.com/v1/forecast'),
+  WEATHER_CACHE_TTL_SECONDS: intFromEnv(900),
   NOTAM_CACHE_TTL_SECONDS: intFromEnv(1800),
   GEOCODE_CACHE_TTL_SECONDS: intFromEnv(30 * 24 * 3600),
   HTTP_TIMEOUT_MS: intFromEnv(8000, 100),
@@ -56,6 +58,8 @@ export interface Config {
   postcodesIoUrl: string;
   notamPibUrl: string;
   notamCacheTtlSeconds: number;
+  openMeteoUrl: string;
+  weatherCacheTtlSeconds: number;
   geocodeCacheTtlSeconds: number;
   httpTimeoutMs: number;
   cacheDir: string;
@@ -132,6 +136,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cli: Partial<Cl
     postcodesIoUrl: e.POSTCODES_IO_URL.replace(/\/+$/, ''),
     notamPibUrl: e.NOTAM_PIB_URL,
     notamCacheTtlSeconds: e.NOTAM_CACHE_TTL_SECONDS,
+    openMeteoUrl: e.OPEN_METEO_URL,
+    weatherCacheTtlSeconds: e.WEATHER_CACHE_TTL_SECONDS,
     geocodeCacheTtlSeconds: e.GEOCODE_CACHE_TTL_SECONDS,
     httpTimeoutMs: e.HTTP_TIMEOUT_MS,
     cacheDir: e.DRONE_AIRSPACE_CACHE_DIR && e.DRONE_AIRSPACE_CACHE_DIR.trim() !== '' ? e.DRONE_AIRSPACE_CACHE_DIR : defaultCacheDir(env),

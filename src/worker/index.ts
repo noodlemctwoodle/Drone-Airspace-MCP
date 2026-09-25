@@ -14,6 +14,7 @@ import type { GeocodeProvider } from '../services/geocoder/provider.js';
 import { NotamService } from '../services/notam/index.js';
 import { PibFetcher } from '../services/notam/pib-fetcher.js';
 import { RightsOfWayService } from '../services/rights-of-way.js';
+import { OpenMeteoClient } from '../services/weather/open-meteo.js';
 import { NAME, REPO_URL, USER_AGENT, VERSION } from '../version.js';
 import { D1PackAccess } from './d1-pack.js';
 import type { WorkerEnv } from './env.js';
@@ -47,6 +48,7 @@ function buildDeps(env: WorkerEnv) {
     notams,
     airspace: new AirspaceEngine(repo),
     rightsOfWay: new RightsOfWayService(repo),
+    weather: new OpenMeteoClient(http, cache, config.openMeteoUrl, config.weatherCacheTtlSeconds),
     now: () => new Date(),
   };
   cachedDeps = { key, deps, pack, notams };

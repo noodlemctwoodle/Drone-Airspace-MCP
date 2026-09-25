@@ -23,7 +23,7 @@ describe('MCP server end to end', () => {
   it('lists seven tools with schemas', async () => {
     const { client } = await connect();
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(['check_location', 'check_notams', 'check_route', 'check_takeoff_site', 'find_parking', 'geocode', 'get_aerodrome_zone', 'get_data_status']);
+    expect(tools.map((t) => t.name).sort()).toEqual(['check_location', 'check_notams', 'check_route', 'check_takeoff_site', 'check_weather', 'find_parking', 'geocode', 'get_aerodrome_zone', 'get_data_status']);
     const check = tools.find((t) => t.name === 'check_location')!;
     expect(check.inputSchema.properties).toHaveProperty('place');
     expect(check.inputSchema.properties).toHaveProperty('lat');

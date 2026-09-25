@@ -14,6 +14,7 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 - **What does my route cross?** `check_route` for a list of waypoints or an area, with the distance along the route at which each zone is entered.
 - **Can I take off here?** `check_takeoff_site` lists the nearest public rights of way with distances and the responsible council, the nearest public parking, plus National Trust land and known council byelaws at the point.
 - **Where can I park?** `find_parking` lists car parks, laybys and rest areas from OpenStreetMap, nearest first, with fee and access notes.
+- **Is the weather flyable?** `check_weather` gives an hourly forecast from Open-Meteo with wind and gusts at 10 m, wind at 120 m, rain, visibility, cloud, temperature and daylight, each hour rated good, caution or poor against typical small-drone limits.
 - **Show me.** On the hosted server every location answer carries a map link, and clients that support MCP Apps (Claude web, desktop and mobile) render the map inline: zones coloured by severity, NOTAM circles, footpaths, landowner land and parking.
 - Plus `geocode` to disambiguate place names and `get_data_status` for data provenance and attribution.
 
@@ -166,6 +167,18 @@ Nearest public right of way: 120 m away (footpath, Dorset).
 
 Example prompt: *"Where can I park near Durdle Door?"*
 
+### `check_weather`
+
+| Argument | Type | Notes |
+|---|---|---|
+| `place` / `lat`+`lon` | | |
+| `date` | ISO 8601 | A bare date reports daylight hours; a date-time starts there. Defaults to now |
+| `hours` | 1–24 | Hours to report from the start (default 6) |
+
+Example prompt: *"Is it flyable at Ilkley Moor on Saturday afternoon?"*
+
+Ratings are advisory: caution from 8 m/s, poor from 10.7 m/s sustained or 12 m/s gusts, any rain, visibility under 1.5 km, and a caution for freezing temperatures, low cloud or strong wind at 120 m.
+
 ### Maps
 
 The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map and `GET /api/view` as the JSON behind it. It also publishes an MCP App resource (`ui://uk-drone-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer. Map tiles © OpenStreetMap contributors.
@@ -193,6 +206,7 @@ No arguments. Reports pack tag, AIRAC effective dates, per-source fetch dates an
 | Parking and laybys | OpenStreetMap via the [Geofabrik Great Britain extract](https://download.geofabrik.de/europe/great-britain.html) (`amenity=parking`, `highway=rest_area`) | Weekly | ODbL |
 | Country boundaries | ONS Countries (December 2024) BUC | Yearly | OGL v3 |
 | Geocoding | postcodes.io, OS Names API (optional), Nominatim | Live, cached 30 days | OGL v3; ODbL |
+| Weather | [Open-Meteo](https://open-meteo.com/) forecast API | Live, cached 15 min | CC BY 4.0 |
 
 Every response ends with an `Attribution:` line listing only the sources actually used, including the per-council attribution that the OGL requires for rights-of-way data.
 
@@ -208,6 +222,8 @@ The permanent layers are assembled into a data pack by [`.github/workflows/build
 | `POSTCODES_IO_URL` | `https://api.postcodes.io` | |
 | `NOTAM_PIB_URL` | `https://pibs.nats.co.uk/operational/pibs/PIB.xml` | |
 | `NOTAM_CACHE_TTL_SECONDS` | `1800` | |
+| `OPEN_METEO_URL` | `https://api.open-meteo.com/v1/forecast` | |
+| `WEATHER_CACHE_TTL_SECONDS` | `900` | |
 | `GEOCODE_CACHE_TTL_SECONDS` | `2592000` | 30 days |
 | `HTTP_TIMEOUT_MS` | `8000` | Live calls |
 | `DRONE_AIRSPACE_CACHE_DIR` | `~/.cache/uk-drone-airspace-mcp` | Pack and caches |
