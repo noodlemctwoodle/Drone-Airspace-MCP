@@ -20,7 +20,7 @@ export function createServer(deps: HandlerDependencies): McpServer {
       title: 'Airspace map',
       description: 'Interactive map of restriction zones, NOTAMs, rights of way, landowner rules and parking around a point or route.',
       mimeType: MAP_RESOURCE_MIME,
-      _meta: { ui: { csp: { resourceDomains: MAP_CSP.resourceDomains, connectDomains: apiBase ? [apiBase] : [] }, prefersBorder: true } },
+      _meta: { ui: { csp: { resourceDomains: [...MAP_CSP.resourceDomains], connectDomains: [...(apiBase ? [apiBase] : []), ...MAP_CSP.connectDomains] }, prefersBorder: true } },
     },
     async () => ({ contents: [{ uri: MAP_RESOURCE_URI, mimeType: MAP_RESOURCE_MIME, text: mapHtml({ mode: 'app', apiBase }) }] })
   );

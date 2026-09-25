@@ -181,7 +181,11 @@ Ratings are advisory: caution from 8 m/s, poor from 10.7 m/s sustained or 12 m/s
 
 ### Maps
 
-The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map and `GET /api/view` as the JSON behind it. It also publishes an MCP App resource (`ui://uk-drone-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer. Map tiles © OpenStreetMap contributors.
+The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map, `GET /api/view` as the JSON behind it, and `GET /api/wind?bbox=w,s,e,n&z=` for the wind field (one Open-Meteo request per view, snapped to a fixed lattice of at most 64 points and cached per point). It also publishes an MCP App resource (`ui://uk-drone-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer. Claude web, desktop and mobile render it; Claude Code shows the text only.
+
+The layers panel (top left) offers Map or Satellite base layers and a checkbox for every overlay, grouped into Airspace (each zone class and NOTAMs), On the ground (rights of way, landowner land, parking, route) and Weather. Prohibited and restricted areas and aerodrome FRZs are always drawn and cannot be switched off. Satellite is Esri World Imagery with a place-name overlay; add `basemap=satellite` to the `/map` URL to open in that view. Weather has three toggles: Conditions now (a badge with the Open-Meteo flyability rating for the coming hour, including the wind at 120 m), Wind flow (animated streamlines over the visible map, as on a forecast chart, coloured by the advisory thresholds; a still frame when the browser prefers reduced motion) and Rain radar (the latest RainViewer frame, coarse at about 600 m per pixel on the free tier). `weather=0` on `/api/view` skips the forecast. Base layer, overlay and panel choices are remembered per browser.
+
+Map tiles © OpenStreetMap contributors; imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community; rain radar © RainViewer; weather © Open-Meteo.com (CC BY 4.0).
 
 ### `geocode`
 

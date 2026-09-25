@@ -70,6 +70,13 @@ export function assessHour(h: HourlyWeather): HourAssessment {
   return { hour: h, flyability: level, reasons };
 }
 
+/** Open-Meteo returns Europe/London local times without an offset, e.g. 2026-09-26T14:00. */
+export function localHourKey(d: Date): string {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour') === '24' ? '00' : get('hour')}:00`;
+}
+
 export function compassPoint(deg: number | null): string {
   if (deg === null) return '';
   const points = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];

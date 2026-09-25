@@ -8,6 +8,7 @@ import type { MCPTransport } from './index.js';
 export interface ExtraRoutes {
   mapHtml?: (origin: string) => string;
   viewData?: (params: URLSearchParams) => Promise<unknown>;
+  windData?: (params: URLSearchParams) => Promise<unknown>;
 }
 
 export interface HealthInfo {
@@ -52,6 +53,20 @@ export class StreamableHttpTransport implements MCPTransport {
           const params = new URLSearchParams(req.query as Record<string, string>);
           const data = await view(params);
           if (data === undefined) res.status(400).json({ error: 'lat and lon query parameters are required' });
+          else res.json(data);
+        } catch (error) {
+          res.status(503).json({ error: (error as Error).message });
+        }
+      });
+    }
+
+    if (this.extra.windData) {
+      const wind = this.extra.windData;
+      app.get('/api/wind', async (req, res) => {
+        res.set('access-control-allow-origin', '*');
+        try {
+          const data = await wind(new URLSearchParams(req.query as Record<string, string>));
+          if (data === undefined) res.status(400).json({ error: 'bbox=w,s,e,n and z query parameters are required' });
           else res.json(data);
         } catch (error) {
           res.status(503).json({ error: (error as Error).message });

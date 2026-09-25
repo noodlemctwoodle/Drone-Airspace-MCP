@@ -5,18 +5,11 @@ import { locationLine, locationNotes, resolveOrRespond, sourceOfLocation } from 
 import type { LocationArgs } from '../tools/schemas.js';
 import { UserFacingError } from '../core/errors.js';
 import { parseUserDate } from '../services/notam/validity.js';
-import { assessHour, compassPoint, describeWeatherCode, type Flyability, type HourAssessment } from '../services/weather/assessment.js';
+import { assessHour, compassPoint, describeWeatherCode, localHourKey, type Flyability, type HourAssessment } from '../services/weather/assessment.js';
 import { renderReport } from '../formatters/report.js';
 import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
 
 export const CAVEAT_WEATHER = 'Forecast model output, not an observation. Ratings use typical small-drone limits; your aircraft\'s manual and the conditions you see on site take precedence.';
-
-function localHourKey(d: Date): string {
-  // Open-Meteo returns Europe/London local times without an offset, e.g. 2026-09-26T14:00.
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false }).formatToParts(d);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
-  return `${get('year')}-${get('month')}-${get('day')}T${get('hour') === '24' ? '00' : get('hour')}:00`;
-}
 
 function renderHour(a: HourAssessment): string {
   const h = a.hour;

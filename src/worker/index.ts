@@ -19,7 +19,7 @@ import { NAME, REPO_URL, USER_AGENT, VERSION } from '../version.js';
 import { D1PackAccess } from './d1-pack.js';
 import type { WorkerEnv } from './env.js';
 import { KvCacheStore } from './kv-cache.js';
-import { buildViewData, mapHtml, resolveViewQuery } from '../map/index.js';
+import { buildViewData, buildWindField, mapHtml, parseWindQuery, resolveViewQuery } from '../map/index.js';
 
 // One Nominatim bucket per isolate; the platform may run several isolates, so
 // prefer an OS Names key on the Worker for heavy use.
@@ -87,6 +87,18 @@ export default {
         if (!req) return new Response(JSON.stringify({ error: 'lat and lon, place, or waypoints query parameters are required' }), { status: 400, headers: { ...JSON_HEADERS, ...CORS } });
         const view = await buildViewData(deps, req);
         return new Response(JSON.stringify(view), { headers: { ...JSON_HEADERS, ...CORS, 'cache-control': 'public, max-age=300' } });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: (error as Error).message }), { status: 503, headers: { ...JSON_HEADERS, ...CORS } });
+      }
+    }
+    if (url.pathname === '/api/wind') {
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+      const q = parseWindQuery(url.searchParams);
+      if (!q) return new Response(JSON.stringify({ error: 'bbox=w,s,e,n and z query parameters are required' }), { status: 400, headers: { ...JSON_HEADERS, ...CORS } });
+      const { deps } = buildDeps(env);
+      try {
+        const field = await buildWindField(deps, q);
+        return new Response(JSON.stringify(field), { headers: { ...JSON_HEADERS, ...CORS, 'cache-control': 'public, max-age=300' } });
       } catch (error) {
         return new Response(JSON.stringify({ error: (error as Error).message }), { status: 503, headers: { ...JSON_HEADERS, ...CORS } });
       }

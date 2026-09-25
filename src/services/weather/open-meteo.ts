@@ -36,6 +36,7 @@ export interface Forecast {
 export const OPEN_METEO_DEFAULT_URL = 'https://api.open-meteo.com/v1/forecast';
 export const OPEN_METEO_ATTRIBUTION = 'Weather: Open-Meteo.com (CC BY 4.0)';
 
+const WIND_HOURLY = ['wind_speed_10m', 'wind_gusts_10m', 'wind_direction_10m', 'wind_speed_120m'];
 const HOURLY = ['temperature_2m', 'precipitation_probability', 'precipitation', 'wind_speed_10m', 'wind_gusts_10m', 'wind_direction_10m', 'wind_speed_120m', 'visibility', 'cloud_cover', 'cloud_cover_low', 'weather_code'];
 
 interface RawForecast {
@@ -119,5 +120,44 @@ export class OpenMeteoClient {
       if (cached) return parseForecast(cached.value, new Date(cached.storedAt).toISOString(), true);
       throw error;
     }
+  }
+
+  /**
+   * Wind-only forecasts for many points in one request (Open-Meteo returns an
+   * array when given comma-separated coordinates). Each point is cached on its
+   * own so a panned map only fetches the points it has not seen. Points that
+   * fail to parse are dropped rather than throwing.
+   */
+  async windField(points: Array<{ lat: number; lon: number }>): Promise<Forecast[]> {
+    const keyOf = (pt: { lat: number; lon: number }) => `weather:wind:v1:${pt.lat.toFixed(3)}:${pt.lon.toFixed(3)}`;
+    const out = new Map<string, Forecast>();
+    const missing: Array<{ lat: number; lon: number }> = [];
+    // Open-Meteo reports its model cell centre as latitude/longitude; always report the requested point instead so arrows sit on the lattice.
+    const at = (f: Forecast, pt: { lat: number; lon: number }): Forecast => ({ ...f, latitude: pt.lat, longitude: pt.lon });
+    for (const pt of points) {
+      const cached = await this.cache.getEntry<unknown>(keyOf(pt));
+      if (cached && this.cache.isFresh(cached)) out.set(keyOf(pt), at(parseForecast(cached.value, new Date(cached.storedAt).toISOString(), true), pt));
+      else missing.push(pt);
+    }
+    if (missing.length > 0) {
+      const params = new URLSearchParams({
+        latitude: missing.map((p) => p.lat.toFixed(3)).join(','),
+        longitude: missing.map((p) => p.lon.toFixed(3)).join(','),
+        hourly: WIND_HOURLY.join(','),
+        wind_speed_unit: 'ms',
+        timezone: 'Europe/London',
+        forecast_days: '2',
+      });
+      const { data } = await this.http.getJson<unknown>(`${this.baseUrl}?${params.toString()}`, { provider: 'open-meteo' });
+      const list = Array.isArray(data) ? data : [data];
+      const fetchedAt = this.now().toISOString();
+      for (let i = 0; i < missing.length; i++) {
+        const raw = list[i];
+        if (!raw || typeof raw !== 'object') continue;
+        await this.cache.set(keyOf(missing[i]), raw, this.ttlSeconds);
+        out.set(keyOf(missing[i]), at(parseForecast(raw, fetchedAt), missing[i]));
+      }
+    }
+    return points.map((pt) => out.get(keyOf(pt))).filter((f): f is Forecast => f !== undefined);
   }
 }
