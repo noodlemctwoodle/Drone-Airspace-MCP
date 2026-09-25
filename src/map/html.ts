@@ -122,6 +122,16 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .chip { font-size: 11.5px; line-height: 1; padding: 5px 8px; border-radius: 999px; background: rgba(128,140,152,.16); color: var(--ink); white-space: nowrap; }
   .chip b { font-weight: 600; }
   .chip.zero { color: var(--muted); }
+  .drone-row { display: flex; align-items: center; gap: 8px; padding: 0 14px 10px; }
+  .drone-row .lbl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); flex: none; }
+  .drone-row select { flex: 1; min-width: 0; font: inherit; font-size: 12.5px; color: var(--ink); background: rgba(128,140,152,.16); border: 0; border-radius: 7px; padding: 5px 8px; }
+  .drone-summary { display: none; padding: 0 14px 10px; font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .drone-summary.on { display: flex; gap: 8px; align-items: flex-start; }
+  .drone-summary svg { flex: none; width: 22px; height: 22px; color: var(--ink); margin-top: -1px; }
+  .drone-summary b { color: var(--ink); font-weight: 600; }
+  #info.closed .drone-row, #info.closed .drone-summary { display: none; }
+  .drone-pin { width: 44px; height: 52px; }
+  .drone-pin svg { width: 44px; height: 52px; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
   #weather { display: none; border-top: 1px solid var(--line); padding: 10px 14px 12px; }
   #weather.on { display: block; }
   .wx-head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
@@ -209,6 +219,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 <div id="info" class="card">
   <div class="place" id="info-head"><span id="place">Loading…</span><span class="pill mini" id="info-pill"></span><svg class="chev" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
   <div class="chips" id="chips"></div>
+  <div class="drone-row" id="drone-row"><span class="lbl">Your drone</span><select id="drone-select" aria-label="Your drone"><option value="">None</option></select></div>
+  <div class="drone-summary" id="drone-summary"></div>
   <div id="weather"></div>
 </div>
 <div id="sources" class="card">
@@ -262,7 +274,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
 
   // One layer group per overlay so each can be switched off; hidden ones are remembered.
-  var groups = {}, hidden = recall('hiddenOverlays', []);
+  var groups = {}, hidden = recall('hiddenOverlays', []), pinSwatch = null;
   OVERLAYS.forEach(function (o) {
     groups[o.key] = L.layerGroup();
     if (o.locked || hidden.indexOf(o.key) < 0) groups[o.key].addTo(map);
@@ -315,7 +327,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
             inp = L.DomUtil.create('input', '', row); inp.type = 'checkbox'; inp.checked = map.hasLayer(groups[o.key]);
           }
           var sw = L.DomUtil.create('span', 'sw sw-' + o.shape, row); sw.style.setProperty('--c', o.colour);
-          if (o.shape === 'pin') sw.innerHTML = pinSvg(o.colour);
+          if (o.shape === 'pin') { sw.innerHTML = pinSvg(o.colour); pinSwatch = sw; }
           var lbl = L.DomUtil.create('span', 'lbl', row); lbl.textContent = o.label;
           L.DomUtil.create('span', 'count', row);
           if (inp) inp.onchange = function () { setOverlay(o.key, inp.checked); row.classList.toggle('off', !inp.checked); };
@@ -535,6 +547,52 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       '<circle cx="13" cy="13" r="4.5" fill="#fff"/></svg>';
   }
   var pinIcon = L.divIcon({ className: 'pin', iconSize: [26, 36], iconAnchor: [13, 35], popupAnchor: [0, -30], html: pinSvg(COLOUR.route) });
+
+  // Your drone: pick a catalogue model and it becomes the location marker, the key swatch and a rules line in the card.
+  var droneIndex = null, selectedDroneId = recall('droneId', ''), centreMarker = null;
+  var droneSelect = document.getElementById('drone-select'), droneSummary = document.getElementById('drone-summary');
+  function droneById(id) { return droneIndex && id ? droneIndex.drones.find(function (d) { return d.id === id; }) || null : null; }
+  function silhouette(d, size) { return '<svg viewBox="0 0 64 64" width="' + size + '" height="' + size + '">' + droneIndex.silhouettes[d.silhouette] + '</svg>'; }
+  function droneMarkerIcon(d) {
+    return L.divIcon({ className: 'drone-pin', iconSize: [44, 52], iconAnchor: [22, 51], popupAnchor: [0, -44], html:
+      '<svg viewBox="0 0 44 52"><path d="M14 36 L22 51 L30 36 Z" fill="' + COLOUR.route + '"/>' +
+      '<circle cx="22" cy="22" r="19" fill="#fff" stroke="' + COLOUR.route + '" stroke-width="2.5"/>' +
+      '<g transform="translate(8 8) scale(0.4375)" style="color:' + COLOUR.route + '">' + droneIndex.silhouettes[d.silhouette] + '</g></svg>' });
+  }
+  function currentPinIcon() { var d = droneById(selectedDroneId); return d ? droneMarkerIcon(d) : pinIcon; }
+  function applyDrone() {
+    var d = droneById(selectedDroneId);
+    if (droneSelect.value !== (d ? d.id : '')) droneSelect.value = d ? d.id : '';
+    if (centreMarker) centreMarker.setIcon(currentPinIcon());
+    if (pinSwatch) pinSwatch.innerHTML = d ? silhouette(d, 18) : pinSvg(COLOUR.route);
+    if (d) {
+      droneSummary.innerHTML = silhouette(d, 22) + '<span><b>' + esc(d.make + ' ' + d.model) + '</b> · ' + esc(d.weightG) + ' g' + (d.classMark ? ', ' + esc(d.classMark) : '') + ' · <b>' + esc(d.subcategory) + '</b><br>' + esc(d.overflight) + '</span>';
+      droneSummary.className = 'drone-summary on';
+    } else {
+      droneSummary.className = 'drone-summary';
+    }
+  }
+  function selectDrone(id, persist) {
+    selectedDroneId = id || '';
+    if (persist) remember('droneId', selectedDroneId);
+    applyDrone();
+  }
+  droneSelect.onchange = function () { selectDrone(droneSelect.value, true); };
+  if (API_BASE) {
+    fetch(API_BASE + '/api/drones').then(function (r) { return r.json(); }).then(function (idx) {
+      droneIndex = idx;
+      var byMake = {};
+      idx.drones.forEach(function (d) { (byMake[d.make] = byMake[d.make] || []).push(d); });
+      Object.keys(byMake).sort().forEach(function (make) {
+        var g = document.createElement('optgroup'); g.label = make;
+        byMake[make].forEach(function (d) { var o = document.createElement('option'); o.value = d.id; o.textContent = d.model + ' · ' + d.weightG + ' g' + (d.classMark ? ' · ' + d.classMark : ''); g.appendChild(o); });
+        droneSelect.appendChild(g);
+      });
+      applyDrone();
+    }).catch(function () { document.getElementById('drone-row').style.display = 'none'; });
+  } else {
+    document.getElementById('drone-row').style.display = 'none';
+  }
   // Parking: a UK-style sign, blue square with a white P.
   var parkingIcon = L.divIcon({ className: 'p-sign', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12], html:
     '<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="4" fill="' + COLOUR.parking + '" stroke="#fff" stroke-width="1.5"/>' +
@@ -569,7 +627,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     if (view.route && view.route.length > 1) {
       L.polyline(view.route.map(function (p) { return [p[1], p[0]]; }), { color: COLOUR.route, weight: 3, dashArray: '8 6' }).addTo(groups.route);
     }
-    L.marker([view.centre.lat, view.centre.lon], { icon: pinIcon }).bindPopup(esc(view.centre.name || 'Your location')).addTo(groups.route);
+    centreMarker = L.marker([view.centre.lat, view.centre.lon], { icon: currentPinIcon() }).bindPopup(esc(view.centre.name || 'Your location')).addTo(groups.route);
     currentWeather = view.weather || null;
     currentCentre = [view.centre.lat, view.centre.lon];
     loaded = true;
@@ -587,7 +645,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
 
   function load(req) {
-    if (!API_BASE) { setStatus('Map data needs the hosted server'); if (typeof req.lat === 'number') { map.setView([req.lat, req.lon], 13); L.marker([req.lat, req.lon], { icon: pinIcon }).addTo(groups.route); } return; }
+    if (!API_BASE) { setStatus('Map data needs the hosted server'); if (typeof req.lat === 'number') { map.setView([req.lat, req.lon], 13); centreMarker = L.marker([req.lat, req.lon], { icon: currentPinIcon() }).addTo(groups.route); } return; }
     var q = new URLSearchParams();
     if (typeof req.lat === 'number' && typeof req.lon === 'number') { q.set('lat', req.lat); q.set('lon', req.lon); }
     if (req.place) q.set('place', req.place);
@@ -603,6 +661,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     var lat = parseFloat(qs.get('lat')), lon = parseFloat(qs.get('lon'));
     var route = (qs.get('route') || '').split(';').filter(Boolean).map(function (s) { return s.split(',').map(parseFloat); });
     var wps = (qs.get('waypoints') || '').split(';').filter(Boolean);
+    if (qs.get('drone')) selectDrone(qs.get('drone'), true);
     if (isFinite(lat) && isFinite(lon)) load({ lat: lat, lon: lon, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined });
     else if (qs.get('place')) load({ place: qs.get('place'), radiusM: parseFloat(qs.get('radius')) || undefined });
     else if (wps.length > 1) load({ waypoints: wps });
@@ -616,6 +675,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       if (!m || m.jsonrpc !== '2.0') return;
       if (m.method === 'ui/notifications/tool-result' && m.params) {
         var meta = (m.params._meta && m.params._meta.ui) || {};
+        if (meta.view && meta.view.drone) selectDrone(meta.view.drone, true);
         if (meta.view) load(meta.view);
       } else if (m.method === 'ui/notifications/tool-input' && m.params && m.params.arguments) {
         var a = m.params.arguments;

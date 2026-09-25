@@ -19,7 +19,7 @@ import { NAME, REPO_URL, USER_AGENT, VERSION } from '../version.js';
 import { D1PackAccess } from './d1-pack.js';
 import type { WorkerEnv } from './env.js';
 import { KvCacheStore } from './kv-cache.js';
-import { buildViewData, buildWindField, mapHtml, parseWindQuery, resolveViewQuery } from '../map/index.js';
+import { buildDroneIndex, buildViewData, buildWindField, mapHtml, parseWindQuery, resolveViewQuery } from '../map/index.js';
 
 // One Nominatim bucket per isolate; the platform may run several isolates, so
 // prefer an OS Names key on the Worker for heavy use.
@@ -90,6 +90,10 @@ export default {
       } catch (error) {
         return new Response(JSON.stringify({ error: (error as Error).message }), { status: 503, headers: { ...JSON_HEADERS, ...CORS } });
       }
+    }
+    if (url.pathname === '/api/drones') {
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+      return new Response(JSON.stringify(buildDroneIndex(new Date())), { headers: { ...JSON_HEADERS, ...CORS, 'cache-control': 'public, max-age=86400' } });
     }
     if (url.pathname === '/api/wind') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });

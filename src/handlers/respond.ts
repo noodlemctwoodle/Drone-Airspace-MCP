@@ -17,7 +17,7 @@ export function jsonResponse(value: unknown): ToolResponse {
  */
 export interface RespondExtras {
   /** Small descriptor for the map app; never bulky geometry. */
-  view?: { lat: number; lon: number; radiusM?: number; route?: number[][] };
+  view?: { lat: number; lon: number; radiusM?: number; route?: number[][]; drone?: string };
   mapUrl?: string | null;
 }
 

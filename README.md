@@ -14,6 +14,7 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 - **What does my route cross?** `check_route` for a list of waypoints or an area, with the distance along the route at which each zone is entered.
 - **Can I take off here?** `check_takeoff_site` lists the nearest public rights of way with distances and the responsible council, the nearest public parking, plus National Trust land and known council byelaws at the point.
 - **Where can I park?** `find_parking` lists car parks, laybys and rest areas from OpenStreetMap, nearest first, with fee and access notes.
+- **What can my drone do?** `check_drone_rules` takes a model name or a weight and class mark and answers which open subcategory applies (A1, A2 or A3), the separation from people, whether Flyer and Operator IDs are needed and when Remote ID is required, under the CAA class mark rules in force from 2026. `check_takeoff_site` accepts a `drone` too and adds the same summary to the site report.
 - **Is the weather flyable?** `check_weather` gives an hourly forecast from Open-Meteo with wind and gusts at 10 m, wind at 120 m, rain, visibility, cloud, temperature and daylight, each hour rated good, caution or poor against typical small-drone limits.
 - **Show me.** On the hosted server every location answer carries a map link, and clients that support MCP Apps (Claude web, desktop and mobile) render the map inline: zones coloured by severity, NOTAM circles, footpaths, landowner land and parking.
 - Plus `geocode` to disambiguate place names and `get_data_status` for data provenance and attribution.
@@ -179,11 +180,17 @@ Example prompt: *"Is it flyable at Ilkley Moor on Saturday afternoon?"*
 
 Ratings are advisory: caution from 8 m/s, poor from 10.7 m/s sustained or 12 m/s gusts, any rain, visibility under 1.5 km, and a caution for freezing temperatures, low cloud or strong wind at 120 m.
 
+### `check_drone_rules`
+
+Which UK open category rules apply to a consumer drone. Give `model` (looked up in the curated catalogue in `src/services/drones/catalogue.ts`: DJI, Autel, Potensic, HoverAir and Parrot models with take-off weight, EU C-class and UK class marks) or `weight_g` with an optional `class_mark` (C0 to C4, UK0 to UK4, or none). Set `a2_certificate` if the pilot holds an A2 CofC and `date` to see the rules on a future date. The answer gives the subcategory, overflight and separation rules, registration (Flyer ID and Operator ID, 100 g threshold from 2026), Remote ID dates (UK1 to UK3 from 2026, camera aircraft of 100 g or more otherwise from 2028) and the transition under which EU C-class labels count as UK classes until the end of 2027. Rules and dates live in `src/services/drones/rules.ts` with the CAA pages they were taken from; the catalogue is community-maintained like the byelaw list, and an unconfirmed class mark is left null so the aircraft is treated as legacy.
+
 ### Maps
 
 The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map, `GET /api/view` as the JSON behind it, and `GET /api/wind?bbox=w,s,e,n&z=` for the wind field (one Open-Meteo request per view, snapped to a fixed lattice of at most 64 points and cached per point). It also publishes an MCP App resource (`ui://uk-drone-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer. Claude web, desktop and mobile render it; Claude Code shows the text only.
 
 The layers panel (top left) offers Map or Satellite base layers and a checkbox for every overlay, grouped into Airspace (each zone class and NOTAMs), On the ground (rights of way, landowner land, parking, route) and Weather. Prohibited and restricted areas and aerodrome FRZs are always drawn and cannot be switched off. Satellite is Esri World Imagery with a place-name overlay; add `basemap=satellite` to the `/map` URL to open in that view. Weather has three toggles: Conditions now (a badge with the Open-Meteo flyability rating for the coming hour, including the wind at 120 m), Wind flow (animated streamlines over the visible map, as on a forecast chart, coloured by the advisory thresholds; a still frame when the browser prefers reduced motion) and Rain radar (the latest RainViewer frame, coarse at about 600 m per pixel on the free tier). `weather=0` on `/api/view` skips the forecast. Base layer, overlay and panel choices are remembered per browser.
+
+The location card has a Your drone picker fed by `GET /api/drones` (the catalogue with each model's rules summary and a drawn silhouette). Choosing a model makes it the location marker and the key swatch, and shows its subcategory and overflight rule in the card. Add `drone=<catalogue id>` to the `/map` URL to preselect one; `check_takeoff_site` called with a `drone` does this for the MCP App. The silhouettes are original drawings, one per family (palm, mini, air, mavic, fpv, phantom), because manufacturer photographs are copyrighted.
 
 Map tiles © OpenStreetMap contributors; imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community; rain radar © RainViewer; weather © Open-Meteo.com (CC BY 4.0).
 
@@ -207,6 +214,7 @@ No arguments. Reports pack tag, AIRAC effective dates, per-source fetch dates an
 | Rights of way | Council open data aggregated by [rowmaps.com](https://www.rowmaps.com/) (143 authorities, England and Wales) | Weekly | Open Government Licence v3 per council, OS attribution, see [licences/rowmaps.md](licences/rowmaps.md) |
 | National Trust land | [National Trust Open Data](https://open-data-national-trust.hub.arcgis.com/) Always Open and Limited Access | When edited | OGL v3 / CC-BY |
 | Council byelaws | [data/byelaws/seed.yaml](data/byelaws/seed.yaml) in this repository | Manual | MIT; incomplete by nature |
+| Drone rules | [CAA class marks](https://www.caa.co.uk/drones/getting-started-with-drones-and-model-aircraft/class-marks/) and the [Drone Code](https://register-drones.caa.co.uk/drone-code), summarised in `src/services/drones/rules.ts`; drone catalogue curated from manufacturer specifications | With the code | Crown copyright, OGL v3; the CAA pages are authoritative |
 | Parking and laybys | OpenStreetMap via the [Geofabrik Great Britain extract](https://download.geofabrik.de/europe/great-britain.html) (`amenity=parking`, `highway=rest_area`) | Weekly | ODbL |
 | Country boundaries | ONS Countries (December 2024) BUC | Yearly | OGL v3 |
 | Geocoding | postcodes.io, OS Names API (optional), Nominatim | Live, cached 30 days | OGL v3; ODbL |

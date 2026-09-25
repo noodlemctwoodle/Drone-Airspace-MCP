@@ -21,7 +21,7 @@ import { StreamableHttpTransport } from './transport/http.js';
 import type { MCPTransport } from './transport/index.js';
 import { StdioTransport } from './transport/stdio.js';
 import { NAME, USER_AGENT, VERSION } from './version.js';
-import { buildViewData, buildWindField, mapHtml, parseWindQuery, resolveViewQuery } from './map/index.js';
+import { buildDroneIndex, buildViewData, buildWindField, mapHtml, parseWindQuery, resolveViewQuery } from './map/index.js';
 import type { PackRepository } from './pack/repository.js';
 
 const HELP = `${NAME} ${VERSION}
@@ -128,6 +128,7 @@ export async function bootstrap(argv: string[]): Promise<void> {
               const q = parseWindQuery(params);
               return q ? buildWindField(deps, q) : undefined;
             },
+            droneIndex: () => buildDroneIndex(deps.now()),
           }
         )
       : new StdioTransport(() => createServer(deps), logger);

@@ -57,3 +57,16 @@ export const polygonSchema = z.object({
   type: z.literal('Polygon'),
   coordinates: z.array(z.array(z.tuple([z.number(), z.number()]).rest(z.number())).min(4)).min(1),
 });
+
+export const droneModelArg = z
+  .string()
+  .min(1)
+  .max(80)
+  .describe('Drone make and model, e.g. "DJI Mini 4 Pro", "Air 3S", "Mavic 3 Classic". Looked up in a curated catalogue of consumer drones.');
+
+export const classMarkArg = z
+  .enum(['C0', 'C1', 'C2', 'C3', 'C4', 'UK0', 'UK1', 'UK2', 'UK3', 'UK4', 'none'])
+  .optional()
+  .describe('Class mark printed on the aircraft: an EU C-class (C0 to C4), a UK class (UK0 to UK4), or none for a legacy aircraft. Overrides the catalogue value.');
+
+export const a2CertificateArg = z.boolean().default(false).describe('Whether the pilot holds an A2 Certificate of Competency (A2 CofC).');

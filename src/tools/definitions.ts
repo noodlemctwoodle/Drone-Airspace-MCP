@@ -1,6 +1,6 @@
 import { z, type ZodRawShape } from 'zod';
 import type { ToolName } from './names.js';
-import { bboxSchema, dateArg, formatArg, locationInput, polygonSchema, waypointSchema } from './schemas.js';
+import { a2CertificateArg, bboxSchema, classMarkArg, dateArg, droneModelArg, formatArg, locationInput, polygonSchema, waypointSchema } from './schemas.js';
 
 export interface ToolDefinition {
   name: ToolName;
@@ -78,6 +78,8 @@ export const toolDefinitions: ToolDefinition[] = [
       ...locationInput,
       max_paths: z.number().int().min(1).max(20).default(5).describe('Maximum rights of way to return.'),
       search_radius_m: z.number().int().min(50).max(5000).default(1000).describe('Search radius for rights of way in metres.'),
+      drone: droneModelArg.optional().describe('Optional drone make and model; adds the open category subcategory and the separation from people that applies to it.'),
+      a2_certificate: a2CertificateArg,
       format: formatArg,
     },
     annotations: { readOnlyHint: true, openWorldHint: true, title: 'Check a take-off site' },
@@ -108,6 +110,22 @@ export const toolDefinitions: ToolDefinition[] = [
       format: formatArg,
     },
     annotations: { readOnlyHint: true, openWorldHint: true, title: 'Check drone weather' },
+  },
+  {
+    name: 'check_drone_rules',
+    description:
+      'Which UK open category rules apply to a consumer drone: the subcategory (A1 fly over people, A2 near people, A3 far from people), the separation from uninvolved people, whether Flyer ID and Operator ID registration are needed, ' +
+      'and when Remote ID is required. Give a model name from the catalogue (DJI, Autel, Potensic, HoverAir, Parrot) or a weight in grams plus any class mark. Rules follow the CAA class marks in force from 2026, including the EU C-class transition to the end of 2027.',
+    inputSchema: {
+      model: droneModelArg.optional(),
+      weight_g: z.number().min(1).max(50_000).optional().describe('Take-off weight in grams, when the model is not in the catalogue or a heavier battery is fitted.'),
+      class_mark: classMarkArg,
+      has_camera: z.boolean().optional().describe('Whether the aircraft carries a camera. Defaults to the catalogue value, or true.'),
+      a2_certificate: a2CertificateArg,
+      date: dateArg.describe('Date to assess the rules for; defaults to today. Use it to see what changes at a transition date.'),
+      format: formatArg,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false, title: 'Check drone rules' },
   },
   {
     name: 'geocode',

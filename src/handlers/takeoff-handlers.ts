@@ -6,6 +6,7 @@ import type { LocationArgs } from '../tools/schemas.js';
 import { splitByRelevance } from '../services/airspace/vertical.js';
 import { buildVerdict } from '../services/airspace/verdict.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
+import { droneSectionLines } from './drone-handlers.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
 import { renderRightOfWay, rightOfWayToJson } from '../formatters/rights-of-way.js';
 import { parkingSentence, renderParking } from '../formatters/parking.js';
@@ -28,6 +29,8 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     const loc = resolved.location;
     const maxPaths = typeof args.max_paths === 'number' ? args.max_paths : 5;
     const radiusM = typeof args.search_radius_m === 'number' ? args.search_radius_m : 1000;
+    const droneArg = typeof args.drone === 'string' && args.drone.trim() !== '' ? args.drone.trim() : null;
+    const droneInfo = droneArg ? droneSectionLines(droneArg, args.a2_certificate === true, deps.now()) : null;
     const pack = deps.pack.require();
 
     const zones = await deps.airspace.atPoint(loc.lon, loc.lat);
@@ -46,6 +49,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     if (restrictions.some((r) => r.sourceId === 'byelaws')) used.add('byelaws');
     const s = sourceOfLocation(loc);
     if (s) used.add(s);
+    if (droneInfo?.assessment) used.add('caa_rules');
     const attribution = attributionLines(used, await pack.meta());
     // Per-authority attribution is required by the OGL terms.
     for (const a of new Set(paths.map((p) => p.attribution))) attribution.push(a);
@@ -81,6 +85,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
       parking,
       coverage: coverage === 'england_wales' ? 'england_wales' : coverage === 'unknown' ? 'unknown' : 'no_prow_data',
       searchRadiusM: radiusM,
+      drone: droneInfo ? { query: droneArg, label: droneInfo.label, assessment: droneInfo.assessment } : null,
       caveats,
       attribution,
     };
@@ -92,6 +97,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
         { title: `Airspace restrictions at this point (${relevant.length})`, lines: relevant.map(renderZone) },
       ];
       if (above.length > 0) sections.push({ title: 'Zones only above 400 ft', lines: [`${above.length} zone(s) start above 400 ft; see check_location with include_above_120m.`] });
+      if (droneInfo) sections.push({ title: 'Your drone', lines: droneInfo.lines });
       return renderReport({ headline: headlineParts.join('\n'), notes: locationNotes(loc), location: locationLine(loc), sections, caveats, attribution });
     }, () =>
       brief(
@@ -99,11 +105,12 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
         `For take-off near ${loc.name.split(',').slice(0, 2).join(',')}: ${headlineParts.join(' ')}`,
         paths.length > 1 ? `${paths.length} public rights of way within ${formatDistance(radiusM)} in total` : null,
         parking.length > 0 ? `Nearest parking: ${parkingSentence(parking[0])}` : null,
+        droneInfo ? droneInfo.lines[0] : null,
         coverage === 'scotland' || coverage === 'northern_ireland' ? 'There is no rights-of-way data for this area' : 'Rights of way are an interpretation of the council definitive map',
         'Check NOTAMs separately and remember the landowner rule layer is incomplete',
         attributionSentence(used)
       ),
-      { view: { lat: loc.lat, lon: loc.lon, radiusM: radiusM }, mapUrl: mapUrl(deps.config.publicUrl, { lat: loc.lat, lon: loc.lon, radiusM }) }
+      { view: { lat: loc.lat, lon: loc.lon, radiusM: radiusM, ...(droneInfo?.id ? { drone: droneInfo.id } : {}) }, mapUrl: mapUrl(deps.config.publicUrl, { lat: loc.lat, lon: loc.lon, radiusM, drone: droneInfo?.id ?? undefined }) }
     );
   };
 }

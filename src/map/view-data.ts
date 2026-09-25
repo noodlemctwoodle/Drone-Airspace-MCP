@@ -6,6 +6,8 @@ import type { BBox, LineString, Position } from '../types.js';
 import { resolveLocation } from '../services/location-resolver.js';
 import { assessHour, compassPoint, describeWeatherCode, LIMITS, localHourKey, type Flyability } from '../services/weather/assessment.js';
 import { OPEN_METEO_ATTRIBUTION } from '../services/weather/open-meteo.js';
+import { assessDroneRules, DRONE_CATALOGUE } from '../services/drones/index.js';
+import { SILHOUETTES } from './silhouettes.js';
 
 export interface ViewRequest {
   lat: number;
@@ -203,10 +205,11 @@ export function parseViewQuery(params: URLSearchParams): ViewRequest | undefined
   return { lat, lon, radiusM: Number.isFinite(radius) ? radius : undefined, route, includeNotams: params.get('notams') !== '0', includeWeather: params.get('weather') !== '0' };
 }
 
-export function mapUrl(base: string | undefined, req: { lat: number; lon: number; radiusM?: number; route?: Position[] }): string | null {
+export function mapUrl(base: string | undefined, req: { lat: number; lon: number; radiusM?: number; route?: Position[]; drone?: string }): string | null {
   if (!base) return null;
   const q = new URLSearchParams({ lat: req.lat.toFixed(5), lon: req.lon.toFixed(5) });
   if (req.radiusM) q.set('radius', String(Math.round(req.radiusM)));
+  if (req.drone) q.set('drone', req.drone);
   if (req.route && req.route.length >= 2) q.set('route', req.route.map((p) => `${p[0].toFixed(5)},${p[1].toFixed(5)}`).join(';'));
   return `${base}/map?${q.toString()}`;
 }
@@ -279,4 +282,38 @@ export async function buildWindField(deps: HandlerDependencies, q: { bbox: BBox;
     out.push({ lat: f.latitude, lon: f.longitude, windMs: hour.windMs, gustMs: hour.gustMs, wind120Ms: hour.wind120Ms, directionDeg: hour.windDirectionDeg, level: windLevelOf(hour) });
   }
   return { time, spacingDeg, points: out, limits: { windCautionMs: LIMITS.windCautionMs, windStrongMs: LIMITS.windStrongMs, gustNoFlyMs: LIMITS.gustNoFlyMs }, attribution: OPEN_METEO_ATTRIBUTION };
+}
+
+/** Catalogue entries for the map's drone picker, with today's rules summary and the marker drawing. */
+export interface DroneIndexEntry {
+  id: string;
+  make: string;
+  model: string;
+  weightG: number;
+  classMark: string | null;
+  silhouette: string;
+  subcategory: string;
+  effectiveClass: string;
+  overflight: string;
+  separation: string;
+}
+
+export function buildDroneIndex(now: Date): { asOf: string; silhouettes: Record<string, string>; drones: DroneIndexEntry[] } {
+  const drones = DRONE_CATALOGUE.map((d) => {
+    const a = assessDroneRules({ weightG: d.weightG, euClass: d.euClass, ukClass: d.ukClass, camera: d.camera, remoteId: d.remoteId }, now);
+    return {
+      id: d.id,
+      make: d.make,
+      model: d.model,
+      weightG: d.weightG,
+      classMark: d.ukClass ?? d.euClass,
+      silhouette: d.silhouette,
+      subcategory: a.subcategoryWithA2Certificate ? `${a.subcategory} (${a.subcategoryWithA2Certificate} with A2 CofC)` : a.subcategory,
+      effectiveClass: a.effectiveClass,
+      overflight: a.overflight,
+      separation: a.separation,
+    };
+  });
+  drones.sort((x, y) => x.make.localeCompare(y.make) || x.model.localeCompare(y.model));
+  return { asOf: now.toISOString().slice(0, 10), silhouettes: SILHOUETTES, drones };
 }

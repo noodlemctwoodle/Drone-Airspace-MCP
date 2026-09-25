@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildViewData, buildWindField, mapUrl, parseViewQuery, parseWindQuery, resolveViewQuery, WIND_MAX_POINTS, windLattice, windLevelOf } from '../../src/map/view-data.js';
+import { buildDroneIndex, buildViewData, buildWindField, mapUrl, parseViewQuery, parseWindQuery, resolveViewQuery, WIND_MAX_POINTS, windLattice, windLevelOf } from '../../src/map/view-data.js';
 import { fakeFetch } from '../helpers/fake-fetch.js';
 import { readFileSync } from 'node:fs';
 import { BASEMAPS, MAP_CSP, OVERLAYS, RADAR, SECTIONS, mapHtml } from '../../src/map/html.js';
+import { SILHOUETTES } from '../../src/map/silhouettes.js';
+import { DRONE_CATALOGUE } from '../../src/services/drones/index.js';
 import { buildTestDeps } from '../helpers/build-deps.js';
 
 describe('map view', () => {
@@ -91,6 +93,18 @@ describe('map view', () => {
     // Cached points must keep the requested coordinates, not Open-Meteo's model cell centre.
     expect(again.points.map((p) => [p.lat, p.lon])).toEqual(lattice.map((p) => [p.lat, p.lon]));
   });
+  it('indexes the drone catalogue for the picker with a silhouette and a rules summary each', () => {
+    const idx = buildDroneIndex(new Date('2026-09-25T12:00:00Z'));
+    expect(idx.drones.length).toBe(DRONE_CATALOGUE.length);
+    for (const d of idx.drones) {
+      expect(SILHOUETTES, `${d.id} silhouette`).toHaveProperty(d.silhouette);
+      expect(d.subcategory).toMatch(/^A[123]/);
+    }
+    const mini = idx.drones.find((d) => d.id === 'dji-mini-4-pro')!;
+    expect(mini).toMatchObject({ classMark: 'C0', silhouette: 'mini', subcategory: 'A1', effectiveClass: 'UK0' });
+    for (const svg of Object.values(idx.silhouettes)) expect(svg).toContain('currentColor');
+    expect(mapUrl('https://x.test', { lat: 51, lon: -2, drone: 'dji-neo' })).toContain('drone=dji-neo');
+  });
   it('resolves a place or named waypoints server-side', async () => {
     const bristol = JSON.parse(readFileSync(new URL('../fixtures/geocode/nominatim-bristol.json', import.meta.url), 'utf8'));
     const ff = fakeFetch([{ match: 'q=Bristol', body: bristol }]);
@@ -148,6 +162,9 @@ describe('map view', () => {
     expect(html).toContain('id="sources"');
     expect(html).toContain('infoOpen');
     expect(html).toContain('function pinSvg(');
+    expect(html).toContain('id="drone-select"');
+    expect(html).toContain('/api/drones');
+    expect(html).toContain('meta.view.drone');
     expect(html).toContain('attributionControl: false');
     expect(html).toContain('setCounts(counts)');
   });

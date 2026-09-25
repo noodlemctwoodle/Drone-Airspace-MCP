@@ -9,6 +9,7 @@ export interface ExtraRoutes {
   mapHtml?: (origin: string) => string;
   viewData?: (params: URLSearchParams) => Promise<unknown>;
   windData?: (params: URLSearchParams) => Promise<unknown>;
+  droneIndex?: () => unknown;
 }
 
 export interface HealthInfo {
@@ -71,6 +72,15 @@ export class StreamableHttpTransport implements MCPTransport {
         } catch (error) {
           res.status(503).json({ error: (error as Error).message });
         }
+      });
+    }
+
+    if (this.extra.droneIndex) {
+      const drones = this.extra.droneIndex;
+      app.get('/api/drones', (_req, res) => {
+        res.set('access-control-allow-origin', '*');
+        res.set('cache-control', 'public, max-age=86400');
+        res.json(drones());
       });
     }
 

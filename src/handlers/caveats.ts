@@ -9,3 +9,5 @@ export const CAVEAT_BAN_LAYER_INCOMPLETE =
 export const CAVEAT_NOTAM_SCHEDULE = 'One or more NOTAMs carry a daily schedule (item D); check the times before flying.';
 export const CAVEAT_NOTAMS_NOT_INCLUDED = 'Temporary restrictions (NOTAMs) are not included here; call check_notams.';
 export const CAVEAT_AIRSPACE_ONLY_BELOW_120M = 'Only zones reaching below 400 ft (120 m) count towards the verdict.';
+export const CAVEAT_DRONE_RULES =
+  'A summary of the CAA open category rules, not the regulation. Class marks come from manufacturer labelling: check the label on your aircraft, and check the current Drone Code before flying.';

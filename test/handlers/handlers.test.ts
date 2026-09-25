@@ -221,3 +221,42 @@ describe('geocode and get_data_status', () => {
     expect(calls.some((c) => c.url.includes('nominatim'))).toBe(false);
   });
 });
+
+describe('check_drone_rules', () => {
+  it('reports the rules for a catalogue model in text, brief and json', async () => {
+    const { handlers } = setup([], { now: () => new Date('2026-09-25T12:00:00Z') });
+    const h = handlers.get('check_drone_rules')!;
+    const t = text(await h({ model: 'DJI Mini 4 Pro' }));
+    expect(t).toContain('DJI Mini 4 Pro (249 g, C0, flies as UK0): open category A1.');
+    expect(t).toContain('Flyer ID');
+    expect(t).toContain('2028-01-01');
+    expect(t).toContain('Attribution:');
+    expect(t).toContain('CAA');
+    const b = text(await h({ model: 'Mavic 3 Pro', a2_certificate: true, format: 'brief' }));
+    expect(b).toContain('A2');
+    expect(b).toContain('Sources: the CAA Drone Code.');
+    const j = json(await h({ weight_g: 907, class_mark: 'none', format: 'json' }));
+    expect(j.assessment).toMatchObject({ effectiveClass: 'legacy', subcategory: 'A3', subcategoryWithA2Certificate: 'A2' });
+    expect(j.drone).toBeNull();
+  });
+  it('lists candidates for an ambiguous model and errors on an unknown one', async () => {
+    const { handlers } = setup();
+    const h = handlers.get('check_drone_rules')!;
+    expect(text(await h({ model: 'pro' }))).toContain('Several models match');
+    await expect(h({ model: 'Skydio 2' })).rejects.toThrow(/not in the drone catalogue/);
+  });
+});
+
+describe('check_takeoff_site with a drone', () => {
+  it('adds a Your drone section and the CAA attribution', async () => {
+    const { handlers } = setup([], { now: () => new Date('2026-09-25T12:00:00Z') });
+    const t = text(await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277, drone: 'Mini 4 Pro' }));
+    expect(t).toContain('Your drone');
+    expect(t).toContain('open category A1');
+    expect(t).toContain('CAA');
+    const r = await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277, drone: 'Mini 4 Pro', format: 'json' });
+    const j = JSON.parse(r.content[0].text);
+    expect(j.drone.assessment.subcategory).toBe('A1');
+    expect(r._meta).toMatchObject({ ui: { view: { drone: 'dji-mini-4-pro' } } });
+  });
+});

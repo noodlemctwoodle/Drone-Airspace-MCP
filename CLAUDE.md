@@ -48,6 +48,7 @@ src/
     airspace/              engine (point / route / area), verdict.ts (exact wording + severity), vertical.ts (400 ft rule)
     rights-of-way.ts
     weather/               open-meteo.ts (client, 15 min cache per 5 km cell), assessment.ts (advisory flyability thresholds)
+    drones/                catalogue.ts (curated consumer models: weight, C-class, UK class), rules.ts (CAA open category rules as dated data)
   pack/                    schema.ts (DDL, SCHEMA_VERSION), driver.ts (node:sqlite), repository.ts (rtree + turf), loader.ts, manifest.ts
   formatters/              report.ts (plain text), units.ts, attribution.ts
   transport/               stdio.ts, http.ts (Express, stateless POST /mcp, GET /healthz)
@@ -58,7 +59,7 @@ data/byelaws/seed.yaml     community-maintained council byelaw list
 test/                      fixtures/ (real NATS excerpts, PIB excerpt, rowmaps, NT, byelaws), helpers/ (FakePackRepository, mini-pack, fake-fetch)
 ```
   worker/                  Cloudflare Worker entry (fetch handler, WebStandard streamable HTTP, /map, /api/view), d1-pack.ts (PackAccess over D1), kv-cache.ts
-  map/                     view-data.ts (JSON for the map), html.ts (Leaflet page; also the MCP App resource ui://uk-drone-airspace/map)
+  map/                     view-data.ts (JSON for the map, wind lattice, drone index), html.ts (Leaflet page; also the MCP App resource ui://uk-drone-airspace/map), silhouettes.ts (drawn drone marker outlines)
 Flow: tool -> `resolveOrRespond` (geocode) -> `pack.require()` -> engine/service -> formatter -> `respond(format, data, renderText, renderBrief)`.
 
 Three runtimes share everything above `pack/` and `core/`:
