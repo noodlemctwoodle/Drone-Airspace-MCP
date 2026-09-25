@@ -4,13 +4,18 @@ compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
+# Custom domain (DNS and certificate are managed by Cloudflare).
+[[routes]]
+pattern = "drone-airspace.fetchlabs.co.uk"
+custom_domain = true
+
 [define]
 __PKG_VERSION__ = "\"0.1.5\""
 
 [vars]
 LOG_LEVEL = "info"
 NOTAM_CACHE_TTL_SECONDS = "1800"
-PUBLIC_URL = "https://uk-drone-airspace-mcp.toby-74b.workers.dev"
+PUBLIC_URL = "https://drone-airspace.fetchlabs.co.uk"
 # OS_NAMES_API_KEY is a secret: `wrangler secret put OS_NAMES_API_KEY`
 
 [[d1_databases]]

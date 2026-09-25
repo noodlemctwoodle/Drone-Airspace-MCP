@@ -57,7 +57,7 @@ claude mcp add uk-drone-airspace -- npx -y uk-drone-airspace-mcp
 
 ### Remote connector (Claude web, mobile and voice)
 
-The same server runs as a Cloudflare Worker, which is what Claude's mobile app and voice mode can reach: they cannot run local servers, only remote connectors. Add it on claude.ai under Settings > Connectors > Add custom connector with the Worker's `/mcp` URL, and it becomes available on every surface, including voice conversations. Every tool accepts `format: "brief"`, which returns two or three spoken-friendly sentences instead of the full report.
+The same server runs as a Cloudflare Worker at **`https://drone-airspace.fetchlabs.co.uk/mcp`**, which is what Claude's mobile app and voice mode can reach: they cannot run local servers, only remote connectors. Add it on claude.ai under Settings > Connectors > Add custom connector with that URL, and it becomes available on every surface, including voice conversations. Every tool accepts `format: "brief"`, which returns two or three spoken-friendly sentences instead of the full report.
 
 Hosting your own copy:
 
