@@ -11,3 +11,11 @@ export const CAVEAT_NOTAMS_NOT_INCLUDED = 'Temporary restrictions (NOTAMs) are n
 export const CAVEAT_AIRSPACE_ONLY_BELOW_120M = 'Only zones reaching below 400 ft (120 m) count towards the verdict.';
 export const CAVEAT_DRONE_RULES =
   'A summary of the CAA open category rules, not the regulation. Class marks come from manufacturer labelling: check the label on your aircraft, and check the current Drone Code before flying.';
+export const CAVEAT_TERRAIN =
+  'Elevations come from the Copernicus GLO-90 model at about 90 m resolution; cliffs, quarries, buildings and trees are not resolved. Check the ground visually and set your altitude limit from the highest ground you will overfly.';
+export const CAVEAT_120M_SURFACE = 'The 120 m limit is measured from the closest point of the surface below the aircraft, not from the take-off point.';
+export const CAVEAT_SPACE_WEATHER = 'Geomagnetic activity (Kp) could not be fetched from NOAA; GPS and compass reliability not assessed.';
+export const CAVEAT_SPOTS =
+  'Candidate spots are points on public rights of way, next to parking or on access land, scored on the data held here. A right of way gives a right to pass, not to stop and fly; be considerate and give way to other users.';
+export const CAVEAT_BRIEFING_COMPOSITE =
+  'This briefing combines the airspace pack, the live NOTAM bulletin, the weather forecast and the drone rules summary. Each source has its own limits listed below; a failed source is named rather than assumed clear.';

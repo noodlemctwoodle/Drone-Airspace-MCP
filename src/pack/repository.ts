@@ -22,6 +22,7 @@ import type {
   RightOfWayHit,
   Zone,
   ZoneType,
+  HazardHit,
 } from '../types.js';
 import { openDatabase, type Row, type SqliteDriver } from './driver.js';
 import { PackIncompatibleError } from '../core/errors.js';
@@ -53,6 +54,8 @@ export interface PackRepository {
   zonesByAerodrome(aerodromeName: string): Promise<Zone[]>;
   /** Land restrictions intersecting a bbox, with geometry (map rendering). */
   landRestrictionsInBbox(bbox: BBox, limit?: number): Promise<Array<LandRestriction & { geometry: Polygon | MultiPolygon }>>;
+  /** Ground hazards near a point, nearest first. Optional until the pack carries the hazards table. */
+  hazardsNear?(lon: number, lat: number, limitMetres?: number, n?: number): Promise<HazardHit[]>;
   /** Car parks, laybys and rest areas within `limitMetres`, nearest first. Private ones are excluded unless asked for. */
   nearestParking(lon: number, lat: number, limitMetres?: number, n?: number, includePrivate?: boolean): Promise<ParkingHit[]>;
   close(): void;

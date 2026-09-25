@@ -1,6 +1,6 @@
 import type { PackMeta } from '../types.js';
 
-export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking' | 'weather' | 'caa_rules';
+export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking' | 'weather' | 'caa_rules' | 'elevation' | 'space_weather' | 'hazards';
 
 const LIVE: Record<string, string> = {
   nominatim: 'Geocoding © OpenStreetMap contributors (ODbL), via Nominatim',
@@ -9,6 +9,8 @@ const LIVE: Record<string, string> = {
   notam: 'NOTAMs: NATS AIS UK PIB (informational only; obtain an official pre-flight briefing)',
   weather: 'Weather: Open-Meteo.com (CC BY 4.0)',
   caa_rules: 'Drone rules: summary of UK CAA class mark and open category guidance (caa.co.uk, Crown copyright, OGL v3); the Drone Code and CAP 722 are authoritative',
+  elevation: 'Elevation: Open-Meteo.com (CC BY 4.0), Copernicus GLO-90 DEM (European Union and ESA)',
+  space_weather: 'Geomagnetic activity: NOAA Space Weather Prediction Center planetary K-index (US Government, public domain)',
 };
 
 const PACK_SOURCE_IDS: Record<string, string[]> = {
@@ -18,6 +20,7 @@ const PACK_SOURCE_IDS: Record<string, string[]> = {
   byelaws: ['byelaws'],
   coverage: ['ons_countries'],
   parking: ['osm_parking'],
+  hazards: ['osm_hazards'],
 };
 
 const SHORT: Record<string, string> = {
@@ -33,6 +36,9 @@ const SHORT: Record<string, string> = {
   notam: 'the NATS NOTAM bulletin',
   weather: 'Open-Meteo',
   caa_rules: 'the CAA Drone Code',
+  elevation: 'Open-Meteo elevation',
+  space_weather: 'NOAA space weather',
+  hazards: 'OpenStreetMap hazards',
 };
 
 /** One short spoken sentence naming the sources used. */

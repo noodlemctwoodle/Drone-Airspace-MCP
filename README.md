@@ -2,7 +2,7 @@
 
 An MCP server that answers the question existing airspace tools do not: **can I legally take off and fly a drone here, in the UK?**
 
-Airspace restriction data is the easy half. A UK pilot actually has to clear three layers: permanent airspace restrictions (aerodrome flight restriction zones, prohibited, restricted and danger areas), temporary restrictions (NOTAMs), and landowner rules (National Trust byelaws, council park byelaws). The practical workaround pilots use is launching from a public right of way, where no landowner permission is needed. This server puts all of that behind seven tools that take a place name, a postcode or coordinates.
+Airspace restriction data is the easy half. A UK pilot actually has to clear three layers: permanent airspace restrictions (aerodrome flight restriction zones, prohibited, restricted and danger areas), temporary restrictions (NOTAMs), and landowner rules (National Trust byelaws, council park byelaws). The practical workaround pilots use is launching from a public right of way, where no landowner permission is needed. This server puts all of that behind twelve tools that take a place name, a postcode or coordinates.
 
 Informational only. It is not a substitute for a NATS pre-flight briefing, the CAA Drone Code, or permission from the landowner and any relevant aerodrome.
 
@@ -14,6 +14,8 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 - **What does my route cross?** `check_route` for a list of waypoints or an area, with the distance along the route at which each zone is entered.
 - **Can I take off here?** `check_takeoff_site` lists the nearest public rights of way with distances and the responsible council, the nearest public parking, plus National Trust land and known council byelaws at the point.
 - **Where can I park?** `find_parking` lists car parks, laybys and rest areas from OpenStreetMap, nearest first, with fee and access notes.
+- **Can I fly here, now?** `preflight_briefing` combines everything into one GO, CAUTION or NO-GO answer with reasons: airspace verdict, live NOTAMs, the weather window and geomagnetic activity, rights of way, parking and, when you name your drone, its rules. A live source that fails is reported as an outage, never assumed clear.
+- **What is the ground doing?** `check_terrain` profiles ground elevation along a route or around a point against the 120 m rule, which is measured from the surface below the aircraft, and warns when rising ground eats the clearance or falling ground puts a fixed height above the limit.
 - **What can my drone do?** `check_drone_rules` takes a model name or a weight and class mark and answers which open subcategory applies (A1, A2 or A3), the separation from people, whether Flyer and Operator IDs are needed and when Remote ID is required, under the CAA class mark rules in force from 2026. `check_takeoff_site` accepts a `drone` too and adds the same summary to the site report.
 - **Is the weather flyable?** `check_weather` gives an hourly forecast from Open-Meteo with wind and gusts at 10 m, wind at 120 m, rain, visibility, cloud, temperature and daylight, each hour rated good, caution or poor against typical small-drone limits.
 - **Show me.** On the hosted server every location answer carries a map link, and clients that support MCP Apps (Claude web, desktop and mobile) render the map inline: zones coloured by severity, NOTAM circles, footpaths, landowner land and parking.
@@ -180,6 +182,16 @@ Example prompt: *"Is it flyable at Ilkley Moor on Saturday afternoon?"*
 
 Ratings are advisory: caution from 8 m/s, poor from 10.7 m/s sustained or 12 m/s gusts, any rain, visibility under 1.5 km, and a caution for freezing temperatures, low cloud or strong wind at 120 m.
 
+The report also carries the NOAA planetary K-index (geomagnetic activity), which affects GPS accuracy and compass behaviour: quiet, unsettled, active (Kp 4) or storm (Kp 5 and above). It does not change the weather rating; the briefing tool treats a storm as caution.
+
+### `preflight_briefing`
+
+One report for a take-off point and time. `place` / `lat`+`lon`, `date` (default now), `hours` (window length, default 3), optional `drone` and `a2_certificate`, `frz_permission` when an aerodrome has already agreed the flight, `notam_radius_km` (default 10), `max_paths`. The status is deterministic: prohibited, prison or restricted airspace, an FRZ without permission, or a landowner ban is NO-GO; an FRZ with permission, a covering NOTAM, a danger area, poor weather, a geomagnetic storm, a ground hazard within 200 m, or any live source that could not be read is CAUTION; otherwise GO. Notes (marginal weather, nearby or unlocated NOTAMs, no right of way nearby, A3 separation) never change the status. The JSON carries each sub-result, the reasons and an `outages` list.
+
+### `check_terrain`
+
+Ground elevation against the 120 m rule. Give `waypoints` (2 to 50) for a profile, or a point with `radius_m` (default 500) for the ground around it; `flight_height_m` (default 120) is the planned height above take-off and `step_m` the sample spacing. Reports the highest and lowest ground relative to the take-off point and warns when the ground rises within 30 m of the flight height (caution) or above it (poor), or falls far enough that the flight would be more than 120 m above the surface. Elevations come from Copernicus GLO-90 via Open-Meteo at about 90 m resolution, so cliffs and buildings are not resolved.
+
 ### `check_drone_rules`
 
 Which UK open category rules apply to a consumer drone. Give `model` (looked up in the curated catalogue in `src/services/drones/catalogue.ts`: DJI, Autel, Potensic, HoverAir and Parrot models with take-off weight, EU C-class and UK class marks) or `weight_g` with an optional `class_mark` (C0 to C4, UK0 to UK4, or none). Set `a2_certificate` if the pilot holds an A2 CofC and `date` to see the rules on a future date. The answer gives the subcategory, overflight and separation rules, registration (Flyer ID and Operator ID, 100 g threshold from 2026), Remote ID dates (UK1 to UK3 from 2026, camera aircraft of 100 g or more otherwise from 2028) and the transition under which EU C-class labels count as UK classes until the end of 2027. Rules and dates live in `src/services/drones/rules.ts` with the CAA pages they were taken from; the catalogue is community-maintained like the byelaw list, and an unconfirmed class mark is left null so the aircraft is treated as legacy.
@@ -214,6 +226,8 @@ No arguments. Reports pack tag, AIRAC effective dates, per-source fetch dates an
 | Rights of way | Council open data aggregated by [rowmaps.com](https://www.rowmaps.com/) (143 authorities, England and Wales) | Weekly | Open Government Licence v3 per council, OS attribution, see [licences/rowmaps.md](licences/rowmaps.md) |
 | National Trust land | [National Trust Open Data](https://open-data-national-trust.hub.arcgis.com/) Always Open and Limited Access | When edited | OGL v3 / CC-BY |
 | Council byelaws | [data/byelaws/seed.yaml](data/byelaws/seed.yaml) in this repository | Manual | MIT; incomplete by nature |
+| Elevation | [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api), Copernicus GLO-90 DEM | Live, cached 30 days per 100 m cell | CC BY 4.0 (Open-Meteo), Copernicus data licence |
+| Geomagnetic activity | [NOAA SWPC planetary K-index](https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json) | Live, cached 15 min | US Government, public domain |
 | Drone rules | [CAA class marks](https://www.caa.co.uk/drones/getting-started-with-drones-and-model-aircraft/class-marks/) and the [Drone Code](https://register-drones.caa.co.uk/drone-code), summarised in `src/services/drones/rules.ts`; drone catalogue curated from manufacturer specifications | With the code | Crown copyright, OGL v3; the CAA pages are authoritative |
 | Parking and laybys | OpenStreetMap via the [Geofabrik Great Britain extract](https://download.geofabrik.de/europe/great-britain.html) (`amenity=parking`, `highway=rest_area`) | Weekly | ODbL |
 | Country boundaries | ONS Countries (December 2024) BUC | Yearly | OGL v3 |
@@ -230,6 +244,10 @@ The permanent layers are assembled into a data pack by [`.github/workflows/build
 |---|---|---|
 | `OS_NAMES_API_KEY` | unset | Enables the OS Names geocoder |
 | `OS_NAMES_URL` | `https://api.os.uk/search/names/v1/find` | |
+| `OPEN_METEO_ELEVATION_URL` | `https://api.open-meteo.com/v1/elevation` | |
+| `ELEVATION_CACHE_TTL_SECONDS` | `2592000` | Terrain does not change |
+| `NOAA_KP_URL` | `https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json` | |
+| `SPACE_WEATHER_CACHE_TTL_SECONDS` | `900` | |
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org/search` | Self-host to lift the 1 req/s limit |
 | `POSTCODES_IO_URL` | `https://api.postcodes.io` | |
 | `NOTAM_PIB_URL` | `https://pibs.nats.co.uk/operational/pibs/PIB.xml` | |

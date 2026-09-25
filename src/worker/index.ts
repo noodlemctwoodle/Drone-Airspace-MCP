@@ -15,6 +15,8 @@ import { NotamService } from '../services/notam/index.js';
 import { PibFetcher } from '../services/notam/pib-fetcher.js';
 import { RightsOfWayService } from '../services/rights-of-way.js';
 import { OpenMeteoClient } from '../services/weather/open-meteo.js';
+import { SpaceWeatherClient } from '../services/weather/space-weather.js';
+import { ElevationClient } from '../services/terrain/elevation.js';
 import { NAME, REPO_URL, USER_AGENT, VERSION } from '../version.js';
 import { D1PackAccess } from './d1-pack.js';
 import type { WorkerEnv } from './env.js';
@@ -27,7 +29,7 @@ const nominatimBucket = new TokenBucket(1, 1);
 let cachedDeps: { key: string; deps: HandlerDependencies; pack: D1PackAccess; notams: NotamService } | undefined;
 
 function buildDeps(env: WorkerEnv) {
-  const key = JSON.stringify([env.OS_NAMES_API_KEY ? 'k' : '', env.NOMINATIM_URL, env.NOTAM_PIB_URL, env.LOG_LEVEL]);
+  const key = JSON.stringify([env.OS_NAMES_API_KEY ? 'k' : '', env.NOMINATIM_URL, env.NOTAM_PIB_URL, env.LOG_LEVEL, env.OPEN_METEO_URL, env.OPEN_METEO_ELEVATION_URL, env.NOAA_KP_URL]);
   if (cachedDeps && cachedDeps.key === key) return cachedDeps;
   const config = loadConfig(env as unknown as NodeJS.ProcessEnv, { transport: 'http' });
   const logger = createLogger(config.logLevel);
@@ -49,6 +51,8 @@ function buildDeps(env: WorkerEnv) {
     airspace: new AirspaceEngine(repo),
     rightsOfWay: new RightsOfWayService(repo),
     weather: new OpenMeteoClient(http, cache, config.openMeteoUrl, config.weatherCacheTtlSeconds),
+    spaceWeather: new SpaceWeatherClient(http, cache, config.noaaKpUrl, config.spaceWeatherCacheTtlSeconds),
+    elevation: new ElevationClient(http, cache, config.openMeteoElevationUrl, config.elevationCacheTtlSeconds),
     now: () => new Date(),
   };
   cachedDeps = { key, deps, pack, notams };

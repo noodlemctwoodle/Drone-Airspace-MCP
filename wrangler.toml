@@ -17,6 +17,8 @@ LOG_LEVEL = "info"
 NOTAM_CACHE_TTL_SECONDS = "1800"
 PUBLIC_URL = "https://drone-airspace.fetchlabs.co.uk"
 # OS_NAMES_API_KEY is a secret: `wrangler secret put OS_NAMES_API_KEY`
+# Optional overrides with defaults in src/core/config.ts: OPEN_METEO_URL, OPEN_METEO_ELEVATION_URL,
+# NOAA_KP_URL, WEATHER_CACHE_TTL_SECONDS, ELEVATION_CACHE_TTL_SECONDS, SPACE_WEATHER_CACHE_TTL_SECONDS
 
 [[d1_databases]]
 binding = "DB"

@@ -6,6 +6,13 @@ import { fakeFetch } from '../helpers/fake-fetch.js';
 
 const fx = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/geocode/${name}`, import.meta.url), 'utf8'));
 const pib = readFileSync(new URL('../fixtures/notam/pib-excerpt.xml', import.meta.url), 'utf8');
+const weatherRaw = JSON.parse(readFileSync(new URL('../fixtures/weather/open-meteo-durdle.json', import.meta.url), 'utf8'));
+const kpRaw = JSON.parse(readFileSync(new URL('../fixtures/space-weather/noaa-kp.json', import.meta.url), 'utf8'));
+const LIVE_ROUTES: Parameters<typeof fakeFetch>[0] = [
+  { match: 'api.open-meteo.com/v1/forecast', body: weatherRaw },
+  { match: 'noaa-planetary-k-index', body: kpRaw },
+  { match: 'v1/elevation', handler: (url) => ({ body: { elevation: new URL(url).searchParams.get('latitude')!.split(',').map((la) => 50 + Math.max(0, Number(la) - 50.6) * 4000) } }) },
+];
 
 function setup(extra: Parameters<typeof fakeFetch>[0] = [], opts: Parameters<typeof buildTestDeps>[0] = {}) {
   const ff = fakeFetch([
@@ -258,5 +265,96 @@ describe('check_takeoff_site with a drone', () => {
     const j = JSON.parse(r.content[0].text);
     expect(j.drone.assessment.subcategory).toBe('A1');
     expect(r._meta).toMatchObject({ ui: { view: { drone: 'dji-mini-4-pro' } } });
+  });
+});
+
+describe('preflight_briefing', () => {
+  const at = '2026-09-25T10:00Z';
+  it('gives a go status with every section, live sources and attribution for Durdle Door', async () => {
+    const { handlers } = setup(LIVE_ROUTES);
+    const r = await handlers.get('preflight_briefing')!({ lat: 50.6212, lon: -2.277, date: at, drone: 'Mini 4 Pro', format: 'json' });
+    const j = JSON.parse(r.content[0].text);
+    expect(j.status).toBe('go');
+    expect(j.outages).toEqual([]);
+    expect(j.weather.hours.length).toBe(3);
+    expect(j.spaceWeather.kp).toBe(kpRaw[kpRaw.length - 1].Kp);
+    expect(j.notams.covering).toEqual([]);
+    expect(j.access.rightsOfWay.length).toBeGreaterThan(0);
+    expect(j.drone.assessment.subcategory).toBe('A1');
+    expect(j.attribution.join(' ')).toContain('Open-Meteo');
+    expect(j.attribution.join(' ')).toContain('NOAA');
+    expect(r._meta).toEqual({ ui: { view: { lat: 50.6212, lon: -2.277, radiusM: 1500, drone: 'dji-mini-4-pro' } } });
+    const t = text(await handlers.get('preflight_briefing')!({ lat: 50.6212, lon: -2.277, date: at }));
+    expect(t.startsWith('GO for 50.62120')).toBe(true);
+    for (const title of ['Findings', '[go] No permanent restriction', 'Weather 2026-09-25', 'Access', 'Attribution:']) expect(t).toContain(title);
+    expect(t).toContain('Geomagnetic activity Kp');
+    const b = text(await handlers.get('preflight_briefing')!({ lat: 50.6212, lon: -2.277, date: at, format: 'brief' }));
+    expect(b.startsWith('Preflight for')).toBe(true);
+    expect(b).toContain('Sources:');
+  });
+  it('is no-go inside the Bristol FRZ and caution once permission is held', async () => {
+    const { handlers } = setup(LIVE_ROUTES);
+    const t = text(await handlers.get('preflight_briefing')!({ lat: 51.3827, lon: -2.7191, date: at }));
+    expect(t.startsWith('NO-GO')).toBe(true);
+    expect(t).toContain('BRISTOL FRZ');
+    const j = json(await handlers.get('preflight_briefing')!({ lat: 51.3827, lon: -2.7191, date: at, frz_permission: true, format: 'json' }));
+    expect(j.status).toBe('caution');
+    expect(j.reasons[0].code).toBe('frz_with_permission');
+  });
+  it('is no-go on a landowner ban', async () => {
+    const { handlers } = setup(LIVE_ROUTES);
+    const j = json(await handlers.get('preflight_briefing')!({ lat: 50.69, lon: -1.97, date: at, format: 'json' }));
+    expect(j.status).toBe('no_go');
+    expect(j.reasons.map((r: { code: string }) => r.code)).toContain('landowner_ban');
+  });
+  it('turns live outages into caution and caveats rather than failing', async () => {
+    const built = buildTestDeps({ now: () => new Date(at) });
+    const h = createHandlers(built.deps).get('preflight_briefing')!;
+    const j = json(await h({ lat: 50.6212, lon: -2.277, format: 'json' }));
+    expect(j.status).toBe('caution');
+    expect(j.outages.length).toBe(3);
+    expect(j.reasons.map((r: { code: string }) => r.code)).toEqual(expect.arrayContaining(['notams_unavailable', 'weather_unavailable']));
+    expect(j.caveats.join(' ')).toContain('check_notams');
+    expect(j.notams).toBeNull();
+    expect(j.weather).toBeNull();
+  });
+  it('needs the pack and a valid date', async () => {
+    const { handlers } = setup([], { noPack: true });
+    await expect(handlers.get('preflight_briefing')!({ lat: 50.6, lon: -2.3 })).rejects.toThrow(/data pack unavailable/i);
+    const { handlers: h2 } = setup(LIVE_ROUTES);
+    await expect(h2.get('preflight_briefing')!({ lat: 50.6, lon: -2.3, date: 'tomorrow' })).rejects.toThrow(/ISO 8601/);
+  });
+});
+
+describe('check_terrain', () => {
+  it('profiles a route against a synthetic hill and warns when the ground exceeds the flight height', async () => {
+    const { handlers } = setup(LIVE_ROUTES);
+    const j = json(await handlers.get('check_terrain')!({ waypoints: [[-2.277, 50.6212], [-2.277, 50.66]], format: 'json' }));
+    expect(j.mode).toBe('route');
+    expect(j.status).toBe('poor');
+    expect(j.summary.maxRiseM).toBeGreaterThan(120);
+    expect(j.warnings[0].kind).toBe('ground_clearance');
+    expect(j.samples.length).toBeGreaterThan(10);
+    expect(j.attribution.join(' ')).toContain('Copernicus');
+    const t = text(await handlers.get('check_terrain')!({ waypoints: [[-2.277, 50.6212], [-2.277, 50.66]] }));
+    expect(t.startsWith('POOR:')).toBe(true);
+    expect(t).toContain('Elevation profile');
+    const b = text(await handlers.get('check_terrain')!({ waypoints: [[-2.277, 50.6212], [-2.277, 50.66]], format: 'brief' }));
+    expect(b).toMatch(/^Terrain along your route rises up to \d+ metres/);
+  });
+  it('samples a grid around a point and reports the highest ground with a bearing', async () => {
+    const { handlers } = setup(LIVE_ROUTES);
+    const j = json(await handlers.get('check_terrain')!({ lat: 50.6212, lon: -2.277, radius_m: 500, format: 'json' }));
+    expect(j.mode).toBe('point');
+    expect(j.samples.length).toBe(49);
+    expect(j.summary.highest.where).toMatch(/m to the N/);
+    expect(j.status).toBe('good');
+  });
+  it('rejects mixed inputs, missing inputs and over-long routes', async () => {
+    const { handlers } = setup(LIVE_ROUTES);
+    const h = handlers.get('check_terrain')!;
+    await expect(h({ waypoints: [[-2, 50], [-2, 50.1]], lat: 50, lon: -2 })).rejects.toThrow(/not both/);
+    await expect(h({})).rejects.toThrow(/waypoints/);
+    await expect(h({ waypoints: [[-2, 50], [-2, 51.5]] })).rejects.toThrow(/maximum for a terrain profile/);
   });
 });

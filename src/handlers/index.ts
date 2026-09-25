@@ -9,6 +9,8 @@ import { createGetDataStatusHandler } from './status-handlers.js';
 import { createFindParkingHandler } from './parking-handlers.js';
 import { createCheckWeatherHandler } from './weather-handlers.js';
 import { createCheckDroneRulesHandler } from './drone-handlers.js';
+import { createPreflightBriefingHandler } from './briefing-handlers.js';
+import { createCheckTerrainHandler } from './terrain-handlers.js';
 import type { ToolResponse } from '../types.js';
 
 export type { HandlerDependencies, ToolHandler } from './deps.js';
@@ -23,6 +25,8 @@ export function createHandlers(deps: HandlerDependencies): Map<ToolName, ToolHan
   handlers.set('find_parking', createFindParkingHandler(deps));
   handlers.set('check_weather', createCheckWeatherHandler(deps));
   handlers.set('check_drone_rules', createCheckDroneRulesHandler(deps));
+  handlers.set('preflight_briefing', createPreflightBriefingHandler(deps));
+  handlers.set('check_terrain', createCheckTerrainHandler(deps));
   handlers.set('geocode', createGeocodeHandler(deps));
   handlers.set('get_data_status', createGetDataStatusHandler(deps));
   return handlers;

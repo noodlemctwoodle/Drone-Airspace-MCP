@@ -92,6 +92,19 @@ export interface Parking {
 export interface ParkingHit extends Parking {
   distanceM: number;
 }
+/** A ground hazard from OpenStreetMap (railway, power line, helipad, military land...). Points only until the pack carries geometry. */
+export interface Hazard {
+  id: number;
+  kind: string;
+  name: string | null;
+  lon: number;
+  lat: number;
+}
+
+export interface HazardHit extends Hazard {
+  distanceM: number;
+}
+
 export type ProwCoverage = 'england_wales' | 'scotland' | 'northern_ireland' | 'unknown';
 
 export interface GazetteerHit {

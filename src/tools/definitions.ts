@@ -128,6 +128,39 @@ export const toolDefinitions: ToolDefinition[] = [
     annotations: { readOnlyHint: true, openWorldHint: false, title: 'Check drone rules' },
   },
   {
+    name: 'preflight_briefing',
+    description:
+      'One pre-flight briefing for a UK take-off point and time: a GO, CAUTION or NO-GO status with reasons, from the airspace verdict, live NOTAMs, the weather window, geomagnetic activity, rights of way, parking and, when a drone is named, its open category rules. ' +
+      'A live source that cannot be read is reported as an outage, never assumed clear. Give a place or lat/lon; date and hours set the flying window (default now, 3 hours). Set frz_permission when an aerodrome has already agreed the flight.',
+    inputSchema: {
+      ...locationInput,
+      date: dateArg,
+      hours: z.number().int().min(1).max(12).default(3).describe('Length of the flying window from the start time.'),
+      drone: droneModelArg.optional(),
+      a2_certificate: a2CertificateArg,
+      frz_permission: z.boolean().default(false).describe('The aerodrome has given permission to fly in its FRZ; the FRZ then counts as caution rather than no-go.'),
+      notam_radius_km: z.number().min(0).max(50).default(10).describe('Also list NOTAMs within this distance.'),
+      max_paths: z.number().int().min(1).max(10).default(3).describe('Rights of way to list.'),
+      format: formatArg,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true, title: 'Pre-flight briefing' },
+  },
+  {
+    name: 'check_terrain',
+    description:
+      'Ground elevation along a route or around a point, against the 120 m rule: the 120 m limit is measured from the surface below the aircraft, so rising ground eats into clearance and falling ground can put a fixed-height flight above the limit. ' +
+      'Give waypoints (2 to 50 places or [lon, lat] pairs) for a profile, or a place / lat and lon for the ground within radius_m. Reports the highest and lowest ground relative to the take-off point and warnings for the planned flight height. Elevations from Copernicus GLO-90 via Open-Meteo, about 90 m resolution.',
+    inputSchema: {
+      waypoints: z.array(waypointSchema).min(2).max(50).optional().describe('Route as place names or [lon, lat] pairs.'),
+      ...locationInput,
+      radius_m: z.number().int().min(100).max(3000).default(500).describe('Point mode: radius of ground to sample.'),
+      step_m: z.number().int().min(25).max(1000).default(100).describe('Route mode: sample spacing along the route.'),
+      flight_height_m: z.number().int().min(10).max(120).default(120).describe('Planned height above the take-off point.'),
+      format: formatArg,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true, title: 'Check terrain' },
+  },
+  {
     name: 'geocode',
     description:
       'Resolve a UK place name, postcode or landmark to coordinates. Use it to disambiguate before running a check when a name could match several places. ' +

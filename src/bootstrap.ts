@@ -17,6 +17,8 @@ import { NotamService } from './services/notam/index.js';
 import { PibFetcher } from './services/notam/pib-fetcher.js';
 import { RightsOfWayService } from './services/rights-of-way.js';
 import { OpenMeteoClient } from './services/weather/open-meteo.js';
+import { SpaceWeatherClient } from './services/weather/space-weather.js';
+import { ElevationClient } from './services/terrain/elevation.js';
 import { StreamableHttpTransport } from './transport/http.js';
 import type { MCPTransport } from './transport/index.js';
 import { StdioTransport } from './transport/stdio.js';
@@ -79,6 +81,7 @@ export function buildDeps(config: Config, logger: Logger, overrides: Partial<{ f
     zonesByAerodrome: (name) => proxy.get().zonesByAerodrome(name),
     nearestParking: (lon, lat, m, n, priv) => proxy.get().nearestParking(lon, lat, m, n, priv),
     landRestrictionsInBbox: (b, l) => proxy.get().landRestrictionsInBbox(b, l),
+    hazardsNear: (lon, lat, m, n) => proxy.get().hazardsNear?.(lon, lat, m, n) ?? Promise.resolve([]),
     close: () => undefined,
   };
 
@@ -91,6 +94,8 @@ export function buildDeps(config: Config, logger: Logger, overrides: Partial<{ f
     airspace: new AirspaceEngine(liveRepo),
     rightsOfWay: new RightsOfWayService(liveRepo),
     weather: new OpenMeteoClient(http, cache, config.openMeteoUrl, config.weatherCacheTtlSeconds, now),
+    spaceWeather: new SpaceWeatherClient(http, cache, config.noaaKpUrl, config.spaceWeatherCacheTtlSeconds, now),
+    elevation: new ElevationClient(http, cache, config.openMeteoElevationUrl, config.elevationCacheTtlSeconds),
     now,
   };
   return { deps, packManager };

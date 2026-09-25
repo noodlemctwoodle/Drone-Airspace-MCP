@@ -1,4 +1,4 @@
-import type { BBox, OutputFormat, Polygon, Position, ResolvedLocation } from '../types.js';
+import type { BBox, OutputFormat, Polygon, Position, ResolvedLocation, ToolResponse } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
 import { ambiguousResponse, brief, notFoundResponse, respond } from './respond.js';
 import { locationNotes, sourceOfLocation } from './location-handlers.js';
@@ -17,7 +17,29 @@ import { CAVEAT_AIRSPACE_ONLY_BELOW_120M, CAVEAT_NOTAMS_NOT_INCLUDED, CAVEAT_NOT
 
 const MAX_ROUTE_KM = 500;
 
-type Waypoint = [number, number] | string;
+export type Waypoint = [number, number] | string;
+
+/** Geocode place-name waypoints, surfacing ambiguity or not-found as a response exactly as check_route does. */
+export async function resolveWaypoints(deps: HandlerDependencies, tool: string, waypoints: Waypoint[], format: OutputFormat): Promise<{ resolved: ResolvedLocation[]; used: Set<SourceId>; notes: string[] } | { response: ToolResponse }> {
+  const resolved: ResolvedLocation[] = [];
+  const notes: string[] = [];
+  const used = new Set<SourceId>();
+  for (const [i, wp] of waypoints.entries()) {
+    if (Array.isArray(wp)) {
+      const r = await resolveLocation({ lon: wp[0], lat: wp[1] }, deps.geocoder);
+      if (r.status === 'resolved') resolved.push(r.location);
+      continue;
+    }
+    const r = await resolveLocation({ place: wp }, deps.geocoder);
+    if (r.status === 'ambiguous') return { response: ambiguousResponse(format, tool, `waypoint ${i + 1}: ${r.query}`, r.candidates) };
+    if (r.status === 'not_found') return { response: notFoundResponse(format, tool, `waypoint ${i + 1}: ${r.query}`) };
+    resolved.push(r.location);
+    const s = sourceOfLocation(r.location);
+    if (s) used.add(s);
+    notes.push(...locationNotes(r.location).map((n) => `Waypoint ${i + 1}: ${n}`));
+  }
+  return { resolved, used, notes };
+}
 
 export function createCheckRouteHandler(deps: HandlerDependencies): ToolHandler {
   return async (args) => {
@@ -33,22 +55,10 @@ export function createCheckRouteHandler(deps: HandlerDependencies): ToolHandler 
     const caveats = [CAVEAT_AIRSPACE_ONLY_BELOW_120M, CAVEAT_NOTAMS_NOT_INCLUDED, CAVEAT_NOT_BRIEFING];
 
     if (waypoints) {
-      const resolved: ResolvedLocation[] = [];
-      const notes: string[] = [];
-      for (const [i, wp] of waypoints.entries()) {
-        if (Array.isArray(wp)) {
-          const r = await resolveLocation({ lon: wp[0], lat: wp[1] }, deps.geocoder);
-          if (r.status === 'resolved') resolved.push(r.location);
-          continue;
-        }
-        const r = await resolveLocation({ place: wp }, deps.geocoder);
-        if (r.status === 'ambiguous') return ambiguousResponse(format, 'check_route', `waypoint ${i + 1}: ${r.query}`, r.candidates);
-        if (r.status === 'not_found') return notFoundResponse(format, 'check_route', `waypoint ${i + 1}: ${r.query}`);
-        resolved.push(r.location);
-        const s = sourceOfLocation(r.location);
-        if (s) used.add(s);
-        notes.push(...locationNotes(r.location).map((n) => `Waypoint ${i + 1}: ${n}`));
-      }
+      const wp = await resolveWaypoints(deps, 'check_route', waypoints, format);
+      if ('response' in wp) return wp.response;
+      const { resolved, notes } = wp;
+      for (const s of wp.used) used.add(s);
       const line = toLineString(resolved.map((l): Position => [l.lon, l.lat]));
       const lengthKm = routeLengthKm(line);
       if (lengthKm > MAX_ROUTE_KM) throw new UserFacingError(`Route is ${lengthKm.toFixed(0)} km; the maximum is ${MAX_ROUTE_KM} km. Split it into shorter legs.`);

@@ -7,6 +7,8 @@ export const TOOL_NAMES = [
   'find_parking',
   'check_weather',
   'check_drone_rules',
+  'preflight_briefing',
+  'check_terrain',
   'geocode',
   'get_data_status',
 ] as const;

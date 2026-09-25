@@ -6,6 +6,8 @@ import type { Geocoder } from '../services/geocoder/index.js';
 import type { NotamService } from '../services/notam/index.js';
 import type { RightsOfWayService } from '../services/rights-of-way.js';
 import type { OpenMeteoClient } from '../services/weather/open-meteo.js';
+import type { SpaceWeatherClient } from '../services/weather/space-weather.js';
+import type { ElevationClient } from '../services/terrain/elevation.js';
 import type { PackMeta, ToolResponse } from '../types.js';
 
 export type PackState =
@@ -31,6 +33,8 @@ export interface HandlerDependencies {
   airspace: AirspaceEngine;
   rightsOfWay: RightsOfWayService;
   weather: OpenMeteoClient;
+  spaceWeather: SpaceWeatherClient;
+  elevation: ElevationClient;
   now: () => Date;
 }
 

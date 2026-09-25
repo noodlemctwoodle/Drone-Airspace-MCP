@@ -18,6 +18,8 @@ import { NotamService } from '../../src/services/notam/index.js';
 import { PibFetcher } from '../../src/services/notam/pib-fetcher.js';
 import { RightsOfWayService } from '../../src/services/rights-of-way.js';
 import { OpenMeteoClient } from '../../src/services/weather/open-meteo.js';
+import { SpaceWeatherClient } from '../../src/services/weather/space-weather.js';
+import { ElevationClient } from '../../src/services/terrain/elevation.js';
 import { PackUnavailableError } from '../../src/core/errors.js';
 import { FakePackRepository } from './fake-pack-repository.js';
 import type { FetchLike } from '../../src/core/http-client.js';
@@ -80,6 +82,8 @@ export function buildTestDeps(opts: { fetchImpl?: FetchLike; config?: Config; re
     airspace: new AirspaceEngine(repo),
     rightsOfWay: new RightsOfWayService(repo),
     weather: new OpenMeteoClient(http, cache, config.openMeteoUrl, config.weatherCacheTtlSeconds, now),
+    spaceWeather: new SpaceWeatherClient(http, cache, config.noaaKpUrl, config.spaceWeatherCacheTtlSeconds, now),
+    elevation: new ElevationClient(http, cache, config.openMeteoElevationUrl, config.elevationCacheTtlSeconds),
     now,
   };
   return { deps, repo, config };

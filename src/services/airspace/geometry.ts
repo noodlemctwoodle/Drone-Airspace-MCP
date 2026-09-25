@@ -29,6 +29,35 @@ export function distanceKm(a: Position, b: Position): number {
   return distance(point(a), point(b), { units: 'kilometers' });
 }
 
+/**
+ * Positions every `stepM` metres along a line, by linear interpolation within
+ * each segment (no @turf/along). The first vertex and the final vertex are
+ * always included; `alongKm` is monotonic.
+ */
+export function sampleAlongLine(line: LineString, stepM: number): Array<{ position: Position; alongKm: number }> {
+  const coords = line.coordinates;
+  if (coords.length === 0) return [];
+  const stepKm = Math.max(1, stepM) / 1000;
+  const out: Array<{ position: Position; alongKm: number }> = [{ position: coords[0], alongKm: 0 }];
+  let travelled = 0;
+  let nextMark = stepKm;
+  for (let i = 1; i < coords.length; i++) {
+    const a = coords[i - 1];
+    const b = coords[i];
+    const seg = distanceKm(a, b);
+    while (seg > 0 && nextMark <= travelled + seg) {
+      const t = (nextMark - travelled) / seg;
+      out.push({ position: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], alongKm: nextMark });
+      nextMark += stepKm;
+    }
+    travelled += seg;
+  }
+  const last = coords[coords.length - 1];
+  const tail = out[out.length - 1];
+  if (coords.length > 1 && (tail.position[0] !== last[0] || tail.position[1] !== last[1])) out.push({ position: last, alongKm: travelled });
+  return out;
+}
+
 export interface Crossing {
   entersAtKm: number;
   entersAt: Position;
