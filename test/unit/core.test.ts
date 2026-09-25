@@ -22,6 +22,12 @@ describe('config', () => {
     expect(() => loadConfig({ NOTAM_CACHE_TTL_SECONDS: 'abc' })).toThrow(/NOTAM_CACHE_TTL_SECONDS/);
     expect(() => loadConfig({ MCP_TRANSPORT: 'carrier-pigeon' })).toThrow(/MCP_TRANSPORT/);
   });
+  it('ignores unexpanded ${...} placeholders from extension hosts', () => {
+    const c = loadConfig({ DRONE_AIRSPACE_CACHE_DIR: '${HOME}/.cache/x', OS_NAMES_API_KEY: '${user_config.os_names_api_key}', LOG_LEVEL: 'warn' });
+    expect(c.cacheDir).not.toContain('${');
+    expect(c.osNamesApiKey).toBeUndefined();
+    expect(c.logLevel).toBe('warn');
+  });
   it('parses cli args', () => {
     expect(parseCliArgs(['--transport', 'http', '--port', '8081'])).toMatchObject({ transport: 'http', port: 8081 });
     expect(() => parseCliArgs(['--transport', 'sse'])).toThrow(/--transport/);

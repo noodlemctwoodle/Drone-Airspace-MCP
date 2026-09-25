@@ -99,7 +99,22 @@ export function parseCliArgs(argv: string[]): CliArgs {
   return { transport, port, version: values.version ?? false, help: values.help ?? false };
 }
 
+/**
+ * Desktop-extension hosts substitute `${user_config.x}` / `${HOME}` into env
+ * values; when a value is left unset the literal placeholder can arrive
+ * instead. Treat anything still containing `${` as not provided.
+ */
+export function sanitiseEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (typeof v === 'string' && v.includes('${')) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env, cli: Partial<CliArgs> = {}): Config {
+  env = sanitiseEnv(env);
   const parsed = envSchema.safeParse(env);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];

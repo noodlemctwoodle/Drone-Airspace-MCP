@@ -17,13 +17,24 @@
   "documentation": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP#readme",
   "support": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP/issues",
   "license": "MIT",
-  "keywords": ["drone", "uas", "uk", "airspace", "notam", "frz", "rights of way", "caa"],
+  "keywords": [
+    "drone",
+    "uas",
+    "uk",
+    "airspace",
+    "notam",
+    "frz",
+    "rights of way",
+    "caa"
+  ],
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/index.js"],
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
       "env": {
         "OS_NAMES_API_KEY": "${user_config.os_names_api_key}",
         "DRONE_AIRSPACE_CACHE_DIR": "${user_config.cache_dir}",
@@ -32,13 +43,34 @@
     }
   },
   "tools": [
-    { "name": "check_location", "description": "Permanent airspace restrictions and landowner rules at a point" },
-    { "name": "get_aerodrome_zone", "description": "An aerodrome's flight restriction zone by name or ICAO code" },
-    { "name": "check_notams", "description": "Temporary restrictions (NOTAMs) covering a point" },
-    { "name": "check_route", "description": "Restrictions crossed along a route or within an area" },
-    { "name": "check_takeoff_site", "description": "Nearest public rights of way and landowner rules for a take-off spot" },
-    { "name": "geocode", "description": "Resolve a UK place name or postcode to coordinates" },
-    { "name": "get_data_status", "description": "Data pack version, AIRAC dates, sources and attribution" }
+    {
+      "name": "check_location",
+      "description": "Permanent airspace restrictions and landowner rules at a point"
+    },
+    {
+      "name": "get_aerodrome_zone",
+      "description": "An aerodrome's flight restriction zone by name or ICAO code"
+    },
+    {
+      "name": "check_notams",
+      "description": "Temporary restrictions (NOTAMs) covering a point"
+    },
+    {
+      "name": "check_route",
+      "description": "Restrictions crossed along a route or within an area"
+    },
+    {
+      "name": "check_takeoff_site",
+      "description": "Nearest public rights of way and landowner rules for a take-off spot"
+    },
+    {
+      "name": "geocode",
+      "description": "Resolve a UK place name or postcode to coordinates"
+    },
+    {
+      "name": "get_data_status",
+      "description": "Data pack version, AIRAC dates, sources and attribution"
+    }
   ],
   "user_config": {
     "os_names_api_key": {
@@ -51,14 +83,17 @@
     "cache_dir": {
       "type": "directory",
       "title": "Data cache folder",
-      "description": "Where the airspace data pack (about 49 MB download, 115 MB on disk) and geocoding cache are stored.",
-      "required": false,
-      "default": "${HOME}/.cache/uk-drone-airspace-mcp"
+      "description": "Where the airspace data pack (about 49 MB download, 115 MB on disk) and geocoding cache are stored. Leave empty for ~/.cache/uk-drone-airspace-mcp.",
+      "required": false
     }
   },
   "compatibility": {
     "claude_desktop": ">=0.10.0",
-    "platforms": ["darwin", "win32", "linux"],
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
     "runtimes": {
       "node": ">=22.13.0"
     }
