@@ -232,6 +232,7 @@ No arguments. Reports pack tag, AIRAC effective dates, per-source fetch dates an
 | Open access land | [Natural England CRoW Access Layer](https://naturalengland-defra.opendata.arcgis.com/datasets/Defra::crow-act-2000-access-layer/about), [NRW open country and common land](https://datamap.gov.wales/) | With the pack | OGL v3, see [licences/natural-england.md](licences/natural-england.md) and [licences/natural-resources-wales.md](licences/natural-resources-wales.md) |
 | SSSI and National Parks | Natural England and Natural Resources Wales designation boundaries | With the pack | OGL v3, advisory only |
 | Forestry England land | [Forestry England Legal Boundary](https://data-forestry.opendata.arcgis.com/) | With the pack | OGL v3 with acknowledgement, see [licences/forestry-england.md](licences/forestry-england.md); byelaws need a permit for drones |
+| Scottish core paths | [Core Paths - Scotland, Improvement Service Spatial Hub](https://data.spatialhub.scot/dataset/core_paths-is) (needs a free account key, `SPATIALHUB_AUTHKEY`) | Weekly | OGL v3 per council, see [licences/improvement-service-core-paths.md](licences/improvement-service-core-paths.md) |
 | Local authorities | [ONS Local Authority Districts (May 2026) BSC](https://geoportal.statistics.gov.uk/) | With the pack | OGL v3, see [licences/ONS.md](licences/ONS.md) |
 | Ground hazards | OpenStreetMap via the Geofabrik extract: railways, motorways and trunk roads, power lines, helipads, military land | Weekly | ODbL, see [licences/openstreetmap-ODbL.md](licences/openstreetmap-ODbL.md); advisory only |
 | Parking and laybys | OpenStreetMap via the [Geofabrik Great Britain extract](https://download.geofabrik.de/europe/great-britain.html) (`amenity=parking`, `highway=rest_area`) | Weekly | ODbL |
@@ -253,6 +254,7 @@ The permanent layers are assembled into a data pack by [`.github/workflows/build
 | `ELEVATION_CACHE_TTL_SECONDS` | `2592000` | Terrain does not change |
 | `NOAA_KP_URL` | `https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json` | |
 | `SPACE_WEATHER_CACHE_TTL_SECONDS` | `900` | |
+| `SPATIALHUB_AUTHKEY` | (unset) | Build only: Spatial Hub account key for Scottish core paths; without it the pack has none |
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org/search` | Self-host to lift the 1 req/s limit |
 | `POSTCODES_IO_URL` | `https://api.postcodes.io` | |
 | `NOTAM_PIB_URL` | `https://pibs.nats.co.uk/operational/pibs/PIB.xml` | |

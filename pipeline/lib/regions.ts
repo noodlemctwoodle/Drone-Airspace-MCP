@@ -15,6 +15,7 @@ export const REGIONS: Record<string, Region> = {
     authorities: ['BS', 'BZ', 'CN', 'DN', 'DT', 'GR', 'NS', 'PY', 'SD', 'SG', 'ST', 'TB', 'WT'],
   },
   wales: { name: 'wales', bbox: [-5.4, 51.3, -2.6, 53.5], authorities: 'wales' as unknown as string[] },
+  scotland: { name: 'scotland', bbox: [-8.7, 54.6, -0.7, 61], authorities: [] }, // no rowmaps councils; paths come from the core paths source
 };
 
 export function resolveRegion(name: string | undefined, bboxArg?: string): Region {

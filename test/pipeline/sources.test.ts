@@ -9,6 +9,7 @@ import { normaliseCrowFeature, normaliseNationalParkFeature, normaliseSssiFeatur
 import { normaliseNrwAccessFeature, normaliseNrwSssiFeature } from '../../pipeline/sources/access/nrw.js';
 import { normaliseForestryFeature } from '../../pipeline/sources/forestry/legal-boundary.js';
 import { classifyHazard, normaliseHazardFeature } from '../../pipeline/sources/osm/hazards.js';
+import { normaliseCorePathFeature, scottishAuthorityCode } from '../../pipeline/sources/corepaths/spatialhub.js';
 import { bboxIntersects, resolveRegion } from '../../pipeline/lib/regions.js';
 import { encodeLine } from '../../pipeline/lib/geometry.js';
 import { decodeLine } from '../../src/pack/geometry.js';
@@ -231,5 +232,18 @@ describe('osm hazards', () => {
     expect(mil[0]).toMatchObject({ kind: 'military', name: 'Lulworth Ranges' });
     expect(mil[0].geometry.type).toBe('Polygon');
     expect(normaliseHazardFeature({ geometry: { type: 'LineString', coordinates: [[-2.5, 51.4], [-2.4, 51.4]] }, properties: { landuse: 'military' } })).toEqual([]);
+  });
+});
+
+describe('scottish core paths', () => {
+  it('normalises WFS features into core paths per council and splits multi-lines', () => {
+    const fx = JSON.parse(readFileSync(new URL('../fixtures/corepaths/wfs-page-1.json', import.meta.url), 'utf8'));
+    const paths = fx.features.flatMap((f: never) => normaliseCorePathFeature(f));
+    expect(paths.length).toBe(3);
+    expect(paths[0]).toMatchObject({ authorityCode: 'S-EDINBURGH', authorityName: 'City of Edinburgh Council', pathType: 'core_path', routeNo: 'CEC-12', routeName: "Arthur's Seat circuit" });
+    expect(paths[0].lengthM).toBeGreaterThan(400);
+    expect(paths[1].authorityCode).toBe('S-STIRLING');
+    expect(scottishAuthorityCode('Highland Council')).toBe('S-HIGHLAND');
+    expect(scottishAuthorityCode(null)).toBe('S-ALL');
   });
 });

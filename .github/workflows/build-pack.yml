@@ -72,6 +72,8 @@ jobs:
             pack-raw-
       - name: Build pack
         id: build
+        env:
+          SPATIALHUB_AUTHKEY: ${{ secrets.SPATIALHUB_AUTHKEY }}
         run: |
           TAG="pack-${{ needs.check.outputs.airac_date }}-${{ github.run_number }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"

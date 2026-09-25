@@ -28,7 +28,7 @@ export interface BriefingInput {
   weather: Flyability | null;
   kp: GeomagneticLevel | null;
   hazards: HazardHit[];
-  coverage: ProwCoverage;
+  coverage: ProwCoverage | 'scotland_core_paths';
   pathsWithin1km: number;
   droneSubcategory: 'A1' | 'A2' | 'A3' | null;
 }
@@ -86,7 +86,7 @@ export function deriveBriefingStatus(i: BriefingInput): { status: BriefingStatus
   if (softRule && !rules.some((r) => r.takeoffBanned)) add('note', 'landowner_rule', `Landowner rule applies: ${softRule.name} (${restrictionLabel(softRule)})${softRule.summary ? ` - ${truncate(softRule.summary.split(/(?<=[.!?])\s/)[0], 160)}` : ''}`);
   if (i.notams && i.notams.nearby.length > 0) add('note', 'notam_nearby', `${i.notams.nearby.length} NOTAM${i.notams.nearby.length > 1 ? 's' : ''} in force nearby; see the NOTAM section.`);
   if (i.notams && i.notams.unlocated > 0) add('note', 'notam_unlocated', `${i.notams.unlocated} NOTAM${i.notams.unlocated > 1 ? 's' : ''} without a usable position are in force; check_notams lists them.`);
-  if ((i.coverage === 'england_wales' || i.coverage === 'unknown') && i.pathsWithin1km === 0) add('note', 'no_prow', 'No public right of way within 1 km; confirm you have the landowner\'s permission to take off.');
+  if ((i.coverage === 'england_wales' || i.coverage === 'unknown' || i.coverage === 'scotland_core_paths') && i.pathsWithin1km === 0) add('note', 'no_prow', 'No public right of way within 1 km; confirm you have the landowner\'s permission to take off.');
   const access = i.restrictions.filter((r) => r.kind === 'access_land');
   if (access.length > 0) add('note', 'access_land', 'Open access land: the public may walk here off paths; that is not itself permission to take off, so check the landowner rules above.');
   const des = i.restrictions.filter((r) => r.kind === 'designation');

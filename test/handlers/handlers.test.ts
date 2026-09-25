@@ -220,10 +220,23 @@ describe('check_takeoff_site', () => {
     expect(t.startsWith('Take-off restricted by landowner rule.')).toBe(true);
     expect(t).toContain('Test Park (Council byelaw)');
   });
-  it('says there is no PRoW data in Scotland', async () => {
+  it('lists Scottish core paths with the access-rights caveat when the pack has them', async () => {
     const { handlers } = setup();
     const r = json(await handlers.get('check_takeoff_site')!({ lat: 56.5, lon: -4.0, format: 'json' }));
+    expect(r.coverage).toBe('scotland_core_paths');
+    expect(r.rightsOfWay[0]).toMatchObject({ pathType: 'core_path', authorityName: 'Stirling Council' });
+    expect(r.caveats.join(' ')).toMatch(/responsible access rights/);
+    const t = text(await handlers.get('check_takeoff_site')!({ lat: 56.5, lon: -4.0 }));
+    expect(t).toContain('Core path (Scotland) ST-7');
+    expect(t).toContain('Stirling Council core path plan');
+  });
+  it('says there is no PRoW data in Scotland when the pack has no core paths', async () => {
+    const { FakePackRepository, FIXTURE_META } = await import('../helpers/fake-pack-repository.js');
+    const repo = new FakePackRepository(undefined, undefined, undefined, { ...FIXTURE_META, sources: FIXTURE_META.sources.filter((s) => s.id !== 'is_core_paths') });
+    const built = buildTestDeps({ repo });
+    const r = json(await createHandlers(built.deps).get('check_takeoff_site')!({ lat: 56.5, lon: -4.0, format: 'json' }));
     expect(r.coverage).toBe('no_prow_data');
+    expect(r.rightsOfWay).toEqual([]);
     expect(r.caveats.join(' ')).toMatch(/Scotland has no definitive map/);
   });
 });

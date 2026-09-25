@@ -5,7 +5,7 @@ export interface KnownPoint {
   /** Only run when the pack bbox contains the point. */
   expect:
     | { layer: 'zones'; zoneType?: string; icao?: string; designatorPrefix?: string }
-    | { layer: 'rights_of_way'; authorityCode?: string; withinMetres: number }
+    | { layer: 'rights_of_way'; authorityCode?: string; withinMetres: number; onlyWhenCountry?: 'scotland' }
     | { layer: 'land_restrictions'; owner: string }
     | { layer: 'parking'; withinMetres: number }
     | { layer: 'hazards'; kind?: string; withinMetres: number }
@@ -20,6 +20,7 @@ export const KNOWN_POINTS: KnownPoint[] = [
   { name: 'Bristol ARP inside EGGD FRZ', lon: -2.7191, lat: 51.3827, expect: { layer: 'zones', zoneType: 'frz', icao: 'EGGD' } },
   { name: 'Hinkley Point inside a restricted/prohibited zone', lon: -3.1303, lat: 51.2085, expect: { layer: 'zones', designatorPrefix: 'EG' } },
   { name: 'Durdle Door footpath (Dorset)', lon: -2.277, lat: 50.6212, expect: { layer: 'rights_of_way', authorityCode: 'DT', withinMetres: 150 } },
+  { name: "Arthur's Seat core path (Edinburgh)", lon: -3.162, lat: 55.944, expect: { layer: 'rights_of_way', withinMetres: 300, onlyWhenCountry: 'scotland' } },
   { name: 'Durdle Door car park', lon: -2.2765, lat: 50.6227, expect: { layer: 'parking', withinMetres: 1200 } },
   { name: 'Brownsea Island is National Trust', lon: -1.9737, lat: 50.6905, expect: { layer: 'land_restrictions', owner: 'National Trust' } },
   { name: 'Bristol Temple Meads is by the railway', lon: -2.5813, lat: 51.449, expect: { layer: 'hazards', kind: 'railway', withinMetres: 200 } },

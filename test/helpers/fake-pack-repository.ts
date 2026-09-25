@@ -113,6 +113,20 @@ export const FIXTURE_ZONES: Zone[] = [
   },
 ];
 
+export const FIXTURE_CORE_PATH: RightOfWay = {
+  id: 150,
+  authorityCode: 'S-STIRLING',
+  authorityName: 'Stirling Council',
+  attribution: 'Core paths: Stirling Council core path plan via the Improvement Service Spatial Hub, Open Government Licence v3. Contains OS data © Crown copyright and database right 2026.',
+  sourceRef: 'pub_cpth.2',
+  pathType: 'core_path',
+  routeNo: 'ST-7',
+  routeName: null,
+  parish: null,
+  lengthM: 2500,
+  geometry: { type: 'LineString', coordinates: [[-4.01, 56.5], [-3.99, 56.5], [-3.97, 56.51]] },
+};
+
 export const FIXTURE_PROW: RightOfWay[] = [
   {
     id: 100,
@@ -209,6 +223,7 @@ export const FIXTURE_META: PackMeta = {
     { id: 'ne_crow_access', name: 'CRoW Act 2000 Access Layer (England)', url: 'https://naturalengland-defra.opendata.arcgis.com/', licence: 'OGL-3.0', attribution: 'Open access land: Natural England open data, Open Government Licence v3', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: '2026-07-21', featureCount: 1, notes: null },
     { id: 'ne_sssi', name: 'Sites of Special Scientific Interest (England)', url: 'https://naturalengland-defra.opendata.arcgis.com/', licence: 'OGL-3.0', attribution: 'SSSI boundaries: Natural England open data, Open Government Licence v3', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: '2026-08-15', featureCount: 1, notes: null },
     { id: 'nrw_open_country', name: 'NRW Open Access: Open Country', url: 'https://datamap.gov.wales/', licence: 'OGL-3.0', attribution: 'Open access land: Natural Resources Wales open data via DataMapWales, Open Government Licence v3', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 0, notes: null },
+    { id: 'is_core_paths', name: 'Core Paths - Scotland', url: 'https://data.spatialhub.scot/dataset/core_paths-is', licence: 'OGL-3.0', attribution: 'Core paths: Scottish council core path plans via the Improvement Service Spatial Hub, Open Government Licence v3', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 1, notes: null },
     { id: 'byelaws', name: 'Council byelaw seed list', url: 'https://github.com/noodlemctwoodle/Drone-Airspace-MCP', licence: 'MIT', attribution: 'Council byelaws: community-maintained list in this repository', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 1, notes: null },
   ],
 };
@@ -255,7 +270,7 @@ export class FakePackRepository implements PackRepository {
   private readonly adminAreas = FIXTURE_ADMIN_AREAS;
   constructor(
     private readonly zones: Zone[] = FIXTURE_ZONES,
-    private readonly prow: RightOfWay[] = FIXTURE_PROW,
+    private readonly prow: RightOfWay[] = [...FIXTURE_PROW, FIXTURE_CORE_PATH],
     private readonly restrictions: Array<LandRestriction & { geometry: Polygon }> = [...FIXTURE_RESTRICTIONS, FIXTURE_COUNCIL_POLICY, ...FIXTURE_ACCESS],
     private readonly metaValue: PackMeta = FIXTURE_META
   ) {}

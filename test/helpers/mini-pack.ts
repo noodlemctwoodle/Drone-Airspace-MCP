@@ -11,6 +11,7 @@ import { normaliseNtFeature } from '../../pipeline/sources/nt/arcgis.js';
 import { parseLads } from '../../pipeline/sources/lad/ons.js';
 import { normaliseCrowFeature, normaliseNationalParkFeature, normaliseSssiFeature } from '../../pipeline/sources/access/natural-england.js';
 import { normaliseForestryFeature } from '../../pipeline/sources/forestry/legal-boundary.js';
+import { normaliseCorePathFeature } from '../../pipeline/sources/corepaths/spatialhub.js';
 import { SCHEMA_VERSION } from '../../src/pack/schema.js';
 
 const fx = (p: string) => new URL(`../fixtures/${p}`, import.meta.url);
@@ -32,12 +33,16 @@ export async function buildMiniPack(dir: string): Promise<string> {
   insertSource(db, src('osm_hazards', 'OSM hazards test'));
   insertSource(db, src('ons_lad', 'ONS LAD test'));
   for (const id of ['ne_crow_access', 'ne_sssi', 'ne_national_parks', 'fe_legal_boundary']) insertSource(db, src(id, `${id} test`));
+  insertSource(db, { ...src('is_core_paths', 'Core paths test'), featureCount: 3 });
 
   const zones = parseAixmAirspaces(readFileSync(fx('aixm/mini-uas.xml'), 'utf8')).zones;
   const nZones = await insertZones(db, 'nats_uas', zones);
   insertAuthority(db, { code: 'BD', name: 'Barking and Dagenham', country: 'england', attribution: 'BD attribution', fetchedAt: now, featureCount: 5 });
   const paths = parseRowmapsGeojson(JSON.parse(readFileSync(fx('rowmaps/BD-mutated1.json'), 'utf8')), 'BD', 'footpath').paths;
-  const nPaths = await insertRightsOfWay(db, paths);
+  insertAuthority(db, { code: 'S-EDINBURGH', name: 'City of Edinburgh Council', country: 'scotland', attribution: 'Edinburgh core paths attribution', fetchedAt: now, featureCount: 1 });
+  insertAuthority(db, { code: 'S-STIRLING', name: 'Stirling Council', country: 'scotland', attribution: 'Stirling core paths attribution', fetchedAt: now, featureCount: 2 });
+  const core = JSON.parse(readFileSync(fx('corepaths/wfs-page-1.json'), 'utf8')).features.flatMap((f: never) => normaliseCorePathFeature(f)).map(({ authorityName: _n, ...p }: { authorityName: string }) => p);
+  const nPaths = await insertRightsOfWay(db, [...paths, ...core]);
   const nt = JSON.parse(readFileSync(fx('nt/page-1.json'), 'utf8')).features.map((f: never) => normaliseNtFeature(f, 'nt_always_open', 'always_open', 'x', now)!);
   const lads = parseLads(JSON.parse(readFileSync(fx('lad/lad-thin.geojson'), 'utf8')));
   const byelaws = (await loadByelaws(fx('byelaws/seed.yaml').pathname, (code) => lads.find((a) => a.code === code)?.geometry)).restrictions;

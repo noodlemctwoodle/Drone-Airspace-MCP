@@ -35,6 +35,7 @@ import { run as fetchAccess } from './fetch-access.js';
 import { run as fetchWales } from './fetch-wales.js';
 import { run as fetchForestry } from './fetch-forestry.js';
 import { run as fetchHazards } from './fetch-hazards.js';
+import { run as fetchCorePaths } from './fetch-corepaths.js';
 import { unlink } from 'node:fs/promises';
 import { writeManifest } from './make-manifest.js';
 
@@ -73,6 +74,7 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
   const SOURCES: Array<{ id: string; files: string[]; run: (a: PipelineArgs) => Promise<SourceReport | SourceReport[]> }> = [
     { id: 'nats', files: ['zones.ndjson'], run: fetchNats },
     { id: 'rowmaps', files: ['rights_of_way.ndjson'], run: fetchRowmaps },
+    { id: 'corepaths', files: ['core_paths.ndjson'], run: fetchCorePaths },
     { id: 'nt', files: ['nt.ndjson'], run: fetchNt },
     { id: 'access', files: ['access.ndjson'], run: fetchAccess },
     { id: 'wales', files: ['wales.ndjson'], run: fetchWales },
@@ -113,13 +115,14 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     log.info(`zones: ${counts.zones}`);
 
     const rowReport = reports.find((r) => r.source.id === SOURCE_IDS.rowmaps);
-    const authorities = (rowReport?.extra?.authorities as AuthorityReport[] | undefined) ?? [];
+    const coreReport = reports.find((r) => r.source.id === SOURCE_IDS.corePaths);
+    const authorities = [...((rowReport?.extra?.authorities as AuthorityReport[] | undefined) ?? []), ...((coreReport?.extra?.authorities as AuthorityReport[] | undefined) ?? [])];
     for (const a of authorities) insertAuthority(db, { code: a.code, name: a.name, country: a.country, attribution: a.attribution, fetchedAt: a.fetchedAt, featureCount: a.featureCount });
-    const prowFile = path.join(args.normalisedDir, 'rights_of_way.ndjson');
-    if (await exists(prowFile)) {
+    const prowFiles = (await Promise.all(['rights_of_way.ndjson', 'core_paths.ndjson'].map(async (f) => ((await exists(path.join(args.normalisedDir, f))) ? path.join(args.normalisedDir, f) : null)))).filter((f): f is string => f !== null);
+    if (prowFiles.length > 0) {
       const tolerance = args.simplifyProwM > 0 ? args.simplifyProwM / 111_320 : 0;
       async function* paths(): AsyncGenerator<NormalisedPath> {
-        for await (const p of readNdjson<NormalisedPath>(prowFile)) {
+        for (const prowFile of prowFiles) for await (const p of readNdjson<NormalisedPath>(prowFile)) {
           if (tolerance > 0 && p.coordinates.length > 2) {
             try {
               p.coordinates = simplify(lineString(p.coordinates), { tolerance, highQuality: false }).geometry.coordinates as Position[];

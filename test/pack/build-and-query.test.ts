@@ -21,7 +21,7 @@ describe('mini pack build and repository queries', () => {
     const v = await verifyPack(file, { region: 'test', sizeBytes: (await stat(file)).size, knownPoints: false });
     expect(v.failures).toEqual([]);
     expect(v.counts.zones).toBe(7);
-    expect(v.counts.rights_of_way).toBe(5);
+    expect(v.counts.rights_of_way).toBe(8);
     expect(v.counts.land_restrictions).toBeGreaterThanOrEqual(4); // multipolygons are split into parts
     expect(v.counts.coverage).toBeGreaterThanOrEqual(4);
     expect(v.counts.hazards).toBe(3);
@@ -49,6 +49,9 @@ describe('mini pack build and repository queries', () => {
     expect(hits[0].attribution).toBe('BD attribution');
     expect(hits[0].geometry.coordinates.length).toBeGreaterThan(2);
     expect(await repo.nearestRightsOfWay(-3, 53, 100, 3)).toEqual([]);
+    const core = await repo.nearestRightsOfWay(-3.162, 55.944, 300, 3);
+    expect(core[0]).toMatchObject({ pathType: 'core_path', authorityName: 'City of Edinburgh Council', routeNo: 'CEC-12' });
+    expect(core[0].attribution).toBe('Edinburgh core paths attribution');
     const hazards = await repo.hazardsNear(-2.277, 50.6212, 2500, 12);
     expect(hazards.map((h) => h.kind)).toEqual(['railway', 'military', 'helipad']);
     expect(hazards[0].distanceM).toBeLessThan(700);

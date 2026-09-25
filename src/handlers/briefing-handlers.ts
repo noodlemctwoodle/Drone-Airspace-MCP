@@ -32,6 +32,7 @@ import {
   CAVEAT_NOT_BRIEFING,
   CAVEAT_NO_PROW_HERE,
   CAVEAT_PROW_INTERPRETATION,
+  CAVEAT_SCOTLAND_ACCESS,
   CAVEAT_SPACE_WEATHER,
 } from './caveats.js';
 
@@ -80,7 +81,8 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
       pack.nearestParking(loc.lon, loc.lat, 2000, 3, false),
       pack.hazardsNear(loc.lon, loc.lat, 500, 10),
     ]);
-    const paths = coverage === 'scotland' || coverage === 'northern_ireland' ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, 1000, maxPaths);
+    const scotlandPaths = coverage === 'scotland' && (await deps.rightsOfWay.hasCorePaths());
+    const paths = coverage === 'northern_ireland' || (coverage === 'scotland' && !scotlandPaths) ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, 1000, maxPaths);
     const { relevant, above } = splitByRelevance(zones);
     const land = splitLandRestrictions(restrictions);
     const verdict = buildVerdict(relevant, restrictions);
@@ -96,7 +98,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
       weather: weatherOverall,
       kp: space?.level ?? null,
       hazards,
-      coverage,
+      coverage: scotlandPaths ? 'scotland_core_paths' : coverage,
       pathsWithin1km: paths.length,
       droneSubcategory: droneInfo?.assessment?.subcategory ?? null,
     });
@@ -135,7 +137,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
       outages.push(`space_weather: ${spaceR.error}`);
       caveats.push(CAVEAT_SPACE_WEATHER);
     }
-    caveats.push(coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION);
+    caveats.push(scotlandPaths ? CAVEAT_SCOTLAND_ACCESS : coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION);
     if (droneInfo) caveats.push(CAVEAT_DRONE_RULES);
 
     const windowTo = window.length > 0 ? window[window.length - 1].hour.time : null;
@@ -167,7 +169,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
         : null,
       weather: window.length > 0 ? { overall: weatherOverall, daylight: daily ? { sunrise: daily.sunrise, sunset: daily.sunset } : null, hours: window.map((a) => ({ ...a.hour, flyability: a.flyability, reasons: a.reasons })) } : null,
       spaceWeather: space ? { kp: space.latest.kp, time: space.latest.time, level: space.level, note: space.note } : null,
-      access: { coverage, rightsOfWay: paths.map(rightOfWayToJson), parking, hazards: hazards.map(hazardToJson) },
+      access: { coverage: scotlandPaths ? 'scotland_core_paths' : coverage, rightsOfWay: paths.map(rightOfWayToJson), parking, hazards: hazards.map(hazardToJson) },
       drone: droneInfo ? { query: droneArg, label: droneInfo.label, assessment: droneInfo.assessment } : null,
       caveats,
       attribution,

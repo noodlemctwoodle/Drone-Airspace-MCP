@@ -3,7 +3,9 @@ export const CAVEAT_NOT_BRIEFING =
 export const CAVEAT_PROW_INTERPRETATION =
   'Rights-of-way data is an interpretation of each council\'s Definitive Map, not the Definitive Map itself, and covers England and Wales only.';
 export const CAVEAT_NO_PROW_HERE =
-  'No public rights-of-way data here: Scotland has no definitive map (access rights apply under the Land Reform (Scotland) Act 2003) and Northern Ireland has very few recorded rights of way.';
+  'No public rights-of-way data here: Scotland has no definitive map (access rights apply under the Land Reform (Scotland) Act 2003, and this pack has no core paths) and Northern Ireland has very few recorded rights of way.';
+export const CAVEAT_SCOTLAND_ACCESS =
+  'Scotland: responsible access rights under the Land Reform (Scotland) Act 2003 apply to most land, not only paths. Core paths come from each council\'s core path plan via the Improvement Service, not a definitive map.';
 export const CAVEAT_BAN_LAYER_INCOMPLETE =
   'The landowner rule layer is incomplete: it holds National Trust and Forestry England land and a hand-curated list of council byelaws and policies. Absence of a rule here does not mean take-off is permitted, and open access land is shown as context, not as permission.';
 export const CAVEAT_NOTAM_SCHEDULE = 'One or more NOTAMs carry a daily schedule (item D); check the times before flying.';

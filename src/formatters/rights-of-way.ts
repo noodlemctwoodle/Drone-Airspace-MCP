@@ -6,6 +6,7 @@ const PATH_LABEL: Record<string, string> = {
   bridleway: 'Public bridleway',
   restricted_byway: 'Restricted byway',
   boat: 'Byway open to all traffic',
+  core_path: 'Core path (Scotland)',
 };
 
 export function renderRightOfWay(hit: RightOfWayHit): string {

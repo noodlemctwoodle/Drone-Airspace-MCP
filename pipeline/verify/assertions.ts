@@ -99,6 +99,7 @@ export async function verifyPack(file: string, opts: VerifyOptions): Promise<Ver
         if (!hit) failures.push(`known point "${kp.name}": no matching zone (found ${zones.map((z) => `${z.designator} ${z.name} ${z.zoneType} ${z.icao ?? ''}`).join('; ') || 'nothing'})`);
       } else if (e.layer === 'rights_of_way') {
         if (counts.rights_of_way === 0) continue;
+        if (e.onlyWhenCountry && Number(db.prepare('SELECT COUNT(*) AS c FROM authorities WHERE country = ?').get(e.onlyWhenCountry)?.c ?? 0) === 0) continue;
         const hits = await repo.nearestRightsOfWay(kp.lon, kp.lat, e.withinMetres, 3);
         const hit = hits.find((h) => !e.authorityCode || h.authorityCode === e.authorityCode);
         if (!hit) failures.push(`known point "${kp.name}": no right of way within ${e.withinMetres} m`);
