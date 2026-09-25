@@ -19,8 +19,9 @@ import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.j
 import { notamToJson, renderNotam } from '../formatters/notams.js';
 import { renderRightOfWay, rightOfWayToJson } from '../formatters/rights-of-way.js';
 import { renderParking } from '../formatters/parking.js';
+import { hazardToJson, renderHazard } from '../formatters/hazards.js';
 import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
-import { formatDateTime, formatDistance } from '../formatters/units.js';
+import { formatDateTime } from '../formatters/units.js';
 import { mapUrl } from '../map/view-data.js';
 import {
   CAVEAT_AIRSPACE_ONLY_BELOW_120M,
@@ -166,7 +167,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
         : null,
       weather: window.length > 0 ? { overall: weatherOverall, daylight: daily ? { sunrise: daily.sunrise, sunset: daily.sunset } : null, hours: window.map((a) => ({ ...a.hour, flyability: a.flyability, reasons: a.reasons })) } : null,
       spaceWeather: space ? { kp: space.latest.kp, time: space.latest.time, level: space.level, note: space.note } : null,
-      access: { coverage, rightsOfWay: paths.map(rightOfWayToJson), parking, hazards },
+      access: { coverage, rightsOfWay: paths.map(rightOfWayToJson), parking, hazards: hazards.map(hazardToJson) },
       drone: droneInfo ? { query: droneArg, label: droneInfo.label, assessment: droneInfo.assessment } : null,
       caveats,
       attribution,
@@ -189,7 +190,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
             lines: [
               ...paths.map(renderRightOfWay),
               ...parking.map(renderParking),
-              ...hazards.map((h) => `${formatDistance(h.distanceM)}: ${h.kind.replace('_', ' ')}${h.name ? ` (${h.name})` : ''}`),
+              ...hazards.map(renderHazard),
             ],
           },
         ];

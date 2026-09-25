@@ -12,7 +12,7 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 - **What is this aerodrome's zone?** `get_aerodrome_zone` by name or ICAO code, including runway protection zones.
 - **Is there a NOTAM in force?** `check_notams` reads the live NATS UK bulletin, filters by point, radius and date, and never silently drops NOTAMs it cannot place.
 - **What does my route cross?** `check_route` for a list of waypoints or an area, with the distance along the route at which each zone is entered.
-- **Can I take off here?** `check_takeoff_site` lists the nearest public rights of way with distances and the responsible council, the nearest public parking, plus National Trust land and known council byelaws at the point.
+- **Can I take off here?** `check_takeoff_site` lists the nearest public rights of way with distances and the responsible council, the nearest public parking, ground hazards within 1 km (railways, major roads, power lines, helipads, military land), plus National Trust land and known council byelaws at the point.
 - **Where can I park?** `find_parking` lists car parks, laybys and rest areas from OpenStreetMap, nearest first, with fee and access notes.
 - **Can I fly here, now?** `preflight_briefing` combines everything into one GO, CAUTION or NO-GO answer with reasons: airspace verdict, live NOTAMs, the weather window and geomagnetic activity, rights of way, parking and, when you name your drone, its rules. A live source that fails is reported as an outage, never assumed clear.
 - **What is the ground doing?** `check_terrain` profiles ground elevation along a route or around a point against the 120 m rule, which is measured from the surface below the aircraft, and warns when rising ground eats the clearance or falling ground puts a fixed height above the limit.
@@ -233,6 +233,7 @@ No arguments. Reports pack tag, AIRAC effective dates, per-source fetch dates an
 | SSSI and National Parks | Natural England and Natural Resources Wales designation boundaries | With the pack | OGL v3, advisory only |
 | Forestry England land | [Forestry England Legal Boundary](https://data-forestry.opendata.arcgis.com/) | With the pack | OGL v3 with acknowledgement, see [licences/forestry-england.md](licences/forestry-england.md); byelaws need a permit for drones |
 | Local authorities | [ONS Local Authority Districts (May 2026) BSC](https://geoportal.statistics.gov.uk/) | With the pack | OGL v3, see [licences/ONS.md](licences/ONS.md) |
+| Ground hazards | OpenStreetMap via the Geofabrik extract: railways, motorways and trunk roads, power lines, helipads, military land | Weekly | ODbL, see [licences/openstreetmap-ODbL.md](licences/openstreetmap-ODbL.md); advisory only |
 | Parking and laybys | OpenStreetMap via the [Geofabrik Great Britain extract](https://download.geofabrik.de/europe/great-britain.html) (`amenity=parking`, `highway=rest_area`) | Weekly | ODbL |
 | Country boundaries | ONS Countries (December 2024) BUC | Yearly | OGL v3 |
 | Geocoding | postcodes.io, OS Names API (optional), Nominatim | Live, cached 30 days | OGL v3; ODbL |

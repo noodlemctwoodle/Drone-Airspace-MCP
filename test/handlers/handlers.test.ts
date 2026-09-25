@@ -202,6 +202,18 @@ describe('check_takeoff_site', () => {
     expect(b.reasons.map((r: { code: string }) => r.code)).toEqual(expect.arrayContaining(['access_land', 'designation']));
     expect(b.reasons.map((r: { code: string }) => r.code)).not.toContain('landowner_ban');
   });
+  it('lists ground hazards near the take-off point as advisory', async () => {
+    const { handlers } = setup();
+    const j = json(await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277, format: 'json' }));
+    expect(j.groundHazards.map((h: { kind: string }) => h.kind)).toEqual(['power_line']);
+    expect(j.groundHazards[0].distanceM).toBeGreaterThan(500);
+    expect(j.verdict.severity).toBe(0);
+    const t = text(await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 }));
+    expect(t).toContain('Ground hazards within 1.0 km (1)');
+    expect(t).toMatch(/\d+ m: power line \(SSEN\)/);
+    expect(t).toContain('Network Rail asks pilots');
+    expect(j.attribution.join(' ')).toContain('OpenStreetMap');
+  });
   it('flags landowner bans in the headline', async () => {
     const { handlers } = setup();
     const t = text(await handlers.get('check_takeoff_site')!({ lat: 51.455, lon: -2.6 }));

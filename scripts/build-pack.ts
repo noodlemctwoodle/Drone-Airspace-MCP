@@ -34,6 +34,7 @@ import { run as fetchLad } from './fetch-lad.js';
 import { run as fetchAccess } from './fetch-access.js';
 import { run as fetchWales } from './fetch-wales.js';
 import { run as fetchForestry } from './fetch-forestry.js';
+import { run as fetchHazards } from './fetch-hazards.js';
 import { unlink } from 'node:fs/promises';
 import { writeManifest } from './make-manifest.js';
 
@@ -80,6 +81,7 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     { id: 'lad', files: ['admin_areas.ndjson'], run: fetchLad },
     { id: 'byelaws', files: ['byelaws.ndjson'], run: loadByelaws },
     { id: 'parking', files: ['parking.ndjson'], run: fetchParking },
+    { id: 'hazards', files: ['hazards.ndjson'], run: fetchHazards },
   ];
   for (const source of SOURCES) {
     if (!has(source.id)) {

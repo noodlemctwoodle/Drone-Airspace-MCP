@@ -55,6 +55,7 @@ export interface ViewData {
   rightsOfWay: Array<{ type: 'Feature'; properties: { id: number; pathType: string; routeNo: string | null; authority: string; distanceM: number }; geometry: LineString }>;
   landRestrictions: Array<{ type: 'Feature'; properties: { id: number; name: string; owner: string; kind: string; takeoffBanned: boolean }; geometry: unknown }>;
   parking: Array<{ lat: number; lon: number; name: string | null; kind: string; fee: string | null; distanceM: number }>;
+  hazards: Array<{ type: 'Feature'; properties: { id: number; kind: string; name: string | null; operator: string | null }; geometry: unknown }>;
   notams: Array<{ id: string; lat: number; lon: number; radiusKm: number; itemE: string }>;
   /** Null when the forecast is off or unavailable; the map then shows the radar only. */
   weather: ViewWeather | null;
@@ -72,11 +73,12 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
     const lats = req.route.map((p) => p[1]);
     bbox = [Math.min(...lons) - dLon, Math.min(...lats) - dLat, Math.max(...lons) + dLon, Math.max(...lats) + dLat];
   }
-  const [zones, paths, land, parking, meta] = await Promise.all([
+  const [zones, paths, land, parking, hazards, meta] = await Promise.all([
     pack.zonesInBbox(bbox),
     pack.nearestRightsOfWay(req.lon, req.lat, radiusM, 40),
     pack.landRestrictionsInBbox(bbox, 300),
     pack.nearestParking(req.lon, req.lat, Math.max(radiusM, 2000), 15, false),
+    pack.hazardsInBbox(bbox, 300),
     pack.meta(),
   ]);
   let notams: ViewData['notams'] = [];
@@ -118,6 +120,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
   if (paths.length) used.add('rowmaps');
   for (const l of land) used.add(l.sourceId);
   if (parking.length) used.add('osm_parking');
+  if (hazards.length) used.add('osm_hazards');
   return {
     centre: { lat: req.lat, lon: req.lon, ...(req.name ? { name: req.name } : {}) },
     bbox,
@@ -139,6 +142,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
     rightsOfWay: paths.map((p) => ({ type: 'Feature', properties: { id: p.id, pathType: p.pathType, routeNo: p.routeNo, authority: p.authorityName, distanceM: p.distanceM }, geometry: p.geometry })),
     landRestrictions: land.filter((l) => l.scope !== 'authority').map((l) => ({ type: 'Feature', properties: { id: l.id, name: l.name, owner: l.owner, kind: l.kind, takeoffBanned: l.takeoffBanned }, geometry: l.geometry })),
     parking: parking.map((p) => ({ lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, fee: p.fee, distanceM: p.distanceM })),
+    hazards: hazards.map((h) => ({ type: 'Feature', properties: { id: h.id, kind: h.kind, name: h.name, operator: h.operator }, geometry: h.geometry })),
     notams,
     weather,
     attribution: meta.sources.filter((s) => used.has(s.id)).map((s) => s.attribution).concat(weather ? [OPEN_METEO_ATTRIBUTION] : [], ['Map © OpenStreetMap contributors']),

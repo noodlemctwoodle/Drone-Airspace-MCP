@@ -11,6 +11,8 @@ export const CAVEAT_NOTAMS_NOT_INCLUDED = 'Temporary restrictions (NOTAMs) are n
 export const CAVEAT_AIRSPACE_ONLY_BELOW_120M = 'Only zones reaching below 400 ft (120 m) count towards the verdict.';
 export const CAVEAT_DRONE_RULES =
   'A summary of the CAA open category rules, not the regulation. Class marks come from manufacturer labelling: check the label on your aircraft, and check the current Drone Code before flying.';
+export const CAVEAT_HAZARDS =
+  'Ground hazards come from OpenStreetMap and are incomplete. They do not change the legal verdict, but the Drone Code separation rules apply and Network Rail asks pilots not to overfly the operational railway.';
 export const CAVEAT_TERRAIN =
   'Elevations come from the Copernicus GLO-90 model at about 90 m resolution; cliffs, quarries, buildings and trees are not resolved. Check the ground visually and set your altitude limit from the highest ground you will overfly.';
 export const CAVEAT_120M_SURFACE = 'The 120 m limit is measured from the closest point of the surface below the aircraft, not from the take-off point.';

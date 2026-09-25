@@ -27,6 +27,8 @@ describe('map view', () => {
     expect(view.parking[0].name).toBe('Durdle Door Car Park');
     expect(view.zones).toEqual([]);
     expect(view.weather).toBeNull();
+    expect(view.hazards.map((h) => h.properties.kind)).toEqual(['power_line']); // the helipad fixture is outside the 1.5 km view
+    expect(view.attribution.join(' ')).not.toContain('hazards'); // fixture meta has no hazards source, so no line is invented
     expect(view.attribution.join(' ')).toContain('OpenStreetMap');
     expect(view.attribution.join(' ')).not.toContain('Open-Meteo');
     const bristol = await buildViewData(deps, { lat: 51.3827, lon: -2.7191, includeNotams: false });

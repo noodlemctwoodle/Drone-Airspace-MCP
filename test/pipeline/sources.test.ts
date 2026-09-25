@@ -8,6 +8,7 @@ import { parseLads } from '../../pipeline/sources/lad/ons.js';
 import { normaliseCrowFeature, normaliseNationalParkFeature, normaliseSssiFeature } from '../../pipeline/sources/access/natural-england.js';
 import { normaliseNrwAccessFeature, normaliseNrwSssiFeature } from '../../pipeline/sources/access/nrw.js';
 import { normaliseForestryFeature } from '../../pipeline/sources/forestry/legal-boundary.js';
+import { classifyHazard, normaliseHazardFeature } from '../../pipeline/sources/osm/hazards.js';
 import { bboxIntersects, resolveRegion } from '../../pipeline/lib/regions.js';
 import { encodeLine } from '../../pipeline/lib/geometry.js';
 import { decodeLine } from '../../src/pack/geometry.js';
@@ -198,5 +199,37 @@ describe('access land and designations', () => {
     const fe = normaliseForestryFeature(fx('forestry/page-1.json').features[0], at)!;
     expect(fe).toMatchObject({ kind: 'landowner', owner: 'Forestry England', takeoffBanned: true, landingBanned: true, accessClass: 'forestry', props: { costCentre: 318 } });
     expect(fe.summary).toContain('permit');
+  });
+});
+
+describe('osm hazards', () => {
+  it('classifies hazard tags and ignores sidings, trenches and other ways', () => {
+    expect(classifyHazard({ railway: 'rail' })).toBe('railway');
+    expect(classifyHazard({ railway: 'rail', service: 'siding' })).toBeUndefined();
+    expect(classifyHazard({ highway: 'motorway' })).toBe('motorway');
+    expect(classifyHazard({ highway: 'trunk' })).toBe('trunk_road');
+    expect(classifyHazard({ highway: 'primary' })).toBeUndefined();
+    expect(classifyHazard({ power: 'line' })).toBe('power_line');
+    expect(classifyHazard({ power: 'minor_line' })).toBeUndefined();
+    expect(classifyHazard({ aeroway: 'helipad' })).toBe('helipad');
+    expect(classifyHazard({ emergency: 'landing_site' })).toBe('helipad');
+    expect(classifyHazard({ landuse: 'military' })).toBe('military');
+    expect(classifyHazard({ military: 'trench' })).toBeUndefined();
+  });
+  it('normalises lines, points and polygons, simplifying and dropping stubs', () => {
+    const rail = normaliseHazardFeature({ geometry: { type: 'LineString', coordinates: [[-2.6, 51.449], [-2.59, 51.4491], [-2.56, 51.449]] }, properties: { '@id': 'w1', railway: 'rail', name: 'Great Western Main Line', operator: 'Network Rail' } });
+    expect(rail).toHaveLength(1);
+    expect(rail[0]).toMatchObject({ osmId: 'w1', kind: 'railway', name: 'Great Western Main Line', operator: 'Network Rail' });
+    expect(rail[0].geometry.type).toBe('LineString');
+    const stub = normaliseHazardFeature({ geometry: { type: 'LineString', coordinates: [[-2.6, 51.449], [-2.6001, 51.449]] }, properties: { railway: 'rail' } });
+    expect(stub).toEqual([]);
+    const multi = normaliseHazardFeature({ geometry: { type: 'MultiLineString', coordinates: [[[-2.6, 51.4], [-2.5, 51.4]], [[-2.4, 51.4], [-2.3, 51.4]]] }, properties: { power: 'line' } });
+    expect(multi).toHaveLength(2);
+    const pad = normaliseHazardFeature({ geometry: { type: 'Polygon', coordinates: [[[-2.5, 51.4], [-2.499, 51.4], [-2.499, 51.401], [-2.5, 51.401], [-2.5, 51.4]]] }, properties: { aeroway: 'helipad', name: 'BRI helipad' } });
+    expect(pad[0].geometry.type).toBe('Point');
+    const mil = normaliseHazardFeature({ geometry: { type: 'Polygon', coordinates: [[[-2.25, 50.62], [-2.2, 50.62], [-2.2, 50.65], [-2.25, 50.65], [-2.25, 50.62]]] }, properties: { landuse: 'military', name: 'Lulworth Ranges' } });
+    expect(mil[0]).toMatchObject({ kind: 'military', name: 'Lulworth Ranges' });
+    expect(mil[0].geometry.type).toBe('Polygon');
+    expect(normaliseHazardFeature({ geometry: { type: 'LineString', coordinates: [[-2.5, 51.4], [-2.4, 51.4]] }, properties: { landuse: 'military' } })).toEqual([]);
   });
 });

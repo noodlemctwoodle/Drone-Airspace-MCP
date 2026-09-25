@@ -38,7 +38,8 @@
     "pack:export-d1": "tsx scripts/export-d1.ts",
     "worker:setup": "scripts/cloudflare-setup.sh",
     "worker:load": "scripts/d1-load.sh",
-    "pack:fetch-parking": "tsx scripts/fetch-parking.ts"
+    "pack:fetch-parking": "tsx scripts/fetch-parking.ts",
+    "pack:fetch-hazards": "tsx scripts/fetch-hazards.ts"
   },
   "repository": {
     "type": "git",

@@ -3,6 +3,7 @@ import type { Flyability } from '../weather/assessment.js';
 import type { GeomagneticLevel } from '../weather/space-weather.js';
 import { restrictionLabel, TYPE_LABEL } from '../airspace/verdict.js';
 import { truncate } from '../../formatters/units.js';
+import { HAZARD_LABEL } from '../../formatters/hazards.js';
 
 /**
  * Deterministic go / caution / no-go for a pre-flight briefing. Rules run in a
@@ -77,7 +78,7 @@ export function deriveBriefingStatus(i: BriefingInput): { status: BriefingStatus
   if (i.weather === null) add('caution', 'weather_unavailable', 'Weather forecast unavailable for the window; check conditions yourself.');
   if (i.kp === 'storm') add('caution', 'geomagnetic_storm', 'Geomagnetic storm in progress: GPS position and compass heading may be unreliable.');
   const nearHazard = i.hazards.find((h) => h.distanceM <= 200);
-  if (nearHazard) add('caution', 'hazard_near', `${nearHazard.kind.replace('_', ' ')}${nearHazard.name ? ` (${nearHazard.name})` : ''} ${nearHazard.distanceM} m away.`);
+  if (nearHazard) add('caution', 'hazard_near', `${HAZARD_LABEL[nearHazard.kind] ?? nearHazard.kind}${nearHazard.name ? ` (${nearHazard.name})` : ''} ${nearHazard.distanceM} m away.`);
   if (i.weather === 'caution') add('note', 'weather_marginal', 'Weather in the window is marginal in places; see the hourly ratings.');
   if (i.kp === 'active') add('note', 'geomagnetic_active', 'Raised geomagnetic activity: GPS accuracy may be reduced.');
   const rules = i.restrictions.filter((r) => r.kind !== 'access_land' && r.kind !== 'designation');

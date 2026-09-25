@@ -3,55 +3,23 @@
  * Car parks, laybys and rest areas from OpenStreetMap (Geofabrik Great Britain extract).
  * Needs `osmium` (apt: osmium-tool, brew: osmium-tool). The PBF is cached for a week.
  */
-import { execFileSync, spawnSync } from 'node:child_process';
-import { createWriteStream } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import { createReadStream } from 'node:fs';
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 import { createBuildLog } from '../pipeline/lib/log.js';
 import { parsePipelineArgs, writeReport, type PipelineArgs, type SourceReport } from '../pipeline/lib/cli.js';
-import { BUILD_USER_AGENT } from '../pipeline/lib/http.js';
 import { openNdjsonWriter } from '../pipeline/lib/ndjson.js';
+import { ensurePbf, PBF_URL, requireOsmium } from '../pipeline/sources/osm/pbf.js';
 import { normaliseParkingFeature } from '../pipeline/sources/osm/parking.js';
 import { SOURCE_IDS } from '../src/pack/schema.js';
 
-const PBF_URL = process.env.OSM_PBF_URL ?? 'https://download.geofabrik.de/europe/great-britain-latest.osm.pbf';
-const PBF_MAX_AGE_DAYS = Number(process.env.OSM_PBF_MAX_AGE_DAYS ?? 7);
 export const OSM_ATTRIBUTION = 'Parking and laybys: © OpenStreetMap contributors, Open Database Licence (ODbL), via the Geofabrik Great Britain extract.';
-
-async function ensurePbf(dir: string, offline: boolean, log = createBuildLog('parking')): Promise<{ file: string; fetchedAt: string }> {
-  await mkdir(dir, { recursive: true });
-  const file = path.join(dir, 'great-britain-latest.osm.pbf');
-  const metaFile = `${file}.meta.json`;
-  let meta: { fetchedAt: string } | undefined;
-  try {
-    meta = JSON.parse(await readFile(metaFile, 'utf8'));
-    const ageDays = (Date.now() - new Date(meta!.fetchedAt).getTime()) / 86_400_000;
-    if ((await stat(file)).size > 100_000_000 && (offline || ageDays < PBF_MAX_AGE_DAYS)) return { file, fetchedAt: meta!.fetchedAt };
-  } catch {
-    meta = undefined;
-  }
-  if (offline) throw new Error(`offline and no cached ${file}`);
-  log.info(`downloading ${PBF_URL}`);
-  const res = await fetch(PBF_URL, { headers: { 'User-Agent': BUILD_USER_AGENT } });
-  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status} for ${PBF_URL}`);
-  const part = `${file}.part`;
-  await pipeline(Readable.fromWeb(res.body as never), createWriteStream(part));
-  const { rename } = await import('node:fs/promises');
-  await rename(part, file);
-  const fetchedAt = new Date().toISOString();
-  await writeFile(metaFile, JSON.stringify({ fetchedAt, url: PBF_URL }));
-  return { file, fetchedAt };
-}
 
 export async function run(args: PipelineArgs): Promise<SourceReport> {
   const log = createBuildLog('parking');
   const dir = path.join(args.rawDir, 'osm');
-  const osmium = spawnSync('osmium', ['--version'], { encoding: 'utf8' });
-  if (osmium.status !== 0) throw new Error('osmium not found; install osmium-tool');
+  requireOsmium();
   const { file, fetchedAt } = await ensurePbf(dir, args.offline, log);
 
   const filtered = path.join(dir, 'parking.osm.pbf');

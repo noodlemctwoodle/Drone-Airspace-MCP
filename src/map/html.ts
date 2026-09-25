@@ -75,6 +75,7 @@ export const OVERLAYS = [
   { key: 'access', label: 'Open access land', colour: '#7cb342', section: 'ground', shape: 'area' },
   { key: 'designation', label: 'Nature and park designations', colour: '#9e9d24', section: 'ground', shape: 'area' },
   { key: 'parking', label: 'Parking / layby', colour: '#1a56c4', section: 'ground', shape: 'parking' },
+  { key: 'hazards', label: 'Ground hazards', colour: '#8d6e63', section: 'ground', shape: 'line' },
   { key: 'route', label: 'Route and location', colour: '#2a81cb', section: 'ground', shape: 'pin' },
   { key: 'conditions', label: 'Conditions now', colour: '#4fc3f7', section: 'weather', shape: 'badge' },
   { key: 'wind', label: 'Wind flow', colour: '#4fc3f7', section: 'weather', shape: 'flow' },
@@ -608,13 +609,19 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 
   function render(view) {
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
-    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length };
+    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, hazards: (view.hazards || []).length };
     var b = view.bbox;
     map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [20, 20] });
     view.landRestrictions.forEach(function (f) {
       var key = f.properties.kind === 'access_land' ? 'access' : f.properties.kind === 'designation' ? 'designation' : 'land';
       counts[key]++;
       L.geoJSON(f, { style: { color: COLOUR[key], weight: 1, fillOpacity: key === 'land' ? 0.18 : 0.1 } }).bindPopup('<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '')).addTo(groups[key]);
+    });
+    var HAZARD_LABEL = { railway: 'Railway', motorway: 'Motorway', trunk_road: 'Trunk road', power_line: 'Power line', helipad: 'Helipad', military: 'Military land' };
+    (view.hazards || []).forEach(function (f) {
+      var label = '<b>' + esc(HAZARD_LABEL[f.properties.kind] || f.properties.kind) + '</b>' + (f.properties.name ? '<br>' + esc(f.properties.name) : '') + (f.properties.operator ? '<br>' + esc(f.properties.operator) : '');
+      if (f.geometry.type === 'Point') L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { radius: 6, color: '#fff', fillColor: COLOUR.hazards, fillOpacity: 0.95, weight: 1.5 }).bindPopup(label).addTo(groups.hazards);
+      else L.geoJSON(f, { style: { color: COLOUR.hazards, weight: f.geometry.type === 'Polygon' ? 1 : 2.5, opacity: 0.85, fillOpacity: 0.12, dashArray: f.properties.kind === 'power_line' ? '4 4' : null } }).bindPopup(label).addTo(groups.hazards);
     });
     view.zones.forEach(function (f) {
       var key = zoneGroup(f.properties);
