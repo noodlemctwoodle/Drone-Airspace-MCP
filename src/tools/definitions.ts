@@ -161,6 +161,21 @@ export const toolDefinitions: ToolDefinition[] = [
     annotations: { readOnlyHint: true, openWorldHint: true, title: 'Check terrain' },
   },
   {
+    name: 'find_takeoff_spots',
+    description:
+      'Suggest take-off spots near a UK place: points on public rights of way, next to parking or on open access land, scored on the data held here. Spots inside prohibited, restricted, prison or aerodrome zones, or on land where take-off is banned, are excluded; ' +
+      'NOTAMs, danger areas, landowner rules and ground hazards lower the score, paths, parking and access land raise it. Returns the best few with reasons and coordinates, and the map shows them numbered. A right of way is a right to pass, not to stop and fly.',
+    inputSchema: {
+      ...locationInput,
+      search_radius_m: z.number().int().min(200).max(10_000).default(3000).describe('How far around the point to look.'),
+      max_results: z.number().int().min(1).max(10).default(3),
+      drone: droneModelArg.optional(),
+      a2_certificate: a2CertificateArg,
+      format: formatArg,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true, title: 'Find take-off spots' },
+  },
+  {
     name: 'geocode',
     description:
       'Resolve a UK place name, postcode or landmark to coordinates. Use it to disambiguate before running a check when a name could match several places. ' +

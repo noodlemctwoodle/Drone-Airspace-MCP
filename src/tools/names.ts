@@ -9,6 +9,7 @@ export const TOOL_NAMES = [
   'check_drone_rules',
   'preflight_briefing',
   'check_terrain',
+  'find_takeoff_spots',
   'geocode',
   'get_data_status',
 ] as const;

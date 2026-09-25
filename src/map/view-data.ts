@@ -209,11 +209,12 @@ export function parseViewQuery(params: URLSearchParams): ViewRequest | undefined
   return { lat, lon, radiusM: Number.isFinite(radius) ? radius : undefined, route, includeNotams: params.get('notams') !== '0', includeWeather: params.get('weather') !== '0' };
 }
 
-export function mapUrl(base: string | undefined, req: { lat: number; lon: number; radiusM?: number; route?: Position[]; drone?: string }): string | null {
+export function mapUrl(base: string | undefined, req: { lat: number; lon: number; radiusM?: number; route?: Position[]; drone?: string; spots?: Array<{ lat: number; lon: number }> }): string | null {
   if (!base) return null;
   const q = new URLSearchParams({ lat: req.lat.toFixed(5), lon: req.lon.toFixed(5) });
   if (req.radiusM) q.set('radius', String(Math.round(req.radiusM)));
   if (req.drone) q.set('drone', req.drone);
+  if (req.spots && req.spots.length > 0) q.set('spots', req.spots.slice(0, 10).map((s) => `${s.lat.toFixed(5)},${s.lon.toFixed(5)}`).join(';'));
   if (req.route && req.route.length >= 2) q.set('route', req.route.map((p) => `${p[0].toFixed(5)},${p[1].toFixed(5)}`).join(';'));
   return `${base}/map?${q.toString()}`;
 }

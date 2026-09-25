@@ -77,6 +77,7 @@ export const OVERLAYS = [
   { key: 'parking', label: 'Parking / layby', colour: '#1a56c4', section: 'ground', shape: 'parking' },
   { key: 'hazards', label: 'Ground hazards', colour: '#8d6e63', section: 'ground', shape: 'line' },
   { key: 'route', label: 'Route and location', colour: '#2a81cb', section: 'ground', shape: 'pin' },
+  { key: 'spots', label: 'Take-off spots', colour: '#2a81cb', section: 'ground', shape: 'spot' },
   { key: 'conditions', label: 'Conditions now', colour: '#4fc3f7', section: 'weather', shape: 'badge' },
   { key: 'wind', label: 'Wind flow', colour: '#4fc3f7', section: 'weather', shape: 'flow' },
   { key: 'radar', label: 'Rain radar', colour: '#4fc3f7', section: 'weather', shape: 'radar' },
@@ -199,6 +200,10 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .sw-parking::after { content: 'P'; }
   .p-sign { width: 24px; height: 24px; }
   .p-sign svg { width: 24px; height: 24px; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+  .sw-spot { width: 16px; height: 16px; margin: -1px 2px; border-radius: 50%; background: var(--c); color: #fff; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); font: 700 10px/13px -apple-system, system-ui, sans-serif; text-align: center; }
+  .sw-spot::after { content: '1'; }
+  .spot { width: 26px; height: 26px; }
+  .spot div { width: 26px; height: 26px; border-radius: 50%; background: #2a81cb; color: #fff; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.45); font: 700 13px/22px -apple-system, system-ui, sans-serif; text-align: center; }
   .sw-badge { border: 1.5px solid var(--c); border-radius: 3px; }
   .sw-badge::after { content: ''; position: absolute; left: 4px; right: 4px; top: 4px; border-top: 2px solid var(--c); box-shadow: 0 4px 0 var(--c); }
   .sw-flow::before, .sw-flow::after { content: ''; position: absolute; left: 0; right: 0; height: 0; border-top: 2px solid var(--c); border-radius: 2px; }
@@ -350,7 +355,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
 
   // Weather: rain radar tiles from RainViewer's latest frame, plus the conditions badge.
-  var radarLayer = null, radarTime = null, currentWeather = null, currentCentre = null;
+  var radarLayer = null, radarTime = null, currentWeather = null, currentCentre = null, pendingSpots = [];
+  function spotIcon(rank) { return L.divIcon({ className: 'spot', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14], html: '<div>' + rank + '</div>' }); }
   var WIND_COLOUR = { good: '#2e7d32', caution: '#ef6c00', poor: '#c62828' };
 
   // Wind: animated streamlines on a canvas, as on a forecast chart. Particles are
@@ -609,7 +615,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 
   function render(view) {
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
-    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, hazards: (view.hazards || []).length };
+    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, hazards: (view.hazards || []).length, spots: 0 };
     var b = view.bbox;
     map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [20, 20] });
     view.landRestrictions.forEach(function (f) {
@@ -641,6 +647,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       L.polyline(view.route.map(function (p) { return [p[1], p[0]]; }), { color: COLOUR.route, weight: 3, dashArray: '8 6' }).addTo(groups.route);
     }
     centreMarker = L.marker([view.centre.lat, view.centre.lon], { icon: currentPinIcon() }).bindPopup(esc(view.centre.name || 'Your location')).addTo(groups.route);
+    pendingSpots.forEach(function (s) { L.marker([s.lat, s.lon], { icon: spotIcon(s.rank) }).bindPopup('<b>Spot ' + esc(s.rank) + '</b><br>' + esc(s.label)).addTo(groups.spots); });
+    counts.spots = pendingSpots.length;
     currentWeather = view.weather || null;
     currentCentre = [view.centre.lat, view.centre.lon];
     loaded = true;
@@ -657,6 +665,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
 
   function load(req) {
+    pendingSpots = Array.isArray(req.spots) ? req.spots.filter(function (s) { return typeof s.lat === 'number' && typeof s.lon === 'number'; }).map(function (s, i) { return { lat: s.lat, lon: s.lon, rank: s.rank || i + 1, label: s.label || 'Spot ' + (i + 1) }; }) : [];
     if (!API_BASE) { setStatus('Map data needs the hosted server'); if (typeof req.lat === 'number') { map.setView([req.lat, req.lon], 13); centreMarker = L.marker([req.lat, req.lon], { icon: currentPinIcon() }).addTo(groups.route); } return; }
     var q = new URLSearchParams();
     if (typeof req.lat === 'number' && typeof req.lon === 'number') { q.set('lat', req.lat); q.set('lon', req.lon); }
@@ -674,7 +683,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     var route = (qs.get('route') || '').split(';').filter(Boolean).map(function (s) { return s.split(',').map(parseFloat); });
     var wps = (qs.get('waypoints') || '').split(';').filter(Boolean);
     if (qs.get('drone')) selectDrone(qs.get('drone'), true);
-    if (isFinite(lat) && isFinite(lon)) load({ lat: lat, lon: lon, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined });
+    var spots = (qs.get('spots') || '').split(';').filter(Boolean).map(function (s, i) { var p = s.split(',').map(parseFloat); return { lat: p[0], lon: p[1], rank: i + 1, label: 'Spot ' + (i + 1) }; });
+    if (isFinite(lat) && isFinite(lon)) load({ lat: lat, lon: lon, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined, spots: spots });
     else if (qs.get('place')) load({ place: qs.get('place'), radiusM: parseFloat(qs.get('radius')) || undefined });
     else if (wps.length > 1) load({ waypoints: wps });
     else setStatus('Add ?lat=&lon= or ?place= to the URL');

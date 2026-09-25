@@ -25,7 +25,7 @@ describe('streamable http transport', () => {
     const client = new Client({ name: 'test', version: '0' });
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${transport.port}/mcp`)));
     const { tools } = await client.listTools();
-    expect(tools.length).toBe(12);
+    expect(tools.length).toBe(13);
     const r = await client.callTool({ name: 'get_data_status', arguments: {} });
     expect((r.content as Array<{ text: string }>)[0].text).toContain('Data pack ready');
     await client.close();

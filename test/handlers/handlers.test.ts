@@ -429,3 +429,43 @@ describe('check_terrain', () => {
     await expect(h({ waypoints: [[-2, 50], [-2, 51.5]] })).rejects.toThrow(/maximum for a terrain profile/);
   });
 });
+
+describe('find_takeoff_spots', () => {
+  it('ranks a spot on the coast path near the car park first, with reasons and attribution', async () => {
+    const { handlers } = setup(LIVE_ROUTES);
+    const r = await handlers.get('find_takeoff_spots')!({ lat: 50.6212, lon: -2.277, format: 'json' });
+    const j = JSON.parse(r.content[0].text);
+    expect(j.spots.length).toBe(3);
+    expect(j.spots[0].via.source).toBe('prow');
+    expect(j.spots[0].via.label).toMatch(/FP 12|BR 3/);
+    expect(j.spots.map((s: { via: { label: string } }) => s.via.label).join(' ')).toContain('FP 12');
+    expect(j.spots[0].nearestPathM).toBeLessThanOrEqual(25);
+    expect(j.spots[0].nearestParkingM).toBeLessThanOrEqual(300);
+    expect(j.spots[0].score).toBeGreaterThanOrEqual(140);
+    expect(j.spots[0].reasons).toEqual(expect.arrayContaining(['on a public right of way']));
+    expect(j.attribution.join(' ')).toContain('council of Dorset');
+    expect(r._meta).toMatchObject({ ui: { view: { spots: [expect.objectContaining({ rank: 1 }), expect.anything(), expect.anything()] } } });
+    const t = text(await handlers.get('find_takeoff_spots')!({ lat: 50.6212, lon: -2.277 }));
+    expect(t.startsWith('Best 3 take-off spots within 3.0 km of 50.62120')).toBe(true);
+    expect(t).toMatch(/1\. (footpath FP 12|bridleway BR 3)/);
+    const b = text(await handlers.get('find_takeoff_spots')!({ lat: 50.6212, lon: -2.277, format: 'brief' }));
+    expect(b.startsWith('The best spot near 50.62120')).toBe(true);
+  });
+  it('excludes every candidate inside the Bristol FRZ and says why', async () => {
+    const { handlers } = setup(LIVE_ROUTES);
+    const j = json(await handlers.get('find_takeoff_spots')!({ lat: 51.3827, lon: -2.7191, search_radius_m: 1500, format: 'json' }));
+    expect(j.spots).toEqual([]);
+    expect(j.excluded[0].reason).toContain('BRISTOL FRZ');
+    const t = text(await handlers.get('find_takeoff_spots')!({ lat: 51.3827, lon: -2.7191, search_radius_m: 1500 }));
+    expect(t.startsWith('No suitable take-off spot')).toBe(true);
+  });
+  it('excludes a path inside a byelaw ban and still returns when the NOTAM feed is down', async () => {
+    const built = buildTestDeps({ fetchImpl: fakeFetch([]).fetch });
+    const h = createHandlers(built.deps).get('find_takeoff_spots')!;
+    const j = json(await h({ lat: 51.455, lon: -2.6, search_radius_m: 800, format: 'json' }));
+    expect(j.excluded.some((e: { reason: string }) => e.reason.includes('take-off banned: Test Park'))).toBe(true);
+    expect(j.caveats.join(' ')).toContain('NOTAMs could not be fetched');
+    const none = json(await h({ lat: 50.05, lon: -5.68, search_radius_m: 300, format: 'json' }));
+    expect(none.candidatesConsidered).toBe(0);
+  });
+});

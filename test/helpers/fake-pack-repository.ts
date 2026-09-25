@@ -127,6 +127,15 @@ export const FIXTURE_CORE_PATH: RightOfWay = {
   geometry: { type: 'LineString', coordinates: [[-4.01, 56.5], [-3.99, 56.5], [-3.97, 56.51]] },
 };
 
+/** Paths and parking that a spot search must reject: inside the Bristol FRZ and inside the Test Park byelaw circle. */
+export const FIXTURE_EXCLUDED_SPOTS: { paths: RightOfWay[]; parking: Parking[] } = {
+  paths: [
+    { id: 102, authorityCode: 'NS', authorityName: 'North Somerset', attribution: 'Rights of way data provided by the council of North Somerset under the Open Government Licence.', sourceRef: 'NS-1', pathType: 'footpath', routeNo: 'FP 40', routeName: null, parish: 'Wrington', lengthM: 600, geometry: { type: 'LineString', coordinates: [[-2.725, 51.383], [-2.719, 51.3827], [-2.713, 51.382]] } },
+    { id: 103, authorityCode: 'BS', authorityName: 'Bristol', attribution: 'Rights of way data provided by the council of Bristol under the Open Government Licence.', sourceRef: 'BS-1', pathType: 'footpath', routeNo: 'FP 9', routeName: null, parish: null, lengthM: 300, geometry: { type: 'LineString', coordinates: [[-2.602, 51.455], [-2.598, 51.455]] } },
+  ],
+  parking: [{ id: 303, osmId: 'w303', kind: 'car_park', name: 'Airport long stay', access: null, fee: 'yes', capacity: 2000, surface: null, operator: null, lon: -2.72, lat: 51.384 }],
+};
+
 export const FIXTURE_PROW: RightOfWay[] = [
   {
     id: 100,
@@ -270,7 +279,7 @@ export class FakePackRepository implements PackRepository {
   private readonly adminAreas = FIXTURE_ADMIN_AREAS;
   constructor(
     private readonly zones: Zone[] = FIXTURE_ZONES,
-    private readonly prow: RightOfWay[] = [...FIXTURE_PROW, FIXTURE_CORE_PATH],
+    private readonly prow: RightOfWay[] = [...FIXTURE_PROW, FIXTURE_CORE_PATH, ...FIXTURE_EXCLUDED_SPOTS.paths],
     private readonly restrictions: Array<LandRestriction & { geometry: Polygon }> = [...FIXTURE_RESTRICTIONS, FIXTURE_COUNCIL_POLICY, ...FIXTURE_ACCESS],
     private readonly metaValue: PackMeta = FIXTURE_META
   ) {}
@@ -346,7 +355,7 @@ export class FakePackRepository implements PackRepository {
     return a ? { id: a.id, code: a.code, name: a.name, kind: a.kind, country: a.country } : null;
   }
   async nearestParking(lon: number, lat: number, limitMetres = 2000, n = 5, includePrivate = false): Promise<ParkingHit[]> {
-    return FIXTURE_PARKING.filter((p) => includePrivate || !(p.access && /^(private|no|customers|permit)$/.test(p.access)))
+    return [...FIXTURE_PARKING, ...FIXTURE_EXCLUDED_SPOTS.parking].filter((p) => includePrivate || !(p.access && /^(private|no|customers|permit)$/.test(p.access)))
       .map((p) => ({ ...p, distanceM: Math.round(distance([lon, lat], [p.lon, p.lat], { units: 'meters' })) }))
       .filter((p) => p.distanceM <= limitMetres)
       .sort((a, b) => a.distanceM - b.distanceM)

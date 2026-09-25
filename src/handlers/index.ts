@@ -11,6 +11,7 @@ import { createCheckWeatherHandler } from './weather-handlers.js';
 import { createCheckDroneRulesHandler } from './drone-handlers.js';
 import { createPreflightBriefingHandler } from './briefing-handlers.js';
 import { createCheckTerrainHandler } from './terrain-handlers.js';
+import { createFindTakeoffSpotsHandler } from './spots-handlers.js';
 import type { ToolResponse } from '../types.js';
 
 export type { HandlerDependencies, ToolHandler } from './deps.js';
@@ -27,6 +28,7 @@ export function createHandlers(deps: HandlerDependencies): Map<ToolName, ToolHan
   handlers.set('check_drone_rules', createCheckDroneRulesHandler(deps));
   handlers.set('preflight_briefing', createPreflightBriefingHandler(deps));
   handlers.set('check_terrain', createCheckTerrainHandler(deps));
+  handlers.set('find_takeoff_spots', createFindTakeoffSpotsHandler(deps));
   handlers.set('geocode', createGeocodeHandler(deps));
   handlers.set('get_data_status', createGetDataStatusHandler(deps));
   return handlers;

@@ -7,7 +7,7 @@ import { NAME, VERSION } from './version.js';
 import { MAP_CSP, MAP_RESOURCE_MIME, MAP_RESOURCE_URI, mapHtml } from './map/index.js';
 
 /** Tools whose result is best shown on a map (MCP Apps hosts render the app inline). */
-const MAP_TOOLS = new Set(['check_location', 'check_takeoff_site', 'check_route', 'find_parking', 'preflight_briefing', 'check_terrain']);
+const MAP_TOOLS = new Set(['check_location', 'check_takeoff_site', 'check_route', 'find_parking', 'preflight_briefing', 'check_terrain', 'find_takeoff_spots']);
 
 export function createServer(deps: HandlerDependencies): McpServer {
   const server = new McpServer({ name: NAME, version: VERSION });

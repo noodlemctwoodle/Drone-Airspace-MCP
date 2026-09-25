@@ -106,6 +106,7 @@ describe('map view', () => {
     expect(mini).toMatchObject({ classMark: 'C0', silhouette: 'mini', subcategory: 'A1', effectiveClass: 'UK0' });
     for (const svg of Object.values(idx.silhouettes)) expect(svg).toContain('currentColor');
     expect(mapUrl('https://x.test', { lat: 51, lon: -2, drone: 'dji-neo' })).toContain('drone=dji-neo');
+    expect(mapUrl('https://x.test', { lat: 51, lon: -2, spots: [{ lat: 51.1, lon: -2.1 }, { lat: 51.2, lon: -2.2 }] })).toContain('spots=51.10000%2C-2.10000%3B51.20000%2C-2.20000');
   });
   it('resolves a place or named waypoints server-side', async () => {
     const bristol = JSON.parse(readFileSync(new URL('../fixtures/geocode/nominatim-bristol.json', import.meta.url), 'utf8'));
@@ -164,6 +165,8 @@ describe('map view', () => {
     expect(html).toContain('id="sources"');
     expect(html).toContain('infoOpen');
     expect(html).toContain('function pinSvg(');
+    expect(html).toContain('pendingSpots');
+    expect(html).toContain("qs.get('spots')");
     expect(html).toContain('id="drone-select"');
     expect(html).toContain('/api/drones');
     expect(html).toContain('meta.view.drone');
