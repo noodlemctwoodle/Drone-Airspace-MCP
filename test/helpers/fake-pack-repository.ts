@@ -317,7 +317,8 @@ export class FakePackRepository implements PackRepository {
     return this.hazards.filter((h) => booleanIntersects(poly, h.geometry));
   }
   async adminAreaAt(lon: number, lat: number): Promise<AdminArea | null> {
-    const a = this.adminAreas.find((x) => booleanPointInPolygon(point([lon, lat]), x.geometry));
+    const here = point([lon, lat]);
+    const a = this.adminAreas.find((x) => booleanPointInPolygon(here, x.geometry)) ?? this.adminAreas.find((x) => pointToLineDistance(here, lineString(x.geometry.coordinates[0]), { units: 'meters' }) <= 1000);
     return a ? { id: a.id, code: a.code, name: a.name, kind: a.kind, country: a.country } : null;
   }
   async nearestParking(lon: number, lat: number, limitMetres = 2000, n = 5, includePrivate = false): Promise<ParkingHit[]> {

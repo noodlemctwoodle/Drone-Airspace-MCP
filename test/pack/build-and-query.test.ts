@@ -57,6 +57,8 @@ describe('mini pack build and repository queries', () => {
     expect(await repo.hazardsNear(-2.22, 50.63, 10, 5)).toMatchObject([{ kind: 'military', distanceM: 0 }]);
     expect(await repo.adminAreaAt(-2.277, 50.6212)).toMatchObject({ code: 'E06000059', name: 'Dorset', country: 'england' });
     expect(await repo.adminAreaAt(-4, 56.5)).toBeNull();
+    expect(await repo.adminAreaAt(-2.277, 50.4995)).toMatchObject({ code: 'E06000059' }); // 55 m outside the square, as a clifftop is outside the coastline
+    expect(await repo.adminAreaAt(-2.277, 50.48)).toBeNull();
     expect((await repo.landRestrictionsAt(-2.6, 51.455))[0].scope).toBe('site');
     const dorset = await repo.landRestrictionsAt(-2.277, 50.6212);
     expect(dorset.find((r) => r.scope === 'authority')).toMatchObject({ kind: 'policy', entryId: 'test-council-policy', owner: 'Test County Council' });

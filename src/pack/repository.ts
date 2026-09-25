@@ -69,6 +69,8 @@ export interface PackRepository {
 }
 
 const ROW_CANDIDATE_CAP = 2000;
+/** Generalised council boundaries stop at the coastline; points this close to one still get the council. */
+const COAST_TOLERANCE_M = 1000;
 
 function str(v: unknown): string | null {
   return v === null || v === undefined ? null : String(v);
@@ -434,20 +436,32 @@ export class QueryPackRepository implements PackRepository {
     return out;
   }
 
+  /**
+   * The council containing the point. Boundaries are generalised and clipped
+   * to the coastline, so a clifftop or beach can fall just outside every
+   * polygon; within `COAST_TOLERANCE_M` the nearest boundary wins instead.
+   */
   async adminAreaAt(lon: number, lat: number): Promise<AdminArea | null> {
+    const { dLat, dLon } = metresToDegrees(COAST_TOLERANCE_M, lat);
     const rows = await this.q.all(
       `SELECT a.* FROM admin_areas_rtree r JOIN admin_areas a ON a.id = r.id
        WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ? LIMIT 50`,
-      [lon, lon, lat, lat]
+      [lon + dLon, lon - dLon, lat + dLat, lat - dLat]
     );
     const here = point([lon, lat]);
+    const toArea = (row: Row): AdminArea => ({ id: Number(row.id), code: String(row.code), name: String(row.name), kind: String(row.kind) as AdminArea['kind'], country: (str(row.country) as AdminArea['country']) ?? null });
+    let nearest: { row: Row; d: number } | null = null;
     for (const row of rows) {
       const g = parseGeometry(String(row.geom));
-      if (g && booleanPointInPolygon(here, g)) {
-        return { id: Number(row.id), code: String(row.code), name: String(row.name), kind: String(row.kind) as AdminArea['kind'], country: (str(row.country) as AdminArea['country']) ?? null };
+      if (!g) continue;
+      if (booleanPointInPolygon(here, g)) return toArea(row);
+      const rings = g.type === 'Polygon' ? g.coordinates : g.coordinates.flat();
+      for (const ring of rings) {
+        const d = pointToLineDistance(here, lineString(ring), { units: 'meters' });
+        if (d <= COAST_TOLERANCE_M && (!nearest || d < nearest.d)) nearest = { row, d };
       }
     }
-    return null;
+    return nearest ? toArea(nearest.row) : null;
   }
 
   async findAerodrome(nameOrIcao: string, n = 5): Promise<GazetteerHit[]> {
