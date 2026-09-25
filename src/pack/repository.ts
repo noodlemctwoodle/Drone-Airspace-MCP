@@ -346,7 +346,8 @@ export class QueryPackRepository implements PackRepository {
     // OSM often maps one car park as several polygons; keep the nearest of same-named neighbours.
     const deduped: ParkingHit[] = [];
     for (const h of hits) {
-      if (h.name && deduped.some((d) => d.name === h.name && distance(point([d.lon, d.lat]), point([h.lon, h.lat]), { units: 'meters' }) < 400)) continue;
+      const near = (d: ParkingHit, m: number) => distance(point([d.lon, d.lat]), point([h.lon, h.lat]), { units: 'meters' }) < m;
+      if (h.name ? deduped.some((d) => d.name === h.name && near(d, 400)) : deduped.some((d) => !d.name && d.kind === h.kind && near(d, 150))) continue;
       deduped.push(h);
       if (deduped.length >= n) break;
     }
