@@ -66,6 +66,7 @@ export const SECTIONS = [
 export const OVERLAYS = [
   { key: 'prohibited', label: 'Prohibited / restricted', colour: '#c62828', section: 'airspace', shape: 'area', locked: true },
   { key: 'frz', label: 'Aerodrome FRZ', colour: '#ef6c00', section: 'airspace', shape: 'area', locked: true },
+  { key: 'prison', label: 'Prison (no-fly)', colour: '#6d4c41', section: 'airspace', shape: 'area', locked: true },
   { key: 'danger', label: 'Danger area', colour: '#f9a825', section: 'airspace', shape: 'area' },
   { key: 'other', label: 'Other airspace', colour: '#757575', section: 'airspace', shape: 'area' },
   { key: 'notam', label: 'NOTAM (temporary)', colour: '#6a1b9a', section: 'airspace', shape: 'area' },
@@ -599,7 +600,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     '<text x="12" y="17.5" text-anchor="middle" font-family="-apple-system, Segoe UI, system-ui, sans-serif" font-weight="700" font-size="15" fill="#fff">P</text></svg>' });
   function zoneGroup(p) {
     if (p.zoneType === 'prohibited' || p.zoneType === 'restricted') return 'prohibited';
-    if (p.zoneType === 'frz' || p.zoneType === 'danger') return p.zoneType;
+    if (p.zoneType === 'frz' || p.zoneType === 'danger' || p.zoneType === 'prison') return p.zoneType;
     return 'other';
   }
 
@@ -632,7 +633,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     currentCentre = [view.centre.lat, view.centre.lon];
     loaded = true;
     setStatus(view.centre.name || (view.route ? 'Your route' : 'Your location'));
-    var counts = { prohibited: 0, frz: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: view.landRestrictions.length, parking: view.parking.length };
+    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: view.landRestrictions.length, parking: view.parking.length };
     view.zones.forEach(function (f) { counts[zoneGroup(f.properties)]++; });
     setCounts(counts);
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;

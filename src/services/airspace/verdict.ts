@@ -47,7 +47,7 @@ export function zoneVerdictLine(zone: Zone, verb: 'Inside' | 'Enters'): string {
     case 'danger':
       return `${verb} ${title} (${label}) - check activation before flying${zone.activation ? `: ${truncate(zone.activation, 120)}` : ''}.`;
     case 'prison':
-      return `${verb} ${title} (${label}) - it is an offence to fly an unmanned aircraft here (within about 400 m of the prison${/SI 2023\/1101/.test(zone.notes ?? '') ? ', SI 2023/1101' : ''}) unless HMPPS has granted permission${zone.contact ? ` (${truncate(zone.contact, 120)})` : ''}; there is no exemption for recreational flights.`;
+      return `${verb} ${title} (${label}) - it is an offence to fly an unmanned aircraft here (within about 400 m of the prison${/SI 2023\/1101/.test(zone.notes ?? '') ? ', SI 2023/1101' : ''}) unless ${zone.contact && /^HMPPS/i.test(zone.contact) ? truncate(zone.contact, 120) : `HMPPS${zone.contact ? ` (${truncate(zone.contact, 120)})` : ''}`} has granted permission; there is no exemption for recreational flights.`;
     default:
       return `${verb} ${title} (${zone.rawType ? truncate(zone.rawType, 40) : label}) - see notes before flying.`;
   }

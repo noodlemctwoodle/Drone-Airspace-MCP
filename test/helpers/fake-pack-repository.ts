@@ -92,6 +92,25 @@ export const FIXTURE_ZONES: Zone[] = [
     centroid: [-2.7191, 51.3827],
     geometry: square(-3.5, 51.0, -2.0, 51.8),
   },
+  {
+    id: 5,
+    sourceId: 'nats_uas',
+    designator: 'EGR1U136',
+    name: 'HMP PORTLAND',
+    zoneType: 'prison',
+    rawType: 'R/FRZ',
+    icao: null,
+    aerodromeName: null,
+    lower: { ft: 0, ref: 'sfc', raw: '0 FT SFC' },
+    upper: { ft: 700, ref: 'amsl', raw: '700 FT MSL' },
+    activation: null,
+    contact: 'HMPPS (drone.RFZapplication@justice.gov.uk)',
+    notes: 'Unmanned aircraft flight not permitted unless permission has been granted by HMPPS. HMPPS email: drone.RFZapplication@justice.gov.uk. SI 2023/1101',
+    validFrom: null,
+    validTo: null,
+    centroid: [-2.4327, 50.5487],
+    geometry: square(-2.44, 50.543, -2.425, 50.554),
+  },
 ];
 
 export const FIXTURE_PROW: RightOfWay[] = [

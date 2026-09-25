@@ -150,7 +150,7 @@ describe('map view', () => {
     expect(OVERLAYS.filter((o) => o.section === 'weather').map((o) => o.key)).toEqual(['conditions', 'wind', 'radar']);
     expect(new Set(OVERLAYS.map((o) => o.key)).size).toBe(OVERLAYS.length);
     // Prohibited and restricted airspace and aerodrome FRZs can never be switched off.
-    expect(OVERLAYS.filter((o) => 'locked' in o && o.locked).map((o) => o.key)).toEqual(['prohibited', 'frz']);
+    expect(OVERLAYS.filter((o) => 'locked' in o && o.locked).map((o) => o.key)).toEqual(['prohibited', 'frz', 'prison']);
     expect(html).toContain('o.locked || hidden.indexOf(o.key) < 0');
     expect(html).toContain('hiddenOverlays');
     expect(html).toContain('WindCanvas');

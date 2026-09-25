@@ -180,6 +180,10 @@ function noteTexts(node: XmlNode | undefined): string[] {
 
 function extractContact(notes: string[]): string | null {
   for (const n of notes) {
+    const m = /HMPPS[^@\n]*?([\w.+-]+@justice\.gov\.uk)/i.exec(n);
+    if (m) return `HMPPS (${m[1]})`;
+  }
+  for (const n of notes) {
     const m = /Contact:\s*([^\n]+)/i.exec(n);
     if (m) return m[1].trim().replace(/\.$/, '');
   }
@@ -246,7 +250,10 @@ export function parseAixmAirspaces(xml: string): AixmParseResult {
       const designator = pathText(slice, 'designator') ?? null;
       const name = pathText(slice, 'name') ?? designator ?? 'UNNAMED';
       if (rawType === 'COAST' || rawType === 'RIVER') continue;
-      const zoneType = mapZoneType(rawType, localType, name);
+      // Feature-level notes (exclude the geometry sub-tree, which carries per-point remarks).
+      const featureNotes: string[] = [];
+      for (const ann of childrenNamed(slice, 'annotation')) featureNotes.push(...noteTexts(ann));
+      const zoneType = mapZoneType(rawType, localType, name, featureNotes.join('\n'));
       const aerodromeName = aerodromeNameOf(zoneType, name);
 
       const components = findAll(slice, 'AirspaceGeometryComponent').sort(
@@ -294,9 +301,6 @@ export function parseAixmAirspaces(xml: string): AixmParseResult {
       const c = centroid(geometry).geometry.coordinates as Position;
       if (!samePoint(c, c)) throw new Error('bad centroid');
 
-      // Feature-level notes (exclude the geometry sub-tree, which carries per-point remarks).
-      const featureNotes: string[] = [];
-      for (const ann of childrenNamed(slice, 'annotation')) featureNotes.push(...noteTexts(ann));
       const activationNotes: string[] = [];
       let activationStatus: string | undefined;
       for (const act of childrenNamed(slice, 'activation')) {

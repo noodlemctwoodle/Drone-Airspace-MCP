@@ -3,7 +3,7 @@ import { buildVerdict, rankZones, routeVerdict } from '../../src/services/airspa
 import { isRelevantBelow120m, splitByRelevance } from '../../src/services/airspace/vertical.js';
 import { FIXTURE_RESTRICTIONS, FIXTURE_ZONES } from '../helpers/fake-pack-repository.js';
 
-const [frz, prohibited, danger, high] = FIXTURE_ZONES;
+const [frz, prohibited, danger, high, prison] = FIXTURE_ZONES;
 
 describe('verdict', () => {
   it('orders prohibited above frz above danger', () => {
@@ -14,6 +14,8 @@ describe('verdict', () => {
     expect(buildVerdict([prohibited], []).line).toBe('Inside EG P106 HINKLEY POINT (Prohibited Area) - drone flying is not permitted.');
     expect(buildVerdict([danger], []).line).toBe('Inside EG D118 PENDINE (Danger Area) - check activation before flying: By NOTAM.');
     expect(buildVerdict([], []).line).toBe('No permanent airspace restriction at this point.');
+    expect(buildVerdict([prison], []).line).toBe('Inside EGR1U136 HMP PORTLAND (Prison restricted area) - it is an offence to fly an unmanned aircraft here (within about 400 m of the prison, SI 2023/1101) unless HMPPS (drone.RFZapplication@justice.gov.uk) has granted permission; there is no exemption for recreational flights.');
+    expect(rankZones([frz, prison]).map((z) => z.zoneType)).toEqual(['prison', 'frz']);
   });
   it('appends the count of further restrictions', () => {
     expect(buildVerdict([frz, danger], []).line).toMatch(/\(\+1 further restriction below\)$/);
@@ -33,7 +35,7 @@ describe('vertical relevance', () => {
     expect(isRelevantBelow120m(frz)).toBe(true);
     expect(isRelevantBelow120m(high)).toBe(false);
     const { relevant, above } = splitByRelevance(FIXTURE_ZONES);
-    expect(relevant.map((z) => z.id)).toEqual([1, 2, 3]);
+    expect(relevant.map((z) => z.id)).toEqual([1, 2, 3, 5]);
     expect(above.map((z) => z.id)).toEqual([4]);
   });
 });

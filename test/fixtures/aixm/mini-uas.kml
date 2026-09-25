@@ -93,4 +93,19 @@
                             </LinearRing>
                         </outerBoundaryIs>
                     </Polygon>
+                </Placemark><Placemark>
+                    <name>EGR1U136 HMP PORTLAND</name>
+                    <description>&lt;table border="1" cellpadding="1" cellspacing="0" row_id="14065" txt_name="HMP PORTLAND"&gt;&lt;tr&gt;&lt;td&gt;503323N 0022549W -&lt;br/&gt;503325N 0022513W -&lt;br/&gt;503306N 0022455W -&lt;br/&gt;503247N 0022444W -&lt;br/&gt;503243N 0022529W -&lt;br/&gt;503306N 0022556W -&lt;br/&gt;503323N 0022549W &lt;br/&gt;Upper limit: 800 FT ALT&lt;br/&gt;Lower limit: SFC  &lt;br/&gt;Class: &lt;/td&gt;&lt;td&gt;HMP Restricted airspace active H24.&lt;br/&gt;Unmanned aircraft flight not permitted unless permission has been granted by HMPPS.&lt;br/&gt;HMPPS email: drone.RFZapplication@justice.gov.uk&lt;br/&gt;SI 2023/1101&lt;br/&gt;Site elevation: 382 FT AMSL&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</description>
+                    <styleUrl>#rdpStyleMap</styleUrl>
+                    <Polygon>
+                        <extrude>true</extrude>
+                        <tessellate>true</tessellate>
+                        <altitudeMode>relativeToGround</altitudeMode>
+                        <outerBoundaryIs>
+                            <LinearRing>
+<altitudeMode>relativeToGround</altitudeMode>
+<coordinates>-2.430325,50.5564944444,243.84 -2.43215,50.5517,243.84 -2.4248138889,50.5452805556,243.84 -2.4123027778,50.5464833333,243.84 -2.4152,50.5516916667,243.84 -2.4202333333,50.55705,243.84 -2.430325,50.5564944444,243.84</coordinates>
+                            </LinearRing>
+                        </outerBoundaryIs>
+                    </Polygon>
                 </Placemark></Folder></Document></kml>

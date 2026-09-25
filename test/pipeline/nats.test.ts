@@ -16,9 +16,9 @@ describe('AIXM parser', () => {
   const result = parseAixmAirspaces(xml);
   const by = (d: string) => result.zones.find((z) => z.designator === d)!;
 
-  it('parses six real zones and drops the broken one with a warning', () => {
-    expect(result.stats.airspaces).toBe(7);
-    expect(result.zones.length).toBe(6);
+  it('parses seven real zones and drops the broken one with a warning', () => {
+    expect(result.stats.airspaces).toBe(8);
+    expect(result.zones.length).toBe(7);
     expect(result.stats.dropped).toBe(1);
     expect(result.warnings.some((w) => w.includes('EGRBROKEN'))).toBe(true);
   });
@@ -51,9 +51,16 @@ describe('AIXM parser', () => {
     const p = by('EGP813');
     expect(p.zoneType).toBe('prohibited');
     const prison = by('EGR4U012');
-    expect(prison.zoneType).toBe('restricted');
+    expect(prison.zoneType).toBe('prison'); // Isle of Man, by name; not under SI 2023/1101
     expect(prison.upperRef).toBe('unl');
     expect(prison.aerodromeName).toBeNull();
+    const hmp = by('EGR1U136');
+    expect(hmp.zoneType).toBe('prison'); // an R/FRZ in the feed, detected by name and notes
+    expect(hmp.rawType).toBe('R/FRZ');
+    expect(hmp.aerodromeName).toBeNull();
+    expect(hmp.icao).toBeNull();
+    expect(hmp.contact).toBe('HMPPS (drone.RFZapplication@justice.gov.uk)');
+    expect(hmp.notes).toContain('SI 2023/1101');
     const rpz = by('EGR1U010E');
     expect(rpz.zoneType).toBe('frz');
     expect(rpz.aerodromeName).toBe('KEMBLE');
@@ -61,7 +68,7 @@ describe('AIXM parser', () => {
   });
   it('cross-checks cleanly against the KML', () => {
     const report = crossCheck(result.zones, parseNatsKml(kml));
-    expect(report.matched).toBe(6);
+    expect(report.matched).toBe(7);
     expect(report.areaOutliers).toEqual([]);
     expect(report.warnings).toEqual([]);
   });
@@ -80,7 +87,10 @@ describe('zone types', () => {
   it('maps NATS conventions', () => {
     expect(mapZoneType('R', 'FRZ', 'BRISTOL')).toBe('frz');
     expect(mapZoneType('R', 'RPZ', 'BRISTOL RWY 27')).toBe('frz');
-    expect(mapZoneType('R', 'RPZ', 'HMP DARTMOOR')).toBe('restricted');
+    expect(mapZoneType('R', 'RPZ', 'HMP DARTMOOR')).toBe('prison');
+    expect(mapZoneType('R', 'FRZ', 'HMP BRISTOL')).toBe('prison');
+    expect(mapZoneType('R', 'FRZ', 'SOMEWHERE', 'Permission has been granted by HMPPS')).toBe('prison');
+    expect(mapZoneType('R', 'RPZ', 'GATWICK RWY 26L')).toBe('frz');
     expect(mapZoneType('R', undefined, 'SPRINGFIELDS')).toBe('restricted');
     expect(mapZoneType('P', undefined, 'X')).toBe('prohibited');
     expect(mapZoneType('D', undefined, 'X')).toBe('danger');

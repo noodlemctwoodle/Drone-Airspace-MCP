@@ -63,6 +63,17 @@ describe('check_location', () => {
     expect(r).toContain('Landowner rule: Brownsea Island');
     expect(r).toContain('National Trust Open Data');
   });
+  it('states the offence for a prison zone and never calls it an aerodrome', async () => {
+    const { handlers } = setup();
+    const t = text(await handlers.get('check_location')!({ lat: 50.5487, lon: -2.4327 }));
+    expect(t).toContain('Prison restricted area');
+    expect(t).toContain('offence');
+    expect(t).toContain('HMPPS');
+    expect(t).not.toMatch(/permission from the aerodrome/);
+    const j = json(await handlers.get('preflight_briefing')!({ lat: 50.5487, lon: -2.4327, format: 'json' }));
+    expect(j.status).toBe('no_go');
+    expect(j.reasons[0].code).toBe('prison_zone');
+  });
   it('fails clearly on a geocoder outage', async () => {
     const { handlers } = setup([], { fetchImpl: async () => new Response('down', { status: 503 }) });
     await expect(handlers.get('check_location')!({ place: 'Anywhere' })).rejects.toThrow(/Geocoding is unavailable/);

@@ -59,6 +59,13 @@ export function createGetAerodromeZoneHandler(deps: HandlerDependencies): ToolHa
       if (matches.length === 0) return brief(`I could not find an aerodrome zone for ${query}`);
       const m = matches[0];
       const z = m.primary.zone;
+      if (z.zoneType === 'prison') {
+        return brief(
+          `${m.name} is a prison restricted area from ${formatLimits(z.lower, z.upper)}, about ${m.primary.radiusKm.toFixed(1)} km across`,
+          'It is an offence to fly a drone there unless HMPPS has granted permission, and there is no exemption for recreational flights',
+          attributionSentence(['airspace'])
+        );
+      }
       return brief(
         `${m.name}${m.icao ? ` (${m.icao})` : ''} has a flight restriction zone from ${formatLimits(z.lower, z.upper)}, about ${m.primary.radiusKm.toFixed(1)} km around the aerodrome${m.components.length > 1 ? ` plus ${m.components.length - 1} runway protection zones` : ''}`,
         z.contact ? `Permission comes from ${z.contact}` : null,

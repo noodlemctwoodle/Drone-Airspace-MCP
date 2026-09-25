@@ -8,7 +8,7 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 
 ## What it answers
 
-- **Is this point inside a restriction?** `check_location` returns a one-line verdict and every zone containing the point, with vertical limits, activation notes and who to ask.
+- **Is this point inside a restriction?** `check_location` returns a one-line verdict and every zone containing the point, with vertical limits, activation notes and who to ask. Prison restricted areas (the 400 m zones around every closed prison and young offender institution in England and Wales, an offence to enter without HMPPS permission) are recognised as their own zone type rather than as aerodromes.
 - **What is this aerodrome's zone?** `get_aerodrome_zone` by name or ICAO code, including runway protection zones.
 - **Is there a NOTAM in force?** `check_notams` reads the live NATS UK bulletin, filters by point, radius and date, and never silently drops NOTAMs it cannot place.
 - **What does my route cross?** `check_route` for a list of waypoints or an area, with the distance along the route at which each zone is entered.

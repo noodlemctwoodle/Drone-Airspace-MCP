@@ -874,5 +874,137 @@ Application via CAA Customer Portal - ACOMS: https://portal.caa.co.uk.</aixm:not
             </aixm:AirspaceTimeSlice>
          </aixm:timeSlice>
       </aixm:Airspace>
-   </message:hasMember><message:hasMember xlink:type="simple"><aixm:Airspace gml:id="idBROKEN"><aixm:timeSlice><aixm:AirspaceTimeSlice gml:id="ts"><aixm:interpretation>SNAPSHOT</aixm:interpretation><aixm:type>R</aixm:type><aixm:designator>EGRBROKEN</aixm:designator><aixm:name>BROKEN</aixm:name><aixm:geometryComponent><aixm:AirspaceGeometryComponent><aixm:theAirspaceVolume><aixm:AirspaceVolume><aixm:upperLimit uom="FT">2000</aixm:upperLimit><aixm:upperLimitReference>SFC</aixm:upperLimitReference><aixm:lowerLimit uom="FT">0</aixm:lowerLimit><aixm:lowerLimitReference>SFC</aixm:lowerLimitReference><aixm:horizontalProjection><aixm:Surface srsName="urn:ogc:def:crs:EPSG::4326"><gml:patches><gml:PolygonPatch><gml:exterior><gml:Ring><gml:curveMember><gml:Curve><gml:segments><gml:Clothoid/></gml:segments></gml:Curve></gml:curveMember></gml:Ring></gml:exterior></gml:PolygonPatch></gml:patches></aixm:Surface></aixm:horizontalProjection></aixm:AirspaceVolume></aixm:theAirspaceVolume></aixm:AirspaceGeometryComponent></aixm:geometryComponent></aixm:AirspaceTimeSlice></aixm:timeSlice></aixm:Airspace></message:hasMember>
+   </message:hasMember><message:hasMember xlink:type="simple">
+      <aixm:Airspace gml:id="id279293">
+         <gml:identifier codeSpace="urn:uuid:">ddb8c4ca-2773-4683-9de0-410a3109974c</gml:identifier>
+         <gml:boundedBy xsi:nil="true" nilReason="unknown"/>
+         <aixm:timeSlice>
+            <aixm:AirspaceTimeSlice gml:id="id265136">
+               <gml:validTime xlink:type="simple">
+                  <gml:TimeInstant gml:id="id277853">
+                     <gml:timePosition>2026-09-03T00:00:00Z</gml:timePosition>
+                  </gml:TimeInstant>
+               </gml:validTime>
+               <aixm:interpretation>SNAPSHOT</aixm:interpretation>
+               <aixm:featureLifetime xlink:type="simple">
+                  <gml:TimePeriod gml:id="id278922">
+                     <gml:beginPosition>2024-01-25T00:00:00Z</gml:beginPosition>
+                     <gml:endPosition indeterminatePosition="unknown"/>
+                  </gml:TimePeriod>
+               </aixm:featureLifetime>
+               <aixm:type>R</aixm:type>
+               <aixm:designator>EGR1U136</aixm:designator>
+               <aixm:localType>FRZ</aixm:localType>
+               <aixm:name>HMP PORTLAND</aixm:name>
+               <aixm:designatorICAO>NO</aixm:designatorICAO>
+               <aixm:controlType xsi:nil="true" nilReason="unknown"/>
+               <aixm:upperLowerSeparation xsi:nil="true" nilReason="unknown"/>
+               <aixm:protectedRoute xsi:nil="true" nilReason="unknown"/>
+               <aixm:geometryComponent>
+                  <aixm:AirspaceGeometryComponent gml:id="id275165">
+                     <aixm:operation>BASE</aixm:operation>
+                     <aixm:operationSequence>1</aixm:operationSequence>
+                     <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                     <aixm:theAirspaceVolume>
+                        <aixm:AirspaceVolume gml:id="id275166">
+                           <aixm:upperLimit uom="FT">800</aixm:upperLimit>
+                           <aixm:upperLimitReference>MSL</aixm:upperLimitReference>
+                           <aixm:lowerLimit uom="FT">0</aixm:lowerLimit>
+                           <aixm:lowerLimitReference>SFC</aixm:lowerLimitReference>
+                           <aixm:horizontalProjection>
+                              <aixm:Surface srsName="urn:ogc:def:crs:EPSG::4326" gml:id="id275167">
+                                 <gml:patches>
+                                    <gml:PolygonPatch interpolation="planar">
+                                       <gml:exterior>
+                                          <gml:Ring>
+                                             <gml:curveMember xlink:type="simple">
+                                                <gml:Curve gml:id="id275168">
+                                                   <gml:segments>
+                                                      <gml:GeodesicString interpolation="geodesic">
+                                                         <gml:pointProperty xlink:type="simple">
+                                                            <aixm:Point srsName="urn:ogc:def:crs:EPSG::4326" gml:id="id275169">
+                                                               <gml:pos srsName="urn:ogc:def:crs:EPSG::4326">50.5564944 -2.4303250</gml:pos>
+                                                               <aixm:horizontalAccuracy uom="M">30</aixm:horizontalAccuracy>
+                                                               <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                                                            </aixm:Point>
+                                                         </gml:pointProperty>
+                                                         <gml:pointProperty xlink:type="simple">
+                                                            <aixm:Point srsName="urn:ogc:def:crs:EPSG::4326" gml:id="id275170">
+                                                               <gml:pos srsName="urn:ogc:def:crs:EPSG::4326">50.5570500 -2.4202333</gml:pos>
+                                                               <aixm:horizontalAccuracy uom="M">30</aixm:horizontalAccuracy>
+                                                               <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                                                            </aixm:Point>
+                                                         </gml:pointProperty>
+                                                         <gml:pointProperty xlink:type="simple">
+                                                            <aixm:Point srsName="urn:ogc:def:crs:EPSG::4326" gml:id="id275171">
+                                                               <gml:pos srsName="urn:ogc:def:crs:EPSG::4326">50.5516917 -2.4152000</gml:pos>
+                                                               <aixm:horizontalAccuracy uom="M">30</aixm:horizontalAccuracy>
+                                                               <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                                                            </aixm:Point>
+                                                         </gml:pointProperty>
+                                                         <gml:pointProperty xlink:type="simple">
+                                                            <aixm:Point srsName="urn:ogc:def:crs:EPSG::4326" gml:id="id275172">
+                                                               <gml:pos srsName="urn:ogc:def:crs:EPSG::4326">50.5464833 -2.4123028</gml:pos>
+                                                               <aixm:horizontalAccuracy uom="M">30</aixm:horizontalAccuracy>
+                                                               <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                                                            </aixm:Point>
+                                                         </gml:pointProperty>
+                                                         <gml:pointProperty xlink:type="simple">
+                                                            <aixm:Point srsName="urn:ogc:def:crs:EPSG::4326" gml:id="id275173">
+                                                               <gml:pos srsName="urn:ogc:def:crs:EPSG::4326">50.5452806 -2.4248139</gml:pos>
+                                                               <aixm:horizontalAccuracy uom="M">30</aixm:horizontalAccuracy>
+                                                               <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                                                            </aixm:Point>
+                                                         </gml:pointProperty>
+                                                         <gml:pointProperty xlink:type="simple">
+                                                            <aixm:Point srsName="urn:ogc:def:crs:EPSG::4326" gml:id="id275174">
+                                                               <gml:pos srsName="urn:ogc:def:crs:EPSG::4326">50.5517000 -2.4321500</gml:pos>
+                                                               <aixm:horizontalAccuracy uom="M">30</aixm:horizontalAccuracy>
+                                                               <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                                                            </aixm:Point>
+                                                         </gml:pointProperty>
+                                                         <gml:pointProperty xlink:type="simple">
+                                                            <aixm:Point srsName="urn:ogc:def:crs:EPSG::4326" gml:id="id275175">
+                                                               <gml:pos srsName="urn:ogc:def:crs:EPSG::4326">50.5564944 -2.4303250</gml:pos>
+                                                               <aixm:horizontalAccuracy uom="M">30</aixm:horizontalAccuracy>
+                                                               <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                                                            </aixm:Point>
+                                                         </gml:pointProperty>
+                                                      </gml:GeodesicString>
+                                                   </gml:segments>
+                                                </gml:Curve>
+                                             </gml:curveMember>
+                                          </gml:Ring>
+                                       </gml:exterior>
+                                    </gml:PolygonPatch>
+                                 </gml:patches>
+                                 <aixm:horizontalAccuracy uom="M">30</aixm:horizontalAccuracy>
+                                 <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                              </aixm:Surface>
+                           </aixm:horizontalProjection>
+                           <aixm:centreline xsi:nil="true" nilReason="unknown"/>
+                           <aixm:annotation xsi:nil="true" nilReason="unknown"/>
+                        </aixm:AirspaceVolume>
+                     </aixm:theAirspaceVolume>
+                  </aixm:AirspaceGeometryComponent>
+               </aixm:geometryComponent>
+               <aixm:annotation>
+                  <aixm:Note gml:id="id265137">
+                     <aixm:purpose>REMARK</aixm:purpose>
+                     <aixm:translatedNote>
+                        <aixm:LinguisticNote gml:id="id265138">
+                           <aixm:note lang="eng">HMP Restricted airspace active H24.
+Unmanned aircraft flight not permitted unless permission has been granted by HMPPS.
+HMPPS email: drone.RFZapplication@justice.gov.uk
+SI 2023/1101
+Site elevation: 382 FT AMSL</aixm:note>
+                        </aixm:LinguisticNote>
+                     </aixm:translatedNote>
+                  </aixm:Note>
+               </aixm:annotation>
+            </aixm:AirspaceTimeSlice>
+         </aixm:timeSlice>
+      </aixm:Airspace>
+   </message:hasMember>
+   <message:hasMember xlink:type="simple"><aixm:Airspace gml:id="idBROKEN"><aixm:timeSlice><aixm:AirspaceTimeSlice gml:id="ts"><aixm:interpretation>SNAPSHOT</aixm:interpretation><aixm:type>R</aixm:type><aixm:designator>EGRBROKEN</aixm:designator><aixm:name>BROKEN</aixm:name><aixm:geometryComponent><aixm:AirspaceGeometryComponent><aixm:theAirspaceVolume><aixm:AirspaceVolume><aixm:upperLimit uom="FT">2000</aixm:upperLimit><aixm:upperLimitReference>SFC</aixm:upperLimitReference><aixm:lowerLimit uom="FT">0</aixm:lowerLimit><aixm:lowerLimitReference>SFC</aixm:lowerLimitReference><aixm:horizontalProjection><aixm:Surface srsName="urn:ogc:def:crs:EPSG::4326"><gml:patches><gml:PolygonPatch><gml:exterior><gml:Ring><gml:curveMember><gml:Curve><gml:segments><gml:Clothoid/></gml:segments></gml:Curve></gml:curveMember></gml:Ring></gml:exterior></gml:PolygonPatch></gml:patches></aixm:Surface></aixm:horizontalProjection></aixm:AirspaceVolume></aixm:theAirspaceVolume></aixm:AirspaceGeometryComponent></aixm:geometryComponent></aixm:AirspaceTimeSlice></aixm:timeSlice></aixm:Airspace></message:hasMember>
 </message:AIXMBasicMessage>

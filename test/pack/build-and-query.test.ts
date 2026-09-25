@@ -20,7 +20,7 @@ describe('mini pack build and repository queries', () => {
   it('verifies with the default floors', async () => {
     const v = await verifyPack(file, { region: 'test', sizeBytes: (await stat(file)).size, knownPoints: false });
     expect(v.failures).toEqual([]);
-    expect(v.counts.zones).toBe(6);
+    expect(v.counts.zones).toBe(7);
     expect(v.counts.rights_of_way).toBe(5);
     expect(v.counts.land_restrictions).toBeGreaterThanOrEqual(4); // multipolygons are split into parts
     expect(v.counts.coverage).toBeGreaterThanOrEqual(4);
