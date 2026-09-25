@@ -1,0 +1,5 @@
+{"type":"FeatureCollection","features":[
+{"type":"Feature","properties":{"FID":1,"LAD26CD":"E06000059","LAD26NM":"Dorset","LAD26NMW":" "},"geometry":{"type":"Polygon","coordinates":[[[-2.6,50.5],[-1.9,50.5],[-1.9,50.9],[-2.6,50.9],[-2.6,50.5]]]}},
+{"type":"Feature","properties":{"FID":2,"LAD26CD":"E06000023","LAD26NM":"Bristol, City of","LAD26NMW":" "},"geometry":{"type":"MultiPolygon","coordinates":[[[[-2.75,51.38],[-2.5,51.38],[-2.5,51.55],[-2.75,51.55],[-2.75,51.38]]]]}},
+{"type":"Feature","properties":{"FID":3,"LAD26CD":"BAD","LAD26NM":"Broken"},"geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}
+]}

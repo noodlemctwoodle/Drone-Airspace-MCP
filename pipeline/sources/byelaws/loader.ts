@@ -12,7 +12,14 @@ export interface ByelawLoadResult {
   warnings: string[];
 }
 
-async function geometryFor(entry: ByelawEntry, baseDir: string): Promise<Array<Polygon | MultiPolygon>> {
+export type AuthorityResolver = (code: string) => Polygon | MultiPolygon | undefined;
+
+async function geometryFor(entry: ByelawEntry, baseDir: string, resolveAuthority?: AuthorityResolver): Promise<Array<Polygon | MultiPolygon>> {
+  if (entry.geometry.type === 'authority') {
+    const g = resolveAuthority?.(entry.geometry.code);
+    if (!g) throw new Error(`authority ${entry.geometry.code} not found in the local authority boundaries (is the lad source excluded?)`);
+    return [g];
+  }
   if (entry.geometry.type === 'circle') {
     return [{ type: 'Polygon', coordinates: [circlePositions(entry.geometry.centre, entry.geometry.radius_m / 1000)] }];
   }
@@ -34,7 +41,7 @@ async function geometryFor(entry: ByelawEntry, baseDir: string): Promise<Array<P
   return geoms;
 }
 
-export async function loadByelaws(yamlPath: string): Promise<ByelawLoadResult> {
+export async function loadByelaws(yamlPath: string, resolveAuthority?: AuthorityResolver): Promise<ByelawLoadResult> {
   const warnings: string[] = [];
   const restrictions: NormalisedRestriction[] = [];
   let raw: unknown;
@@ -67,7 +74,7 @@ export async function loadByelaws(yamlPath: string): Promise<ByelawLoadResult> {
     seen.add(entry.id);
     let geoms: Array<Polygon | MultiPolygon>;
     try {
-      geoms = await geometryFor(entry, baseDir);
+      geoms = await geometryFor(entry, baseDir, resolveAuthority);
     } catch (error) {
       warnings.push(`${entry.id}: ${(error as Error).message}`);
       continue;
@@ -85,7 +92,8 @@ export async function loadByelaws(yamlPath: string): Promise<ByelawLoadResult> {
         summary: entry.summary,
         sourceUrl: entry.source_url,
         lastVerified: entry.last_verified,
-        props: null,
+        props: entry.geometry.type === 'authority' ? { lad: entry.geometry.code } : null,
+        scope: entry.geometry.type === 'authority' ? 'authority' : 'site',
         geometry: roundGeometry(g),
       });
     }

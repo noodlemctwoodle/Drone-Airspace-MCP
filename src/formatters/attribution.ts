@@ -1,6 +1,6 @@
 import type { PackMeta } from '../types.js';
 
-export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking' | 'weather' | 'caa_rules' | 'elevation' | 'space_weather' | 'hazards';
+export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking' | 'weather' | 'caa_rules' | 'elevation' | 'space_weather' | 'hazards' | 'lad';
 
 const LIVE: Record<string, string> = {
   nominatim: 'Geocoding © OpenStreetMap contributors (ODbL), via Nominatim',
@@ -21,6 +21,7 @@ const PACK_SOURCE_IDS: Record<string, string[]> = {
   coverage: ['ons_countries'],
   parking: ['osm_parking'],
   hazards: ['osm_hazards'],
+  lad: ['ons_lad'],
 };
 
 const SHORT: Record<string, string> = {
@@ -39,6 +40,7 @@ const SHORT: Record<string, string> = {
   elevation: 'Open-Meteo elevation',
   space_weather: 'NOAA space weather',
   hazards: 'OpenStreetMap hazards',
+  lad: 'ONS boundaries',
 };
 
 /** One short spoken sentence naming the sources used. */

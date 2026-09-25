@@ -8,6 +8,7 @@ import { parseRowmapsGeojson } from '../../pipeline/sources/rowmaps/geojson-pars
 import { loadByelaws } from '../../pipeline/sources/byelaws/loader.js';
 import { parseCountries } from '../../pipeline/sources/countries/ons.js';
 import { normaliseNtFeature } from '../../pipeline/sources/nt/arcgis.js';
+import { parseLads } from '../../pipeline/sources/lad/ons.js';
 import { SCHEMA_VERSION } from '../../src/pack/schema.js';
 
 const fx = (p: string) => new URL(`../fixtures/${p}`, import.meta.url);
@@ -35,7 +36,8 @@ export async function buildMiniPack(dir: string): Promise<string> {
   const paths = parseRowmapsGeojson(JSON.parse(readFileSync(fx('rowmaps/BD-mutated1.json'), 'utf8')), 'BD', 'footpath').paths;
   const nPaths = await insertRightsOfWay(db, paths);
   const nt = JSON.parse(readFileSync(fx('nt/page-1.json'), 'utf8')).features.map((f: never) => normaliseNtFeature(f, 'nt_always_open', 'always_open', 'x', now)!);
-  const byelaws = (await loadByelaws(fx('byelaws/seed.yaml').pathname)).restrictions;
+  const lads = parseLads(JSON.parse(readFileSync(fx('lad/lad-thin.geojson'), 'utf8')));
+  const byelaws = (await loadByelaws(fx('byelaws/seed.yaml').pathname, (code) => lads.find((a) => a.code === code)?.geometry)).restrictions;
   const nLand = await insertLandRestrictions(db, [...nt, ...byelaws]);
   const nCov = insertCoverage(db, parseCountries(JSON.parse(readFileSync(fx('countries/countries-thin.geojson'), 'utf8'))));
   const nParking = await insertParking(db, [
@@ -47,7 +49,7 @@ export async function buildMiniPack(dir: string): Promise<string> {
     { osmId: 'n11', kind: 'helipad', name: 'Test helipad', operator: null, ref: null, geometry: { type: 'Point', coordinates: [-2.25, 50.63] } },
     { osmId: 'w12', kind: 'military', name: 'Lulworth Ranges', operator: 'MOD', ref: null, geometry: { type: 'Polygon', coordinates: [[[-2.25, 50.62], [-2.2, 50.62], [-2.2, 50.65], [-2.25, 50.65], [-2.25, 50.62]]] } },
   ]);
-  const nAdmin = await insertAdminAreas(db, [{ code: 'E06000059', name: 'Dorset', kind: 'lad', country: 'england', geometry: { type: 'Polygon', coordinates: [[[-2.6, 50.5], [-1.9, 50.5], [-1.9, 50.9], [-2.6, 50.9], [-2.6, 50.5]]] } }]);
+  const nAdmin = await insertAdminAreas(db, lads);
   const nGaz = buildGazetteer(db);
   insertMeta(db, {
     schema_version: SCHEMA_VERSION, pack_tag: 'pack-20260903-test', built_at: now, build_commit: 'test', region: 'test',

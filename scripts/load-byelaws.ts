@@ -5,13 +5,21 @@ import { parsePipelineArgs, writeReport, type PipelineArgs, type SourceReport } 
 import { openNdjsonWriter } from '../pipeline/lib/ndjson.js';
 import { bboxIntersects } from '../pipeline/lib/regions.js';
 import { geometryBbox } from '../pipeline/lib/geometry.js';
-import { loadByelaws } from '../pipeline/sources/byelaws/loader.js';
+import { loadByelaws, type AuthorityResolver } from '../pipeline/sources/byelaws/loader.js';
+import { readNdjson } from '../pipeline/lib/ndjson.js';
+import type { NormalisedAdminArea } from '../pipeline/sources/lad/ons.js';
+import { stat } from 'node:fs/promises';
 import { SOURCE_IDS } from '../src/pack/schema.js';
 import { REPO_URL } from '../src/version.js';
 
 export async function run(args: PipelineArgs, seedPath = path.resolve('data/byelaws/seed.yaml')): Promise<SourceReport> {
   const log = createBuildLog('byelaws');
-  const result = await loadByelaws(seedPath);
+  // Authority-scoped entries take their polygon from the local authority boundaries written by fetch-lad.
+  const areas = new Map<string, NormalisedAdminArea['geometry']>();
+  const ladFile = path.join(args.normalisedDir, 'admin_areas.ndjson');
+  if (await stat(ladFile).then(() => true, () => false)) for await (const a of readNdjson<NormalisedAdminArea>(ladFile)) areas.set(a.code, a.geometry);
+  const resolveAuthority: AuthorityResolver = (code) => areas.get(code);
+  const result = await loadByelaws(seedPath, resolveAuthority);
   for (const w of result.warnings) log.warn(w);
   const writer = await openNdjsonWriter(path.join(args.normalisedDir, 'byelaws.ndjson'));
   let count = 0;

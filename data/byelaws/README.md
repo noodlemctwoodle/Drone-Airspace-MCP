@@ -33,4 +33,29 @@ take-off is permitted.
     radius_m: 400
 ```
 
+### Council-wide policy notes
+
+Many councils publish a drone policy for the land they manage without mapping
+it. Record it against the council with an `authority` geometry: the entry then
+carries the ONS local authority boundary and appears as a "Local authority"
+note in take-off and location reports. It is a note about council-managed
+land, never a district-wide ban: it does not change the verdict, and the
+loader rejects any `authority` entry whose `rule_type` is not `policy`.
+Council codes are the ONS ones (E06000059 is Dorset); the `lad` source must
+be in the build for these entries to resolve.
+
+```yaml
+- id: dorset-council-drone-policy
+  authority: Dorset Council
+  area_name: Dorset
+  rule_type: policy
+  takeoff_banned: true       # meaning: not from council-managed land without consent
+  summary: Dorset Council does not permit drone take-off from parks and open spaces it manages without written consent.
+  source_url: https://example.gov.uk/drone-policy
+  last_verified: 2026-09-25
+  geometry:
+    type: authority
+    code: E06000059
+```
+
 Invalid entries are skipped with a warning at build time; they never break the pack.

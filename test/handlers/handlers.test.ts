@@ -167,6 +167,22 @@ describe('check_takeoff_site', () => {
     expect(t).toMatch(/^No permanent airspace restriction at this point\.\nNearest public right of way: \d+ m away \(footpath, Dorset\)\./);
     expect(t).toContain('interpretation of each council');
   });
+  it('names the local authority and its policy without treating the policy as a ban', async () => {
+    const { handlers } = setup();
+    const j = json(await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277, format: 'json' }));
+    expect(j.localAuthority).toMatchObject({ code: 'E06000059', name: 'Dorset' });
+    expect(j.localAuthority.policies[0].entryId).toBe('dorset-policy');
+    expect(j.takeoffBannedByLandowner).toBe(false);
+    expect(j.landownerRules.some((r: { scope: string }) => r.scope === 'authority')).toBe(false);
+    const t = text(await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 }));
+    expect(t).toContain('Local authority');
+    expect(t).toContain('Dorset (E06000059): Dorset Council does not permit');
+    expect(t).not.toContain('Take-off restricted by landowner rule');
+    const loc = text(await handlers.get('check_location')!({ lat: 56.5, lon: -4.0 }));
+    expect(loc).not.toContain('Local authority');
+    const b = json(await handlers.get('preflight_briefing')!({ lat: 50.6212, lon: -2.277, format: 'json' }));
+    expect(b.reasons.map((r: { code: string }) => r.code)).not.toContain('landowner_ban');
+  });
   it('flags landowner bans in the headline', async () => {
     const { handlers } = setup();
     const t = text(await handlers.get('check_takeoff_site')!({ lat: 51.455, lon: -2.6 }));

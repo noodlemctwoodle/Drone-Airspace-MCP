@@ -25,7 +25,7 @@ describe('mini pack build and repository queries', () => {
     expect(v.counts.land_restrictions).toBeGreaterThanOrEqual(4); // multipolygons are split into parts
     expect(v.counts.coverage).toBeGreaterThanOrEqual(4);
     expect(v.counts.hazards).toBe(3);
-    expect(v.counts.admin_areas).toBe(1);
+    expect(v.counts.admin_areas).toBe(2);
     expect(Object.keys(v.tableBytes)).toContain('zones');
   });
   it('finds zones at a point via rtree then exact test', async () => {
@@ -58,6 +58,9 @@ describe('mini pack build and repository queries', () => {
     expect(await repo.adminAreaAt(-2.277, 50.6212)).toMatchObject({ code: 'E06000059', name: 'Dorset', country: 'england' });
     expect(await repo.adminAreaAt(-4, 56.5)).toBeNull();
     expect((await repo.landRestrictionsAt(-2.6, 51.455))[0].scope).toBe('site');
+    const dorset = await repo.landRestrictionsAt(-2.277, 50.6212);
+    expect(dorset.find((r) => r.scope === 'authority')).toMatchObject({ kind: 'policy', entryId: 'test-council-policy', owner: 'Test County Council' });
+    expect(await repo.adminAreaAt(-2.6, 51.45)).toMatchObject({ code: 'E06000023' });
   });
   it('answers coverage and land restrictions', async () => {
     expect(await repo.prowCoverageAt(-1.97, 50.69)).toBe('england_wales');
@@ -65,7 +68,8 @@ describe('mini pack build and repository queries', () => {
     expect(await repo.prowCoverageAt(-6.5, 54.6)).toBe('northern_ireland');
     expect(await repo.prowCoverageAt(2.0, 55.0)).toBe('unknown');
     const nt = await repo.landRestrictionsAt(-1.97, 50.69);
-    expect(nt.map((r) => r.name)).toEqual(['Brownsea Island']);
+    expect(nt.filter((r) => r.scope === 'site').map((r) => r.name)).toEqual(['Brownsea Island']);
+    expect(nt.find((r) => r.scope === 'authority')?.entryId).toBe('test-council-policy');
     expect((await repo.landRestrictionsAt(-2.6, 51.455)).map((r) => r.entryId)).toEqual(['test-park']);
     expect((await repo.landRestrictionsAt(-2.29, 51.405))[0].kind).toBe('pspo');
   });

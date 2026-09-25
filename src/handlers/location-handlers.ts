@@ -5,6 +5,7 @@ import { resolveLocation } from '../services/location-resolver.js';
 import { validateLocationArgs, type LocationArgs } from '../tools/schemas.js';
 import { UserFacingError } from '../core/errors.js';
 import { splitByRelevance } from '../services/airspace/vertical.js';
+import { localAuthorityLines, splitLandRestrictions } from '../services/land-rules.js';
 import { buildVerdict } from '../services/airspace/verdict.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
@@ -67,9 +68,13 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
     const zones = await deps.airspace.atPoint(loc.lon, loc.lat);
     const { relevant, above } = splitByRelevance(zones);
     const restrictions = await pack.landRestrictionsAt(loc.lon, loc.lat);
+    const council = await pack.adminAreaAt(loc.lon, loc.lat);
+    const land = splitLandRestrictions(restrictions);
     const verdict = buildVerdict(relevant, restrictions);
     const used = new Set<SourceId>(['airspace']);
-    if (restrictions.length > 0) used.add(restrictions.some((r) => r.sourceId === 'byelaws') ? 'byelaws' : 'landowner');
+    if (land.rules.length > 0) used.add(land.rules.some((r) => r.sourceId === 'byelaws') ? 'byelaws' : 'landowner');
+    if (land.policies.length > 0) used.add('byelaws');
+    if (council) used.add('lad');
     const locSource = sourceOfLocation(loc);
     if (locSource) used.add(locSource);
     const attribution = attributionLines(used, await pack.meta());
@@ -82,7 +87,8 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
       verdict,
       zones: relevant.map((z) => zoneToJson(z)),
       zonesAbove120m: includeAbove ? above.map((z) => zoneToJson(z)) : above.length,
-      landownerRules: restrictions,
+      landownerRules: land.rules,
+      localAuthority: council ? { code: council.code, name: council.name, policies: land.policies } : null,
       caveats,
       attribution,
     };
@@ -92,7 +98,8 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
       ];
       if (includeAbove) sections.push({ title: `Zones only above 400 ft (${above.length})`, lines: above.map(renderZone) });
       else if (above.length > 0) sections.push({ title: 'Zones only above 400 ft', lines: [`${above.length} zone(s) start above 400 ft; pass include_above_120m to list them.`] });
-      sections.push({ title: `Landowner rules at this point (${restrictions.length})`, lines: restrictions.map(renderRestriction) });
+      sections.push({ title: `Landowner rules at this point (${land.rules.length})`, lines: land.rules.map(renderRestriction) });
+      sections.push({ title: 'Local authority', lines: localAuthorityLines(council, land.policies) });
       const headline = verdict.landownerLine ? `${verdict.line}\n${verdict.landownerLine}` : verdict.line;
       return renderReport({ headline, notes: locationNotes(loc), location: locationLine(loc), sections, caveats, attribution });
     }, () =>

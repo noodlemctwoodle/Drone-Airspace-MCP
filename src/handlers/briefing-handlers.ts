@@ -3,6 +3,7 @@ import type { HandlerDependencies, ToolHandler } from './deps.js';
 import { brief, respond } from './respond.js';
 import { locationLine, locationNotes, resolveOrRespond, sourceOfLocation } from './location-handlers.js';
 import { droneSectionLines } from './drone-handlers.js';
+import { splitLandRestrictions } from '../services/land-rules.js';
 import { overallFlyability, renderHour, renderSpaceWeather, selectWeatherWindow, CAVEAT_WEATHER } from './weather-handlers.js';
 import type { LocationArgs } from '../tools/schemas.js';
 import { UserFacingError } from '../core/errors.js';
@@ -80,6 +81,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
     ]);
     const paths = coverage === 'scotland' || coverage === 'northern_ireland' ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, 1000, maxPaths);
     const { relevant, above } = splitByRelevance(zones);
+    const land = splitLandRestrictions(restrictions);
     const verdict = buildVerdict(relevant, restrictions);
     const window = weatherR.ok ? selectWeatherWindow(weatherR.value, { start: at, hours, bareDate: bareDate && dateArg ? dateArg.trim() : null }) : [];
     const weatherOverall = window.length > 0 ? overallFlyability(window) : null;
@@ -87,7 +89,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
     const notams = notamR.ok ? notamR.value : null;
     const { status, reasons } = deriveBriefingStatus({
       zones: relevant,
-      restrictions,
+      restrictions: land.rules,
       frzPermission,
       notams: notams ? { covering: notams.covering, nearby: notams.nearby, unlocated: notams.unlocated.length } : null,
       weather: weatherOverall,
@@ -150,7 +152,8 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
       reasons,
       outages,
       airspace: { verdict, zones: relevant.map((z) => zoneToJson(z)), zonesAbove120m: above.length },
-      landownerRules: restrictions,
+      landownerRules: land.rules,
+      councilPolicies: land.policies,
       notams: notams
         ? {
             radiusKm: notamRadiusKm,
@@ -175,7 +178,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
         const sections: ReportSection[] = [
           { title: 'Findings', lines: reasons.map((r) => `${tag(r.level)} ${r.text}`) },
           { title: `Airspace restrictions at this point (${relevant.length})`, lines: relevant.map(renderZone) },
-          { title: `Landowner rules at this point (${restrictions.length})`, lines: restrictions.map(renderRestriction) },
+          { title: `Landowner rules at this point (${land.rules.length})`, lines: [...land.rules.map(renderRestriction), ...land.policies.map((p) => `Council policy (${p.owner}): ${p.summary ?? ''}`)] },
           { title: `NOTAMs covering the point (${notams ? notams.covering.length : 'unavailable'})`, lines: notams ? [...notams.covering.slice(0, 5).map(renderNotam), ...(notams.covering.length > 5 ? [`+${notams.covering.length - 5} more; see check_notams.`] : [])] : ['The bulletin could not be read.'] },
           { title: `NOTAMs within ${notamRadiusKm} km (${notams ? notams.nearby.length : 'unavailable'})`, lines: notams ? notams.nearby.slice(0, 5).map(renderNotam) : [] },
           { title: `Weather ${window.length > 0 ? window[0].hour.time.slice(0, 10) : ''} (local time, wind in m/s)`, lines: [...window.map(renderHour), ...(space ? [renderSpaceWeather(space)] : [])] },

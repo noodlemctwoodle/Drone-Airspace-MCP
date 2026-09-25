@@ -73,7 +73,11 @@ export function restrictionLabel(r: LandRestriction): string {
   }
 }
 
-export function landownerLine(restrictions: LandRestriction[]): string | null {
+const RULE_KINDS = new Set<LandRestriction['kind']>(['landowner', 'byelaw', 'pspo', 'policy']);
+
+/** Only site-level rules make a landowner line; council-wide policy notes, access land and designations are reported separately. */
+export function landownerLine(all: LandRestriction[]): string | null {
+  const restrictions = all.filter((r) => RULE_KINDS.has(r.kind) && r.scope !== 'authority');
   const banned = restrictions.filter((r) => r.takeoffBanned);
   const pick = banned[0] ?? restrictions[0];
   if (!pick) return null;

@@ -7,6 +7,7 @@ import { splitByRelevance } from '../services/airspace/vertical.js';
 import { buildVerdict } from '../services/airspace/verdict.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { droneSectionLines } from './drone-handlers.js';
+import { localAuthorityLines, splitLandRestrictions } from '../services/land-rules.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
 import { renderRightOfWay, rightOfWayToJson } from '../formatters/rights-of-way.js';
 import { parkingSentence, renderParking } from '../formatters/parking.js';
@@ -36,17 +37,20 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     const zones = await deps.airspace.atPoint(loc.lon, loc.lat);
     const { relevant, above } = splitByRelevance(zones);
     const restrictions = await pack.landRestrictionsAt(loc.lon, loc.lat);
+    const council = await pack.adminAreaAt(loc.lon, loc.lat);
+    const land = splitLandRestrictions(restrictions);
     const verdict = buildVerdict(relevant, restrictions);
     const coverage = await deps.rightsOfWay.coverageAt(loc.lon, loc.lat);
     const paths = coverage === 'scotland' || coverage === 'northern_ireland' ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, radiusM, maxPaths);
-    const takeoffBanned = restrictions.some((r) => r.takeoffBanned);
+    const takeoffBanned = land.rules.some((r) => r.takeoffBanned);
     const parking = await pack.nearestParking(loc.lon, loc.lat, 2000, 3, false);
 
     const used = new Set<SourceId>(['airspace']);
     if (paths.length > 0) used.add('prow');
     if (parking.length > 0) used.add('parking');
-    if (restrictions.some((r) => r.sourceId.startsWith('nt_'))) used.add('landowner');
-    if (restrictions.some((r) => r.sourceId === 'byelaws')) used.add('byelaws');
+    if (land.rules.some((r) => r.sourceId.startsWith('nt_'))) used.add('landowner');
+    if (land.rules.some((r) => r.sourceId === 'byelaws') || land.policies.length > 0) used.add('byelaws');
+    if (council) used.add('lad');
     const s = sourceOfLocation(loc);
     if (s) used.add(s);
     if (droneInfo?.assessment) used.add('caa_rules');
@@ -80,7 +84,8 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
       takeoffBannedByLandowner: takeoffBanned,
       zones: relevant.map((z) => zoneToJson(z)),
       zonesAbove120m: above.length,
-      landownerRules: restrictions,
+      landownerRules: land.rules,
+      localAuthority: council ? { code: council.code, name: council.name, policies: land.policies } : null,
       rightsOfWay: paths.map(rightOfWayToJson),
       parking,
       coverage: coverage === 'england_wales' ? 'england_wales' : coverage === 'unknown' ? 'unknown' : 'no_prow_data',
@@ -93,7 +98,8 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
       const sections: ReportSection[] = [
         { title: `Nearest public rights of way (${paths.length} within ${formatDistance(radiusM)})`, lines: paths.map(renderRightOfWay) },
         { title: 'Nearest parking (public, within 2 km)', lines: parking.map(renderParking) },
-        { title: `Landowner rules at this point (${restrictions.length})`, lines: restrictions.map(renderRestriction) },
+        { title: `Landowner rules at this point (${land.rules.length})`, lines: land.rules.map(renderRestriction) },
+        { title: 'Local authority', lines: localAuthorityLines(council, land.policies) },
         { title: `Airspace restrictions at this point (${relevant.length})`, lines: relevant.map(renderZone) },
       ];
       if (above.length > 0) sections.push({ title: 'Zones only above 400 ft', lines: [`${above.length} zone(s) start above 400 ft; see check_location with include_above_120m.`] });

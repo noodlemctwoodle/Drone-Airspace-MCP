@@ -22,6 +22,7 @@ export const KNOWN_POINTS: KnownPoint[] = [
   { name: 'Durdle Door footpath (Dorset)', lon: -2.277, lat: 50.6212, expect: { layer: 'rights_of_way', authorityCode: 'DT', withinMetres: 150 } },
   { name: 'Durdle Door car park', lon: -2.2765, lat: 50.6227, expect: { layer: 'parking', withinMetres: 1200 } },
   { name: 'Brownsea Island is National Trust', lon: -1.9737, lat: 50.6905, expect: { layer: 'land_restrictions', owner: 'National Trust' } },
+  { name: 'Durdle Door is in Dorset Council', lon: -2.277, lat: 50.6212, expect: { layer: 'admin_areas', code: 'E06000059' } },
   { name: 'Corfe Castle is National Trust', lon: -2.0577, lat: 50.6407, expect: { layer: 'land_restrictions', owner: 'National Trust' } },
   // Well beyond any UK danger area (offshore Cornwall zones stop around 7W).
   { name: 'Atlantic negative control', lon: -12.0, lat: 50.5, expect: { layer: 'none' } },

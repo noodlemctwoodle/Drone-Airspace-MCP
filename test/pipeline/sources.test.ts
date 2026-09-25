@@ -4,6 +4,7 @@ import { parseRowmapsGeojson, parseRowmapsProps, scrapeAuthorityIndex } from '..
 import { fetchAllFeatures, normaliseNtFeature } from '../../pipeline/sources/nt/arcgis.js';
 import { loadByelaws } from '../../pipeline/sources/byelaws/loader.js';
 import { parseCountries } from '../../pipeline/sources/countries/ons.js';
+import { parseLads } from '../../pipeline/sources/lad/ons.js';
 import { bboxIntersects, resolveRegion } from '../../pipeline/lib/regions.js';
 import { encodeLine } from '../../pipeline/lib/geometry.js';
 import { decodeLine } from '../../src/pack/geometry.js';
@@ -84,10 +85,10 @@ describe('national trust', () => {
 describe('byelaws', () => {
   it('loads valid entries, expands circles and files, and reports invalid ones', async () => {
     const r = await loadByelaws(fx('byelaws/seed.yaml').pathname);
-    expect(r.validEntries).toBe(2);
+    expect(r.validEntries).toBe(3); // the authority-scoped policy passes the schema but has no boundary without a resolver
     expect(r.restrictions.length).toBe(2);
-    expect(r.warnings.length).toBe(1);
-    expect(r.warnings[0]).toMatch(/Bad Entry/);
+    expect(r.warnings.length).toBe(3);
+    expect(r.warnings.some((w) => /Bad Entry/.test(w))).toBe(true);
     const circle = r.restrictions.find((x) => x.entryId === 'test-park')!;
     expect((circle.geometry as { coordinates: number[][][] }).coordinates[0].length).toBe(65);
     const file = r.restrictions.find((x) => x.entryId === 'test-commons')!;
@@ -139,5 +140,27 @@ describe('tilePolygon', () => {
     for (const p of pieces) expect(JSON.stringify(p).length).toBeLessThanOrEqual(50_000);
     for (const pt of [[-2.5, 51], [-2.3, 51.1], [-2.7, 50.9]]) expect(pieces.some((p) => booleanPointInPolygon(pt, p))).toBe(true);
     expect(pieces.some((p) => booleanPointInPolygon([-2.5, 51.4], p))).toBe(false);
+  });
+});
+
+describe('local authority districts', () => {
+  it('parses any LADnnCD / LADnnNM vintage and derives the country from the code', () => {
+    const lads = parseLads(JSON.parse(readFileSync(new URL('../fixtures/lad/lad-thin.geojson', import.meta.url), 'utf8')));
+    expect(lads.map((a) => a.code)).toEqual(['E06000059', 'E06000023']);
+    expect(lads[0]).toMatchObject({ name: 'Dorset', kind: 'lad', country: 'england' });
+    expect(parseLads({ features: [{ properties: { LAD99CD: 'W06000001', LAD99NM: 'Isle of Anglesey' }, geometry: { type: 'Polygon', coordinates: [[[-4.5, 53.2], [-4.1, 53.2], [-4.1, 53.4], [-4.5, 53.2]]] } }] })[0].country).toBe('wales');
+    expect(parseLads('garbage')).toEqual([]);
+  });
+  it('resolves authority-scoped seed entries to the council boundary and rejects an authority-wide ban', async () => {
+    const lads = parseLads(JSON.parse(readFileSync(new URL('../fixtures/lad/lad-thin.geojson', import.meta.url), 'utf8')));
+    const r = await loadByelaws(new URL('../fixtures/byelaws/seed.yaml', import.meta.url).pathname, (code) => lads.find((a) => a.code === code)?.geometry);
+    const policy = r.restrictions.find((x) => x.entryId === 'test-council-policy');
+    expect(policy).toMatchObject({ kind: 'policy', scope: 'authority', props: { lad: 'E06000059' } });
+    expect(policy?.geometry.type).toBe('Polygon');
+    expect(r.restrictions.some((x) => x.entryId === 'test-authority-ban')).toBe(false);
+    expect(r.warnings.some((w) => w.includes('test-authority-ban') && w.includes('rule_type policy'))).toBe(true);
+    const without = await loadByelaws(new URL('../fixtures/byelaws/seed.yaml', import.meta.url).pathname);
+    expect(without.restrictions.some((x) => x.scope === 'authority')).toBe(false);
+    expect(without.warnings.some((w) => w.includes('lad source excluded'))).toBe(true);
   });
 });

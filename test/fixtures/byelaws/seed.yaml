@@ -19,6 +19,24 @@ entries:
     source_url: https://example.org/pspo
     last_verified: 2026-09-01
     geometry: { type: file, path: geometries/test-commons.geojson }
+  - id: test-council-policy
+    authority: Test County Council
+    area_name: Test County
+    rule_type: policy
+    takeoff_banned: true
+    summary: The council does not permit drone take-off from parks and open spaces it manages without written consent.
+    source_url: https://example.org/drone-policy
+    last_verified: 2026-09-01
+    geometry: { type: authority, code: E06000059 }
+  - id: test-authority-ban
+    authority: Test County Council
+    area_name: Test County
+    rule_type: byelaw
+    takeoff_banned: true
+    summary: An authority-wide byelaw is not allowed and must be rejected by the loader.
+    source_url: https://example.org/nope
+    last_verified: 2026-09-01
+    geometry: { type: authority, code: E06000059 }
   - id: Bad Entry
     authority: X
     area_name: Y

@@ -44,6 +44,7 @@ async function latestPackRelease(): Promise<{ tag: string; date: string; publish
 /** ArcGIS layers whose edit date is compared with the source version recorded in the manifest. */
 const UPSTREAM_ARCGIS: Array<{ sourceId: string; layerUrl: string; label: string }> = [
   { sourceId: 'nt_always_open', layerUrl: 'https://services-eu1.arcgis.com/NPIbx47lsIiu2pqz/arcgis/rest/services/National_Trust_Open_Data_Land_Always_Open/FeatureServer/0', label: 'National Trust layer' },
+  { sourceId: 'ons_lad', layerUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Local_Authority_Districts_May_2026_Boundaries_UK_BSC/FeatureServer/0', label: 'ONS local authority boundaries' },
 ];
 
 async function layerLastEdit(layerUrl: string): Promise<string | null> {

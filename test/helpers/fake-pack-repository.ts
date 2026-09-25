@@ -211,6 +211,24 @@ export const FIXTURE_META: PackMeta = {
 };
 
 /** Hazards around Durdle Door, all more than 200 m from the test point so briefing tests stay clear. */
+/** A council-wide policy note carried on the Dorset boundary; never a ban. */
+export const FIXTURE_COUNCIL_POLICY: LandRestriction & { geometry: Polygon } = {
+  id: 3,
+  sourceId: 'byelaws',
+  entryId: 'dorset-policy',
+  kind: 'policy',
+  owner: 'Dorset Council',
+  name: 'Dorset',
+  accessClass: null,
+  takeoffBanned: true,
+  landingBanned: true,
+  summary: 'Dorset Council does not permit drone take-off from parks and open spaces it manages without written consent.',
+  sourceUrl: 'https://example.org/dorset-drones',
+  lastVerified: '2026-09-01',
+  scope: 'authority',
+  geometry: square(-2.6, 50.5, -1.9, 50.9),
+};
+
 export const FIXTURE_HAZARDS: Array<Hazard & { geometry: Geometry }> = [
   { id: 900, osmId: 'w900', kind: 'power_line', name: null, operator: 'SSEN', ref: null, lon: -2.277, lat: 50.6265, geometry: { type: 'LineString', coordinates: [[-2.29, 50.6265], [-2.264, 50.6265]] } },
   { id: 901, osmId: 'n901', kind: 'helipad', name: 'Lulworth Camp helipad', operator: 'MOD', ref: null, lon: -2.25, lat: 50.63, geometry: { type: 'Point', coordinates: [-2.25, 50.63] } },
@@ -229,7 +247,7 @@ export class FakePackRepository implements PackRepository {
   constructor(
     private readonly zones: Zone[] = FIXTURE_ZONES,
     private readonly prow: RightOfWay[] = FIXTURE_PROW,
-    private readonly restrictions = FIXTURE_RESTRICTIONS,
+    private readonly restrictions: Array<LandRestriction & { geometry: Polygon }> = [...FIXTURE_RESTRICTIONS, FIXTURE_COUNCIL_POLICY],
     private readonly metaValue: PackMeta = FIXTURE_META
   ) {}
 

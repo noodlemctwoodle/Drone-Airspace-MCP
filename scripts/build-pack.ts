@@ -30,6 +30,7 @@ import { run as fetchNt } from './fetch-nt.js';
 import { run as fetchCountries } from './fetch-countries.js';
 import { run as loadByelaws } from './load-byelaws.js';
 import { run as fetchParking } from './fetch-parking.js';
+import { run as fetchLad } from './fetch-lad.js';
 import { unlink } from 'node:fs/promises';
 import { writeManifest } from './make-manifest.js';
 
@@ -70,6 +71,7 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     { id: 'rowmaps', files: ['rights_of_way.ndjson'], run: fetchRowmaps },
     { id: 'nt', files: ['nt.ndjson'], run: fetchNt },
     { id: 'countries', files: ['coverage.ndjson'], run: fetchCountries },
+    { id: 'lad', files: ['admin_areas.ndjson'], run: fetchLad },
     { id: 'byelaws', files: ['byelaws.ndjson'], run: loadByelaws },
     { id: 'parking', files: ['parking.ndjson'], run: fetchParking },
   ];
