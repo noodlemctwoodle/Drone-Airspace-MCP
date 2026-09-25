@@ -1,6 +1,9 @@
 import type { SqliteDriver } from '../../src/pack/driver.js';
 import type { PackSource } from '../../src/types.js';
-import { encodeLine, geometryBbox, shrinkPolygon } from '../lib/geometry.js';
+import { encodeLine, geometryBbox, tilePolygon } from '../lib/geometry.js';
+import type { NormalisedHazard } from '../sources/osm/hazards.js';
+import type { NormalisedAdminArea } from '../sources/lad/ons.js';
+import centroid from '@turf/centroid';
 import type { NormalisedZone } from '../sources/nats/aixm-parser.js';
 import type { NormalisedPath } from '../sources/rowmaps/geojson-parser.js';
 import type { NormalisedRestriction } from '../sources/nt/arcgis.js';
@@ -13,9 +16,31 @@ import type { MultiPolygon, Polygon } from '../../src/types.js';
  * One row per polygon part. Point-in-any semantics are unchanged and every
  * row stays under Cloudflare D1's 100 KB statement limit.
  */
-function polygonParts(geom: Polygon | MultiPolygon): Polygon[] {
+export function polygonParts(geom: Polygon | MultiPolygon): Polygon[] {
   const parts: Polygon[] = geom.type === 'Polygon' ? [geom] : geom.coordinates.map((c) => ({ type: 'Polygon', coordinates: c }));
-  return parts.map((p) => shrinkPolygon(p));
+  return parts.flatMap((p) => tilePolygon(p));
+}
+
+/** Run `write` for every item in transactions of BATCH rows; returns the row count. */
+async function batched<T>(db: SqliteDriver, items: AsyncIterable<T> | Iterable<T>, write: (item: T) => void): Promise<number> {
+  let n = 0;
+  let batch: T[] = [];
+  const flush = () => {
+    const rows = batch;
+    batch = [];
+    db.transaction(() => {
+      for (const x of rows) {
+        write(x);
+        n += 1;
+      }
+    });
+  };
+  for await (const x of items as AsyncIterable<T>) {
+    batch.push(x);
+    if (batch.length >= BATCH) flush();
+  }
+  if (batch.length > 0) flush();
+  return n;
 }
 
 const BATCH = 5000;
@@ -104,8 +129,8 @@ export async function insertRightsOfWay(db: SqliteDriver, paths: AsyncIterable<N
 
 export async function insertLandRestrictions(db: SqliteDriver, items: AsyncIterable<NormalisedRestriction> | Iterable<NormalisedRestriction>): Promise<number> {
   const ins = db.prepare(
-    `INSERT INTO land_restrictions (source_id, entry_id, kind, owner, name, access_class, takeoff_banned, landing_banned, summary, source_url, last_verified, props, min_lon, max_lon, min_lat, max_lat, geom)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO land_restrictions (source_id, entry_id, kind, owner, name, access_class, takeoff_banned, landing_banned, summary, source_url, last_verified, props, scope, min_lon, max_lon, min_lat, max_lat, geom)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   const rtree = db.prepare('INSERT INTO land_restrictions_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)');
   let n = 0;
@@ -119,7 +144,7 @@ export async function insertLandRestrictions(db: SqliteDriver, items: AsyncItera
         const r = ins.run(
           x.sourceId, x.entryId, x.kind, x.owner, x.name, x.accessClass, x.takeoffBanned ? 1 : 0,
           x.landingBanned === null ? null : x.landingBanned ? 1 : 0, x.summary, x.sourceUrl, x.lastVerified,
-          x.props ? JSON.stringify(x.props) : null, w, e, s, nn, JSON.stringify(x.geometry)
+          x.props ? JSON.stringify(x.props) : null, x.scope ?? 'site', w, e, s, nn, JSON.stringify(x.geometry)
         );
         rtree.run(Number(r.lastInsertRowid), w, e, s, nn);
         n += 1;
@@ -178,4 +203,55 @@ export function insertCoverage(db: SqliteDriver, countries: CountryPolygon[]): n
     }
   });
   return n;
+}
+
+export async function insertHazards(db: SqliteDriver, sourceId: string, items: AsyncIterable<NormalisedHazard> | Iterable<NormalisedHazard>): Promise<number> {
+  const ins = db.prepare(
+    `INSERT INTO hazards (source_id, osm_id, kind, name, operator, ref, geom_fmt, lon, lat, min_lon, max_lon, min_lat, max_lat, geom)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const rtree = db.prepare('INSERT INTO hazards_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)');
+  async function* parts(): AsyncGenerator<NormalisedHazard> {
+    for await (const h of items as AsyncIterable<NormalisedHazard>) {
+      if (h.geometry.type === 'Polygon' || h.geometry.type === 'MultiPolygon') for (const part of polygonParts(h.geometry)) yield { ...h, geometry: part };
+      else yield h;
+    }
+  }
+  return batched(db, parts(), (h) => {
+    const g = h.geometry;
+    let w: number, s: number, e: number, nn: number, lon: number, lat: number, fmt: string, geom: string;
+    if (g.type === 'Point') {
+      [lon, lat] = g.coordinates;
+      [w, s, e, nn] = [lon, lat, lon, lat];
+      fmt = 'geojson';
+      geom = JSON.stringify(g);
+    } else if (g.type === 'LineString') {
+      [w, s, e, nn] = bboxOfPositions(g.coordinates);
+      const c = centroid(g).geometry.coordinates;
+      [lon, lat] = [Math.round(c[0] * 1e6) / 1e6, Math.round(c[1] * 1e6) / 1e6];
+      fmt = 'polyline6';
+      geom = encodeLine(g.coordinates);
+    } else {
+      [w, s, e, nn] = geometryBbox(g as Polygon);
+      const c = centroid(g as Polygon).geometry.coordinates;
+      [lon, lat] = [Math.round(c[0] * 1e6) / 1e6, Math.round(c[1] * 1e6) / 1e6];
+      fmt = 'geojson';
+      geom = JSON.stringify(g);
+    }
+    const r = ins.run(sourceId, h.osmId, h.kind, h.name, h.operator, h.ref, fmt, lon, lat, w, e, s, nn, geom);
+    rtree.run(Number(r.lastInsertRowid), w, e, s, nn);
+  });
+}
+
+export async function insertAdminAreas(db: SqliteDriver, items: AsyncIterable<NormalisedAdminArea> | Iterable<NormalisedAdminArea>): Promise<number> {
+  const ins = db.prepare('INSERT INTO admin_areas (code, name, kind, country, min_lon, max_lon, min_lat, max_lat, geom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const rtree = db.prepare('INSERT INTO admin_areas_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)');
+  async function* parts(): AsyncGenerator<NormalisedAdminArea & { geometry: Polygon }> {
+    for await (const a of items as AsyncIterable<NormalisedAdminArea>) for (const part of polygonParts(a.geometry)) yield { ...a, geometry: part };
+  }
+  return batched(db, parts(), (a) => {
+    const [w, s, e, nn] = geometryBbox(a.geometry);
+    const r = ins.run(a.code, a.name, a.kind, a.country, w, e, s, nn, JSON.stringify(a.geometry));
+    rtree.run(Number(r.lastInsertRowid), w, e, s, nn);
+  });
 }

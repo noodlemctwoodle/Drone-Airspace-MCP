@@ -7,7 +7,7 @@ import pointToLineDistance from '@turf/point-to-line-distance';
 import nearestPointOnLine from '@turf/nearest-point-on-line';
 import type { PackRepository, ZonesAtOptions } from '../../src/pack/repository.js';
 import distance from '@turf/distance';
-import type { BBox, GazetteerHit, LandRestriction, LineString, PackMeta, Parking, ParkingHit, Polygon, Position, ProwCoverage, RightOfWay, RightOfWayHit, Zone } from '../../src/types.js';
+import type { AdminArea, BBox, GazetteerHit, Geometry, Hazard, HazardHit, LandRestriction, LineString, PackMeta, Parking, ParkingHit, Polygon, Position, ProwCoverage, RightOfWay, RightOfWayHit, Zone } from '../../src/types.js';
 
 const square = (w: number, s: number, e: number, n: number): Polygon => ({
   type: 'Polygon',
@@ -137,6 +137,7 @@ export const FIXTURE_RESTRICTIONS: Array<LandRestriction & { geometry: Polygon }
     summary: 'National Trust byelaws prohibit taking off or landing unmanned aircraft on Trust land without permission.',
     sourceUrl: 'https://www.nationaltrust.org.uk/who-we-are/about-us/flying-drones-at-our-places',
     lastVerified: '2026-09-25',
+    scope: 'site',
     geometry: square(-1.985, 50.685, -1.96, 50.697),
   },
   {
@@ -152,6 +153,7 @@ export const FIXTURE_RESTRICTIONS: Array<LandRestriction & { geometry: Polygon }
     summary: 'Byelaw 12 prohibits the flying of model aircraft and drones in the park.',
     sourceUrl: 'https://example.org/byelaws',
     lastVerified: '2026-09-01',
+    scope: 'site',
     geometry: square(-2.61, 51.45, -2.59, 51.46),
   },
 ];
@@ -189,8 +191,22 @@ export const FIXTURE_META: PackMeta = {
   ],
 };
 
+/** Hazards around Durdle Door, all more than 200 m from the test point so briefing tests stay clear. */
+export const FIXTURE_HAZARDS: Array<Hazard & { geometry: Geometry }> = [
+  { id: 900, osmId: 'w900', kind: 'power_line', name: null, operator: 'SSEN', ref: null, lon: -2.277, lat: 50.6265, geometry: { type: 'LineString', coordinates: [[-2.29, 50.6265], [-2.264, 50.6265]] } },
+  { id: 901, osmId: 'n901', kind: 'helipad', name: 'Lulworth Camp helipad', operator: 'MOD', ref: null, lon: -2.25, lat: 50.63, geometry: { type: 'Point', coordinates: [-2.25, 50.63] } },
+  { id: 902, osmId: 'w902', kind: 'railway', name: 'Great Western Main Line', operator: 'Network Rail', ref: null, lon: -2.5813, lat: 51.449, geometry: { type: 'LineString', coordinates: [[-2.6, 51.449], [-2.56, 51.449]] } },
+];
+
+export const FIXTURE_ADMIN_AREAS: Array<AdminArea & { geometry: Polygon }> = [
+  { id: 1, code: 'E06000059', name: 'Dorset', kind: 'lad', country: 'england', geometry: square(-2.6, 50.5, -1.9, 50.9) },
+  { id: 2, code: 'E06000023', name: 'Bristol, City of', kind: 'lad', country: 'england', geometry: square(-2.75, 51.38, -2.5, 51.55) },
+];
+
 export class FakePackRepository implements PackRepository {
   closed = false;
+  private readonly hazards = FIXTURE_HAZARDS;
+  private readonly adminAreas = FIXTURE_ADMIN_AREAS;
   constructor(
     private readonly zones: Zone[] = FIXTURE_ZONES,
     private readonly prow: RightOfWay[] = FIXTURE_PROW,
@@ -249,6 +265,23 @@ export class FakePackRepository implements PackRepository {
   async landRestrictionsInBbox(bbox: BBox): Promise<Array<LandRestriction & { geometry: Polygon }>> {
     const poly = bboxPolygon(bbox);
     return this.restrictions.filter((r) => booleanIntersects(poly, r.geometry));
+  }
+  async hazardsNear(lon: number, lat: number, limitMetres = 500, n = 12): Promise<HazardHit[]> {
+    const here = point([lon, lat]);
+    return this.hazards
+      .map((h) => ({ ...h, distanceM: Math.round(h.geometry.type === 'LineString' ? pointToLineDistance(here, lineString(h.geometry.coordinates), { units: 'meters' }) : distance(here, point([h.lon, h.lat]), { units: 'meters' })) }))
+      .filter((h) => h.distanceM <= limitMetres)
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, n)
+      .map(({ geometry: _g, ...rest }) => rest);
+  }
+  async hazardsInBbox(bbox: BBox): Promise<Array<Hazard & { geometry: Geometry }>> {
+    const poly = bboxPolygon(bbox);
+    return this.hazards.filter((h) => booleanIntersects(poly, h.geometry));
+  }
+  async adminAreaAt(lon: number, lat: number): Promise<AdminArea | null> {
+    const a = this.adminAreas.find((x) => booleanPointInPolygon(point([lon, lat]), x.geometry));
+    return a ? { id: a.id, code: a.code, name: a.name, kind: a.kind, country: a.country } : null;
   }
   async nearestParking(lon: number, lat: number, limitMetres = 2000, n = 5, includePrivate = false): Promise<ParkingHit[]> {
     return FIXTURE_PARKING.filter((p) => includePrivate || !(p.access && /^(private|no|customers|permit)$/.test(p.access)))

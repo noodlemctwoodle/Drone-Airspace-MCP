@@ -5,7 +5,6 @@
  */
 import { appendFile } from 'node:fs/promises';
 import { execSync } from 'node:child_process';
-import path from 'node:path';
 import { parsePipelineArgs } from '../pipeline/lib/cli.js';
 import { fetchCached } from '../pipeline/lib/http.js';
 import { resolveNatsDataset } from './fetch-nats.js';
@@ -42,14 +41,17 @@ async function latestPackRelease(): Promise<{ tag: string; date: string; publish
   return { tag: latest.tag_name, date, publishedAt: latest.published_at, manifest };
 }
 
-async function ntLastEdit(): Promise<string | null> {
+/** ArcGIS layers whose edit date is compared with the source version recorded in the manifest. */
+const UPSTREAM_ARCGIS: Array<{ sourceId: string; layerUrl: string; label: string }> = [
+  { sourceId: 'nt_always_open', layerUrl: 'https://services-eu1.arcgis.com/NPIbx47lsIiu2pqz/arcgis/rest/services/National_Trust_Open_Data_Land_Always_Open/FeatureServer/0', label: 'National Trust layer' },
+];
+
+async function layerLastEdit(layerUrl: string): Promise<string | null> {
   try {
-    const res = await fetchCached(
-      'https://services-eu1.arcgis.com/NPIbx47lsIiu2pqz/arcgis/rest/services/National_Trust_Open_Data_Land_Always_Open/FeatureServer/0?f=json',
-      { cacheDir: path.join('build', 'raw', 'nt'), ttlSeconds: 0 }
-    );
-    const info = JSON.parse(res.body.toString('utf8')) as { editingInfo?: { dataLastEditDate?: number } };
-    return info.editingInfo?.dataLastEditDate ? new Date(info.editingInfo.dataLastEditDate).toISOString().slice(0, 10) : null;
+    const res = await fetchCached(`${layerUrl}?f=json`, { cacheDir: 'build/raw/upstream', ttlSeconds: 3600, offline: false });
+    const info = JSON.parse(res.body.toString('utf8')) as { editingInfo?: { dataLastEditDate?: number; lastEditDate?: number } };
+    const edit = info.editingInfo?.dataLastEditDate ?? info.editingInfo?.lastEditDate;
+    return edit ? new Date(edit).toISOString().slice(0, 10) : null;
   } catch {
     return null;
   }
@@ -75,10 +77,12 @@ function changedSince(commit: string | null): boolean {
     if (nats.date > latest.date) reasons.push(`new AIRAC dataset ${nats.date} (latest pack ${latest.date})`);
     const ageDays = (Date.now() - new Date(latest.publishedAt).getTime()) / 86_400_000;
     if (new Date().getUTCDay() === 6 && ageDays > 6) reasons.push(`weekly rights-of-way refresh (pack is ${ageDays.toFixed(0)} days old)`);
-    const nt = await ntLastEdit();
     const sources = (latest.manifest?.sources as Array<{ id: string; version: string | null }> | undefined) ?? [];
-    const ntVersion = sources.find((s) => s.id === 'nt_always_open')?.version ?? null;
-    if (nt && ntVersion && nt > ntVersion) reasons.push(`National Trust layer edited ${nt}`);
+    for (const u of UPSTREAM_ARCGIS) {
+      const edited = await layerLastEdit(u.layerUrl);
+      const version = sources.find((s) => s.id === u.sourceId)?.version ?? null;
+      if (edited && version && edited > version) reasons.push(`${u.label} edited ${edited}`);
+    }
     if (changedSince((latest.manifest?.build_commit as string | null) ?? null)) reasons.push('pipeline or byelaw data changed since the last pack');
   }
   const shouldBuild = reasons.length > 0;

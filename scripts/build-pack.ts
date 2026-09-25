@@ -11,7 +11,7 @@ import { createBuildLog } from '../pipeline/lib/log.js';
 import { parsePipelineArgs, readReport, writeReport, type PipelineArgs, type SourceReport } from '../pipeline/lib/cli.js';
 import { readNdjson } from '../pipeline/lib/ndjson.js';
 import { createPackDb, finaliseDb } from '../pipeline/assemble/create-db.js';
-import { insertAuthority, insertCoverage, insertLandRestrictions, insertMeta, insertParking, insertRightsOfWay, insertSource, insertZones } from '../pipeline/assemble/insert.js';
+import { insertAdminAreas, insertAuthority, insertCoverage, insertHazards, insertLandRestrictions, insertMeta, insertParking, insertRightsOfWay, insertSource, insertZones } from '../pipeline/assemble/insert.js';
 import { buildGazetteer } from '../pipeline/assemble/gazetteer.js';
 import { verifyPack } from '../pipeline/verify/assertions.js';
 import type { NormalisedZone } from '../pipeline/sources/nats/aixm-parser.js';
@@ -19,6 +19,8 @@ import type { NormalisedPath } from '../pipeline/sources/rowmaps/geojson-parser.
 import type { NormalisedRestriction } from '../pipeline/sources/nt/arcgis.js';
 import type { CountryPolygon } from '../pipeline/sources/countries/ons.js';
 import type { NormalisedParking } from '../pipeline/sources/osm/parking.js';
+import type { NormalisedHazard } from '../pipeline/sources/osm/hazards.js';
+import type { NormalisedAdminArea } from '../pipeline/sources/lad/ons.js';
 import { SCHEMA_VERSION, SOURCE_IDS } from '../src/pack/schema.js';
 import type { PackSource, Position } from '../src/types.js';
 import { nextCycle } from '../pipeline/lib/airac.js';
@@ -28,6 +30,7 @@ import { run as fetchNt } from './fetch-nt.js';
 import { run as fetchCountries } from './fetch-countries.js';
 import { run as loadByelaws } from './load-byelaws.js';
 import { run as fetchParking } from './fetch-parking.js';
+import { unlink } from 'node:fs/promises';
 import { writeManifest } from './make-manifest.js';
 
 function gitCommit(): string | null {
@@ -61,19 +64,24 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
   const reports: SourceReport[] = [];
   const has = (id: string) => !args.exclude.has(id);
 
-  if (!args.skipFetch) {
-    if (has('nats')) reports.push(await fetchNats(args));
-    if (has('rowmaps')) reports.push(await fetchRowmaps(args));
-    if (has('nt')) reports.push(...(await fetchNt(args)));
-    if (has('countries')) reports.push(await fetchCountries(args));
-    if (has('byelaws')) reports.push(await loadByelaws(args));
-    if (has('parking')) reports.push(await fetchParking(args));
-  } else {
-    for (const name of ['nats', 'rowmaps', 'nt', 'countries', 'byelaws', 'parking']) {
-      const r = await readReport<SourceReport | SourceReport[]>(args.reportsDir, name);
-      if (!r) continue;
-      reports.push(...(Array.isArray(r) ? r : [r]));
+  // Sources in build order. `lad` runs before `byelaws` so authority-scoped policies can resolve their boundary.
+  const SOURCES: Array<{ id: string; files: string[]; run: (a: PipelineArgs) => Promise<SourceReport | SourceReport[]> }> = [
+    { id: 'nats', files: ['zones.ndjson'], run: fetchNats },
+    { id: 'rowmaps', files: ['rights_of_way.ndjson'], run: fetchRowmaps },
+    { id: 'nt', files: ['nt.ndjson'], run: fetchNt },
+    { id: 'countries', files: ['coverage.ndjson'], run: fetchCountries },
+    { id: 'byelaws', files: ['byelaws.ndjson'], run: loadByelaws },
+    { id: 'parking', files: ['parking.ndjson'], run: fetchParking },
+  ];
+  for (const source of SOURCES) {
+    if (!has(source.id)) {
+      // Excluded means "not in the pack": drop any stale NDJSON so it is not inserted.
+      for (const f of source.files) await unlink(path.join(args.normalisedDir, f)).catch(() => undefined);
+      continue;
     }
+    const r = args.skipFetch ? await readReport<SourceReport | SourceReport[]>(args.reportsDir, source.id) : await source.run(args);
+    if (!r) continue;
+    reports.push(...(Array.isArray(r) ? r : [r]));
   }
 
   const natsReport = reports.find((r) => r.source.id === SOURCE_IDS.nats);
@@ -117,7 +125,7 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     log.info(`rights of way: ${counts.rights_of_way}`);
 
     async function* restrictions(): AsyncGenerator<NormalisedRestriction> {
-      for (const name of ['nt.ndjson', 'byelaws.ndjson']) {
+      for (const name of ['nt.ndjson', 'byelaws.ndjson', 'access.ndjson', 'wales.ndjson', 'forestry.ndjson']) {
         const f = path.join(args.normalisedDir, name);
         if (!(await exists(f))) continue;
         for await (const r of readNdjson<NormalisedRestriction>(f)) yield r;
@@ -133,6 +141,12 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     const parkingFile = path.join(args.normalisedDir, 'parking.ndjson');
     counts.parking = (await exists(parkingFile)) ? await insertParking(db, readNdjson<NormalisedParking>(parkingFile)) : 0;
     log.info(`parking: ${counts.parking}`);
+    const hazardsFile = path.join(args.normalisedDir, 'hazards.ndjson');
+    counts.hazards = (await exists(hazardsFile)) ? await insertHazards(db, SOURCE_IDS.hazards, readNdjson<NormalisedHazard>(hazardsFile)) : 0;
+    log.info(`hazards: ${counts.hazards}`);
+    const ladFile = path.join(args.normalisedDir, 'admin_areas.ndjson');
+    counts.admin_areas = (await exists(ladFile)) ? await insertAdminAreas(db, readNdjson<NormalisedAdminArea>(ladFile)) : 0;
+    log.info(`admin areas: ${counts.admin_areas}`);
     counts.gazetteer = buildGazetteer(db);
     log.info(`gazetteer: ${counts.gazetteer}`);
 

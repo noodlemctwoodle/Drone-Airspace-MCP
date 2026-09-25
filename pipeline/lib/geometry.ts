@@ -102,10 +102,10 @@ import simplify from '@turf/simplify';
  * statement at 100 KB). Tolerance doubles each pass from ~2 m; gives up after
  * eight passes and returns the smallest result.
  */
-export function shrinkPolygon(poly: Polygon, maxBytes = 50_000): Polygon {
+export function shrinkPolygon(poly: Polygon, maxBytes = 50_000, maxPasses = 8): Polygon {
   let current = poly;
   let tolerance = 0.00002;
-  for (let i = 0; i < 8 && JSON.stringify(current).length > maxBytes; i += 1) {
+  for (let i = 0; i < maxPasses && JSON.stringify(current).length > maxBytes; i += 1) {
     try {
       const next = simplify(current, { tolerance, highQuality: false }) as Polygon;
       if (next.coordinates.length > 0 && next.coordinates[0].length >= 4) current = roundGeometry(next);
@@ -120,4 +120,54 @@ export function shrinkPolygon(poly: Polygon, maxBytes = 50_000): Polygon {
 export function geometryBbox(geom: Polygon | MultiPolygon) {
   const rings = geom.type === 'Polygon' ? geom.coordinates : geom.coordinates.flat();
   return bboxOfPositions(rings.flat());
+}
+
+/** Sutherland-Hodgman clip of one ring against an axis-aligned box. */
+function clipRing(ring: Position[], box: [number, number, number, number]): Position[] {
+  const [w, s, e, n] = box;
+  const edges: Array<[(p: Position) => boolean, (a: Position, b: Position) => Position]> = [
+    [(p) => p[0] >= w, (a, b) => [w, a[1] + ((b[1] - a[1]) * (w - a[0])) / (b[0] - a[0])]],
+    [(p) => p[0] <= e, (a, b) => [e, a[1] + ((b[1] - a[1]) * (e - a[0])) / (b[0] - a[0])]],
+    [(p) => p[1] >= s, (a, b) => [a[0] + ((b[0] - a[0]) * (s - a[1])) / (b[1] - a[1]), s]],
+    [(p) => p[1] <= n, (a, b) => [a[0] + ((b[0] - a[0]) * (n - a[1])) / (b[1] - a[1]), n]],
+  ];
+  let out = ring.slice(0, -1);
+  for (const [inside, intersect] of edges) {
+    const input = out;
+    out = [];
+    if (input.length === 0) break;
+    let prev = input[input.length - 1];
+    for (const cur of input) {
+      if (inside(cur)) {
+        if (!inside(prev)) out.push(intersect(prev, cur));
+        out.push(cur);
+      } else if (inside(prev)) out.push(intersect(prev, cur));
+      prev = cur;
+    }
+  }
+  return out.length >= 3 ? closeRing(roundCoords(out)) : [];
+}
+
+/**
+ * Split a polygon that is still too big after gentle simplification into
+ * pieces clipped to a grid of `cellDeg` squares. Point-in-any semantics are
+ * preserved, which is all the pack needs, and no piece degrades the way
+ * `shrinkPolygon` would by doubling its tolerance eight times.
+ */
+export function tilePolygon(poly: Polygon, maxBytes = 50_000, cellDeg = 0.1): Polygon[] {
+  const gentle = shrinkPolygon(poly, maxBytes, 2);
+  if (JSON.stringify(gentle).length <= maxBytes) return [gentle];
+  const [w, s, e, n] = bboxOfPositions(gentle.coordinates.flat());
+  const pieces: Polygon[] = [];
+  for (let x = Math.floor(w / cellDeg) * cellDeg; x < e; x += cellDeg) {
+    for (let y = Math.floor(s / cellDeg) * cellDeg; y < n; y += cellDeg) {
+      const box: [number, number, number, number] = [x, y, x + cellDeg, y + cellDeg];
+      const outer = clipRing(gentle.coordinates[0], box);
+      if (outer.length < 4) continue;
+      const holes = gentle.coordinates.slice(1).map((h) => clipRing(h, box)).filter((h) => h.length >= 4);
+      const piece: Polygon = { type: 'Polygon', coordinates: [outer, ...holes] };
+      pieces.push(JSON.stringify(piece).length > maxBytes ? shrinkPolygon(piece, maxBytes) : piece);
+    }
+  }
+  return pieces.length > 0 ? pieces : [shrinkPolygon(gentle, maxBytes)];
 }

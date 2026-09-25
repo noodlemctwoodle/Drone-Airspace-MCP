@@ -24,6 +24,9 @@ describe('mini pack build and repository queries', () => {
     expect(v.counts.rights_of_way).toBe(5);
     expect(v.counts.land_restrictions).toBeGreaterThanOrEqual(4); // multipolygons are split into parts
     expect(v.counts.coverage).toBeGreaterThanOrEqual(4);
+    expect(v.counts.hazards).toBe(3);
+    expect(v.counts.admin_areas).toBe(1);
+    expect(Object.keys(v.tableBytes)).toContain('zones');
   });
   it('finds zones at a point via rtree then exact test', async () => {
     const inside = await repo.zonesAt(-1.3816, 54.2056); // Topcliffe centre
@@ -46,6 +49,15 @@ describe('mini pack build and repository queries', () => {
     expect(hits[0].attribution).toBe('BD attribution');
     expect(hits[0].geometry.coordinates.length).toBeGreaterThan(2);
     expect(await repo.nearestRightsOfWay(-3, 53, 100, 3)).toEqual([]);
+    const hazards = await repo.hazardsNear(-2.277, 50.6212, 2500, 12);
+    expect(hazards.map((h) => h.kind)).toEqual(['railway', 'military', 'helipad']);
+    expect(hazards[0].distanceM).toBeLessThan(700);
+    expect((await repo.hazardsNear(-2.277, 50.6212, 100, 12)).length).toBe(0);
+    expect((await repo.hazardsInBbox([-2.3, 50.6, -2.2, 50.7])).map((h) => h.geometry.type).sort()).toEqual(['LineString', 'Point', 'Polygon']);
+    expect(await repo.hazardsNear(-2.22, 50.63, 10, 5)).toMatchObject([{ kind: 'military', distanceM: 0 }]);
+    expect(await repo.adminAreaAt(-2.277, 50.6212)).toMatchObject({ code: 'E06000059', name: 'Dorset', country: 'england' });
+    expect(await repo.adminAreaAt(-4, 56.5)).toBeNull();
+    expect((await repo.landRestrictionsAt(-2.6, 51.455))[0].scope).toBe('site');
   });
   it('answers coverage and land restrictions', async () => {
     expect(await repo.prowCoverageAt(-1.97, 50.69)).toBe('england_wales');

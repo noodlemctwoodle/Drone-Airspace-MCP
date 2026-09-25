@@ -81,7 +81,9 @@ export function buildDeps(config: Config, logger: Logger, overrides: Partial<{ f
     zonesByAerodrome: (name) => proxy.get().zonesByAerodrome(name),
     nearestParking: (lon, lat, m, n, priv) => proxy.get().nearestParking(lon, lat, m, n, priv),
     landRestrictionsInBbox: (b, l) => proxy.get().landRestrictionsInBbox(b, l),
-    hazardsNear: (lon, lat, m, n) => proxy.get().hazardsNear?.(lon, lat, m, n) ?? Promise.resolve([]),
+    hazardsNear: (lon, lat, m, n) => proxy.get().hazardsNear(lon, lat, m, n),
+    hazardsInBbox: (b, l) => proxy.get().hazardsInBbox(b, l),
+    adminAreaAt: (lon, lat) => proxy.get().adminAreaAt(lon, lat),
     close: () => undefined,
   };
 

@@ -1,4 +1,4 @@
-import type { LandRestriction, NotamHit, OutputFormat, HazardHit } from '../types.js';
+import type { LandRestriction, NotamHit, OutputFormat } from '../types.js';
 import type { HandlerDependencies, ToolHandler } from './deps.js';
 import { brief, respond } from './respond.js';
 import { locationLine, locationNotes, resolveOrRespond, sourceOfLocation } from './location-handlers.js';
@@ -76,7 +76,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
       attempt<SpaceWeather>(() => deps.spaceWeather.latest()),
       deps.rightsOfWay.coverageAt(loc.lon, loc.lat),
       pack.nearestParking(loc.lon, loc.lat, 2000, 3, false),
-      pack.hazardsNear ? pack.hazardsNear(loc.lon, loc.lat, 500, 10) : Promise.resolve([] as HazardHit[]),
+      pack.hazardsNear(loc.lon, loc.lat, 500, 10),
     ]);
     const paths = coverage === 'scotland' || coverage === 'northern_ireland' ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, 1000, maxPaths);
     const { relevant, above } = splitByRelevance(zones);

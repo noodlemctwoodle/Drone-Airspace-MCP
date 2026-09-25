@@ -7,6 +7,7 @@ export const SEVERITY: Record<ZoneType, Severity> = {
   frz: 3,
   danger: 2,
   other: 1,
+  prison: 4,
 };
 
 export const TYPE_LABEL: Record<ZoneType, string> = {
@@ -15,6 +16,7 @@ export const TYPE_LABEL: Record<ZoneType, string> = {
   restricted: 'Restricted Area',
   danger: 'Danger Area',
   other: 'Other restriction',
+  prison: 'Prison restricted area',
 };
 
 export function severityOf(zone: Zone): Severity {
@@ -44,6 +46,8 @@ export function zoneVerdictLine(zone: Zone, verb: 'Inside' | 'Enters'): string {
       return `${verb} ${title} (${label}) - flying not permitted without permission from ${zone.contact ? truncate(zone.contact, 120) : 'the controlling authority'}.`;
     case 'danger':
       return `${verb} ${title} (${label}) - check activation before flying${zone.activation ? `: ${truncate(zone.activation, 120)}` : ''}.`;
+    case 'prison':
+      return `${verb} ${title} (${label}) - it is an offence to fly an unmanned aircraft here (within about 400 m of the prison${/SI 2023\/1101/.test(zone.notes ?? '') ? ', SI 2023/1101' : ''}) unless HMPPS has granted permission${zone.contact ? ` (${truncate(zone.contact, 120)})` : ''}; there is no exemption for recreational flights.`;
     default:
       return `${verb} ${title} (${zone.rawType ? truncate(zone.rawType, 40) : label}) - see notes before flying.`;
   }

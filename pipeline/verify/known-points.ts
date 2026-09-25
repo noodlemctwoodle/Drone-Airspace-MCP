@@ -8,6 +8,8 @@ export interface KnownPoint {
     | { layer: 'rights_of_way'; authorityCode?: string; withinMetres: number }
     | { layer: 'land_restrictions'; owner: string }
     | { layer: 'parking'; withinMetres: number }
+    | { layer: 'hazards'; kind?: string; withinMetres: number }
+    | { layer: 'admin_areas'; code: string }
     | { layer: 'none' };
 }
 

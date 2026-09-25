@@ -15,6 +15,7 @@ export interface PipelineArgs {
   airac: string | undefined;
   strict: boolean;
   simplifyProwM: number;
+  simplifyLandM: number;
   exclude: Set<string>;
   positionals: string[];
   keep: number;
@@ -35,6 +36,7 @@ export function parsePipelineArgs(argv: string[]): PipelineArgs {
       airac: { type: 'string' },
       strict: { type: 'boolean', default: false },
       'simplify-prow-m': { type: 'string' },
+      'simplify-land-m': { type: 'string' },
       exclude: { type: 'string' },
       keep: { type: 'string', default: '6' },
       prefix: { type: 'string', default: 'pack-' },
@@ -56,6 +58,7 @@ export function parsePipelineArgs(argv: string[]): PipelineArgs {
     airac: values.airac,
     strict: values.strict ?? false,
     simplifyProwM: values['simplify-prow-m'] ? Number(values['simplify-prow-m']) : 0,
+    simplifyLandM: values['simplify-land-m'] ? Number(values['simplify-land-m']) : 10,
     exclude: new Set((values.exclude ?? '').split(',').map((s) => s.trim()).filter(Boolean)),
     positionals,
     keep: Number(values.keep ?? 6),

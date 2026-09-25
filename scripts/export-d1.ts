@@ -20,7 +20,7 @@ if (!packPath) {
   process.exit(2);
 }
 
-const BASE_TABLES = ['meta', 'sources', 'authorities', 'zones', 'rights_of_way', 'land_restrictions', 'coverage', 'parking', 'gazetteer'] as const;
+const BASE_TABLES = ['meta', 'sources', 'authorities', 'zones', 'rights_of_way', 'land_restrictions', 'coverage', 'parking', 'hazards', 'admin_areas', 'gazetteer'] as const;
 const MAX_STATEMENT_BYTES = 60_000;
 
 function literal(v: unknown): string {

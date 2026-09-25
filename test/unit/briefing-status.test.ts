@@ -34,8 +34,9 @@ describe('briefing status', () => {
     expect(codes({ weather: 'poor' })).toContain('weather_poor');
     expect(codes({ weather: null })).toContain('weather_unavailable');
     expect(codes({ kp: 'storm' })).toContain('geomagnetic_storm');
-    expect(codes({ hazards: [{ id: 1, kind: 'power_line', name: null, lon: -2, lat: 50, distanceM: 120 }] })).toContain('hazard_near');
-    expect(codes({ hazards: [{ id: 1, kind: 'power_line', name: null, lon: -2, lat: 50, distanceM: 400 }] })).not.toContain('hazard_near');
+    const line = { id: 1, osmId: null, kind: 'power_line' as const, name: null, operator: null, ref: null, lon: -2, lat: 50 };
+    expect(codes({ hazards: [{ ...line, distanceM: 120 }] })).toContain('hazard_near');
+    expect(codes({ hazards: [{ ...line, distanceM: 400 }] })).not.toContain('hazard_near');
   });
   it('adds notes that never change the status', () => {
     const r = deriveBriefingStatus({ ...base, weather: 'caution', kp: 'active', restrictions: [{ ...FIXTURE_RESTRICTIONS[0], takeoffBanned: false }], notams: { covering: [], nearby: [{ id: 'A' } as never], unlocated: 2 }, pathsWithin1km: 0, droneSubcategory: 'A3' });

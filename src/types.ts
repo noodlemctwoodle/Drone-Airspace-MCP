@@ -1,6 +1,6 @@
 import type { Geometry, LineString, MultiPolygon, Polygon, Position } from 'geojson';
 
-export type ZoneType = 'frz' | 'prohibited' | 'restricted' | 'danger' | 'other';
+export type ZoneType = 'frz' | 'prohibited' | 'restricted' | 'danger' | 'other' | 'prison';
 export type LimitRef = 'sfc' | 'agl' | 'amsl' | 'fl' | 'unl';
 
 export interface VerticalLimit {
@@ -32,7 +32,7 @@ export interface Zone {
 
 export type ZoneSummary = Omit<Zone, 'geometry'>;
 
-export type PathType = 'footpath' | 'bridleway' | 'restricted_byway' | 'boat';
+export type PathType = 'footpath' | 'bridleway' | 'restricted_byway' | 'boat' | 'core_path';
 
 export interface RightOfWay {
   id: number;
@@ -53,7 +53,9 @@ export interface RightOfWayHit extends RightOfWay {
   nearestPoint: Position;
 }
 
-export type RestrictionKind = 'landowner' | 'byelaw' | 'pspo' | 'policy';
+export type RestrictionKind = 'landowner' | 'byelaw' | 'pspo' | 'policy' | 'access_land' | 'designation';
+/** site: the polygon is the land the rule applies to; authority: a council-wide policy note carried on the council boundary. */
+export type RestrictionScope = 'site' | 'authority';
 
 export interface LandRestriction {
   id: number;
@@ -68,6 +70,7 @@ export interface LandRestriction {
   summary: string | null;
   sourceUrl: string | null;
   lastVerified: string | null;
+  scope: RestrictionScope;
 }
 
 export type Country = 'england' | 'wales' | 'scotland' | 'northern_ireland';
@@ -92,17 +95,33 @@ export interface Parking {
 export interface ParkingHit extends Parking {
   distanceM: number;
 }
-/** A ground hazard from OpenStreetMap (railway, power line, helipad, military land...). Points only until the pack carries geometry. */
+export type HazardKind = 'railway' | 'motorway' | 'trunk_road' | 'power_line' | 'helipad' | 'military';
+
+/** A ground hazard from OpenStreetMap: a line (railway, road, power line), a point (helipad) or a polygon (military land). */
 export interface Hazard {
   id: number;
-  kind: string;
+  osmId: string | null;
+  kind: HazardKind;
   name: string | null;
+  operator: string | null;
+  ref: string | null;
+  /** The point itself, or the centroid of a line or polygon. */
   lon: number;
   lat: number;
 }
 
 export interface HazardHit extends Hazard {
   distanceM: number;
+}
+
+export type AdminKind = 'lad';
+
+export interface AdminArea {
+  id: number;
+  code: string;
+  name: string;
+  kind: AdminKind;
+  country: Country | null;
 }
 
 export type ProwCoverage = 'england_wales' | 'scotland' | 'northern_ireland' | 'unknown';

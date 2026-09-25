@@ -116,3 +116,28 @@ describe('countries and regions', () => {
     expect(bboxIntersects([-3, 50, -2, 51], [0, 52, 1, 53])).toBe(false);
   });
 });
+
+describe('tilePolygon', () => {
+  it('leaves small polygons alone and splits oversize ones into grid pieces that still contain the same points', async () => {
+    const { tilePolygon } = await import('../../pipeline/lib/geometry.js');
+    const booleanPointInPolygon = (await import('@turf/boolean-point-in-polygon')).default;
+    const small = { type: 'Polygon' as const, coordinates: [[[-2.3, 50.6], [-2.2, 50.6], [-2.2, 50.7], [-2.3, 50.7], [-2.3, 50.6]]] };
+    expect(tilePolygon(small)).toEqual([small]);
+    // A jagged ring of 6000 vertices around a 0.5 degree box: about 130 KB of JSON.
+    const ring: number[][] = [];
+    const n = 6000;
+    for (let i = 0; i < n; i++) {
+      const t = (i / n) * Math.PI * 2;
+      const r = 0.25 + (i % 2 === 0 ? 0.0004 : 0);
+      ring.push([Number((-2.5 + r * Math.cos(t)).toFixed(6)), Number((51 + r * Math.sin(t)).toFixed(6))]);
+    }
+    ring.push(ring[0]);
+    const big = { type: 'Polygon' as const, coordinates: [ring] };
+    expect(JSON.stringify(big).length).toBeGreaterThan(50_000);
+    const pieces = tilePolygon(big, 50_000, 0.1);
+    expect(pieces.length).toBeGreaterThan(4);
+    for (const p of pieces) expect(JSON.stringify(p).length).toBeLessThanOrEqual(50_000);
+    for (const pt of [[-2.5, 51], [-2.3, 51.1], [-2.7, 50.9]]) expect(pieces.some((p) => booleanPointInPolygon(pt, p))).toBe(true);
+    expect(pieces.some((p) => booleanPointInPolygon([-2.5, 51.4], p))).toBe(false);
+  });
+});

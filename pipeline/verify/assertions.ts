@@ -2,7 +2,7 @@ import booleanValid from '@turf/boolean-valid';
 import type { BBox } from '../../src/types.js';
 import { SqlitePackRepository } from '../../src/pack/repository.js';
 import { openDatabase } from '../../src/pack/driver.js';
-import { META_KEYS, SCHEMA_VERSION } from '../../src/pack/schema.js';
+import { META_KEYS, SCHEMA_VERSION, SPATIAL_TABLES } from '../../src/pack/schema.js';
 import { KNOWN_POINTS } from './known-points.js';
 import { parseGeometry } from '../../src/pack/geometry.js';
 
@@ -12,6 +12,8 @@ export interface VerifyResult {
   warnings: string[];
   counts: Record<string, number>;
   sizeBytes: number;
+  /** Bytes per table including indexes and rtrees, from dbstat when the build supports it. */
+  tableBytes: Record<string, number>;
 }
 
 export interface VerifyOptions {
@@ -23,9 +25,9 @@ export interface VerifyOptions {
 }
 
 const FLOORS: Record<string, Record<string, number>> = {
-  national: { zones: 800, rights_of_way: 100_000, land_restrictions: 1000, gazetteer: 200, coverage: 4, parking: 50_000 }, // coverage counts polygon parts
-  'south-west': { zones: 40, rights_of_way: 10_000, land_restrictions: 100, gazetteer: 20, coverage: 1, parking: 3000 },
-  default: { zones: 1, rights_of_way: 0, land_restrictions: 0, gazetteer: 1, coverage: 0, parking: 0 },
+  national: { zones: 800, rights_of_way: 100_000, land_restrictions: 1000, gazetteer: 200, coverage: 4, parking: 50_000, hazards: 0, admin_areas: 0 }, // coverage counts polygon parts; hazards and admin_areas floors rise when their sources land
+  'south-west': { zones: 40, rights_of_way: 10_000, land_restrictions: 100, gazetteer: 20, coverage: 1, parking: 3000, hazards: 0, admin_areas: 0 },
+  default: { zones: 1, rights_of_way: 0, land_restrictions: 0, gazetteer: 1, coverage: 0, parking: 0, hazards: 0, admin_areas: 0 },
 };
 
 const SIZE_WARN = 400 * 1024 * 1024;
@@ -35,6 +37,7 @@ export async function verifyPack(file: string, opts: VerifyOptions): Promise<Ver
   const failures: string[] = [];
   const warnings: string[] = [];
   const counts: Record<string, number> = {};
+  const tableBytes: Record<string, number> = {};
   const db = openDatabase(file, { readonly: true });
   try {
     const integrity = db.prepare('PRAGMA integrity_check').get();
@@ -44,10 +47,10 @@ export async function verifyPack(file: string, opts: VerifyOptions): Promise<Ver
     if (!opts_.includes('ENABLE_RTREE')) failures.push('SQLite build lacks ENABLE_RTREE');
     if (!opts_.includes('ENABLE_FTS5')) failures.push('SQLite build lacks ENABLE_FTS5');
 
-    for (const t of ['zones', 'rights_of_way', 'land_restrictions', 'gazetteer', 'coverage', 'parking', 'sources', 'authorities']) {
+    for (const t of ['zones', 'rights_of_way', 'land_restrictions', 'gazetteer', 'coverage', 'parking', 'hazards', 'admin_areas', 'sources', 'authorities']) {
       counts[t] = Number(db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get()?.c ?? 0);
     }
-    for (const t of ['zones', 'rights_of_way', 'land_restrictions', 'coverage', 'parking']) {
+    for (const t of SPATIAL_TABLES) {
       const rt = Number(db.prepare(`SELECT COUNT(*) AS c FROM ${t}_rtree`).get()?.c ?? 0);
       if (rt !== counts[t]) failures.push(`${t}_rtree has ${rt} rows but ${t} has ${counts[t]}`);
     }
@@ -107,6 +110,14 @@ export async function verifyPack(file: string, opts: VerifyOptions): Promise<Ver
         if (counts.land_restrictions === 0) continue;
         const hits = await repo.landRestrictionsAt(kp.lon, kp.lat);
         if (!hits.some((h) => h.owner === e.owner)) failures.push(`known point "${kp.name}": expected ${e.owner} land`);
+      } else if (e.layer === 'hazards') {
+        if (counts.hazards === 0) continue;
+        const hits = await repo.hazardsNear(kp.lon, kp.lat, e.withinMetres, 12);
+        if (!hits.some((h) => !e.kind || h.kind === e.kind)) failures.push(`known point "${kp.name}": no ${e.kind ?? 'hazard'} within ${e.withinMetres} m`);
+      } else if (e.layer === 'admin_areas') {
+        if (counts.admin_areas === 0) continue;
+        const a = await repo.adminAreaAt(kp.lon, kp.lat);
+        if (a?.code !== e.code) failures.push(`known point "${kp.name}": expected authority ${e.code}, got ${a?.code ?? 'none'}`);
       } else {
         if ((await repo.zonesAt(kp.lon, kp.lat)).length > 0) failures.push(`known point "${kp.name}": unexpected zone`);
         if ((await repo.landRestrictionsAt(kp.lon, kp.lat)).length > 0) failures.push(`known point "${kp.name}": unexpected land restriction`);
@@ -115,6 +126,12 @@ export async function verifyPack(file: string, opts: VerifyOptions): Promise<Ver
     if (opts.region === 'national' && counts.gazetteer > 0) {
       if ((await repo.findAerodrome('EGLL')).length === 0) failures.push('gazetteer cannot resolve EGLL');
       if ((await repo.findAerodrome('heathrow')).length === 0) failures.push('gazetteer cannot resolve "heathrow"');
+    }
+
+    try {
+      for (const r of db.prepare('SELECT name, SUM(pgsize) AS bytes FROM dbstat GROUP BY name ORDER BY bytes DESC').all()) tableBytes[String(r.name)] = Number(r.bytes);
+    } catch {
+      // dbstat is optional in SQLite builds
     }
 
     if (opts.sizeBytes > SIZE_FAIL) failures.push(`pack is ${(opts.sizeBytes / 1048576).toFixed(0)} MB, over the ${SIZE_FAIL / 1048576} MB limit`);
@@ -128,5 +145,5 @@ export async function verifyPack(file: string, opts: VerifyOptions): Promise<Ver
   } finally {
     db.close();
   }
-  return { ok: failures.length === 0, failures, warnings, counts, sizeBytes: opts.sizeBytes };
+  return { ok: failures.length === 0, failures, warnings, counts, sizeBytes: opts.sizeBytes, tableBytes };
 }

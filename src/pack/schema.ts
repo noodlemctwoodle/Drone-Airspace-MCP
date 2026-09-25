@@ -3,12 +3,15 @@
  * Bump SCHEMA_VERSION on any incompatible change; the loader refuses packs whose
  * `PRAGMA user_version` does not match.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 export const APPLICATION_ID = 0x44524e41; // 'DRNA'
 
-export const ZONE_TYPES = ['frz', 'prohibited', 'restricted', 'danger', 'other'] as const;
-export const PATH_TYPES = ['footpath', 'bridleway', 'restricted_byway', 'boat'] as const;
-export const RESTRICTION_KINDS = ['landowner', 'byelaw', 'pspo', 'policy'] as const;
+export const ZONE_TYPES = ['frz', 'prohibited', 'restricted', 'danger', 'other', 'prison'] as const;
+export const PATH_TYPES = ['footpath', 'bridleway', 'restricted_byway', 'boat', 'core_path'] as const;
+export const RESTRICTION_KINDS = ['landowner', 'byelaw', 'pspo', 'policy', 'access_land', 'designation'] as const;
+export const RESTRICTION_SCOPES = ['site', 'authority'] as const;
+export const HAZARD_KINDS = ['railway', 'motorway', 'trunk_road', 'power_line', 'helipad', 'military'] as const;
+export const ADMIN_KINDS = ['lad'] as const;
 export const COUNTRIES = ['england', 'wales', 'scotland', 'northern_ireland'] as const;
 export const PARKING_KINDS = ['car_park', 'layby', 'rest_area', 'street_side'] as const;
 
@@ -20,6 +23,17 @@ export const SOURCE_IDS = {
   byelaws: 'byelaws',
   countries: 'ons_countries',
   parking: 'osm_parking',
+  hazards: 'osm_hazards',
+  neCrowAccess: 'ne_crow_access',
+  neSssi: 'ne_sssi',
+  neNationalParks: 'ne_national_parks',
+  nrwOpenCountry: 'nrw_open_country',
+  nrwCommonLand: 'nrw_common_land',
+  nrwSssi: 'nrw_sssi',
+  nrwNationalParks: 'nrw_national_parks',
+  forestryEngland: 'fe_legal_boundary',
+  corePaths: 'is_core_paths',
+  lad: 'ons_lad',
 } as const;
 
 const list = (values: readonly string[]) => values.map((v) => `'${v}'`).join(',');
@@ -66,7 +80,7 @@ export const DDL: string[] = [
   `CREATE TABLE authorities (
     code TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    country TEXT NOT NULL CHECK (country IN ('england','wales')),
+    country TEXT NOT NULL CHECK (country IN ('england','wales','scotland')),
     attribution TEXT NOT NULL,
     fetched_at TEXT,
     feature_count INTEGER
@@ -98,6 +112,7 @@ export const DDL: string[] = [
     source_url TEXT,
     last_verified TEXT,
     props TEXT,
+    scope TEXT NOT NULL DEFAULT 'site' CHECK (scope IN (${list(RESTRICTION_SCOPES)})),
     min_lon REAL NOT NULL, max_lon REAL NOT NULL, min_lat REAL NOT NULL, max_lat REAL NOT NULL,
     geom TEXT NOT NULL
   )`,
@@ -125,6 +140,32 @@ export const DDL: string[] = [
   )`,
   `CREATE VIRTUAL TABLE parking_rtree USING rtree(id, min_lon, max_lon, min_lat, max_lat)`,
   `CREATE INDEX parking_kind ON parking(kind)`,
+  `CREATE TABLE hazards (
+    id INTEGER PRIMARY KEY,
+    source_id TEXT NOT NULL REFERENCES sources(id),
+    osm_id TEXT,
+    kind TEXT NOT NULL CHECK (kind IN (${list(HAZARD_KINDS)})),
+    name TEXT,
+    operator TEXT,
+    ref TEXT,
+    geom_fmt TEXT NOT NULL CHECK (geom_fmt IN ('geojson','polyline6')),
+    lon REAL NOT NULL, lat REAL NOT NULL,
+    min_lon REAL NOT NULL, max_lon REAL NOT NULL, min_lat REAL NOT NULL, max_lat REAL NOT NULL,
+    geom TEXT NOT NULL
+  )`,
+  `CREATE VIRTUAL TABLE hazards_rtree USING rtree(id, min_lon, max_lon, min_lat, max_lat)`,
+  `CREATE INDEX hazards_kind ON hazards(kind)`,
+  `CREATE TABLE admin_areas (
+    id INTEGER PRIMARY KEY,
+    code TEXT NOT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN (${list(ADMIN_KINDS)})),
+    country TEXT CHECK (country IN (${list(COUNTRIES)})),
+    min_lon REAL NOT NULL, max_lon REAL NOT NULL, min_lat REAL NOT NULL, max_lat REAL NOT NULL,
+    geom TEXT NOT NULL
+  )`,
+  `CREATE VIRTUAL TABLE admin_areas_rtree USING rtree(id, min_lon, max_lon, min_lat, max_lat)`,
+  `CREATE INDEX admin_code ON admin_areas(code)`,
   `CREATE TABLE gazetteer (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -139,7 +180,7 @@ export const DDL: string[] = [
 ];
 
 /** Tables that carry a bbox and a companion `<table>_rtree`; used to rebuild rtrees after a D1 import. */
-export const SPATIAL_TABLES = ['zones', 'rights_of_way', 'land_restrictions', 'coverage', 'parking'] as const;
+export const SPATIAL_TABLES = ['zones', 'rights_of_way', 'land_restrictions', 'coverage', 'parking', 'hazards', 'admin_areas'] as const;
 
 export const META_KEYS = [
   'schema_version',

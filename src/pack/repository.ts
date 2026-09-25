@@ -22,7 +22,10 @@ import type {
   RightOfWayHit,
   Zone,
   ZoneType,
+  Hazard,
   HazardHit,
+  AdminArea,
+  Geometry,
 } from '../types.js';
 import { openDatabase, type Row, type SqliteDriver } from './driver.js';
 import { PackIncompatibleError } from '../core/errors.js';
@@ -54,8 +57,12 @@ export interface PackRepository {
   zonesByAerodrome(aerodromeName: string): Promise<Zone[]>;
   /** Land restrictions intersecting a bbox, with geometry (map rendering). */
   landRestrictionsInBbox(bbox: BBox, limit?: number): Promise<Array<LandRestriction & { geometry: Polygon | MultiPolygon }>>;
-  /** Ground hazards near a point, nearest first. Optional until the pack carries the hazards table. */
-  hazardsNear?(lon: number, lat: number, limitMetres?: number, n?: number): Promise<HazardHit[]>;
+  /** Ground hazards near a point, nearest first, at most three per kind. */
+  hazardsNear(lon: number, lat: number, limitMetres?: number, n?: number): Promise<HazardHit[]>;
+  /** Hazards whose bbox touches the box, with geometry, for the map. */
+  hazardsInBbox(bbox: BBox, limit?: number): Promise<Array<Hazard & { geometry: Geometry }>>;
+  /** The local authority containing a point, if the pack knows it. */
+  adminAreaAt(lon: number, lat: number): Promise<AdminArea | null>;
   /** Car parks, laybys and rest areas within `limitMetres`, nearest first. Private ones are excluded unless asked for. */
   nearestParking(lon: number, lat: number, limitMetres?: number, n?: number, includePrivate?: boolean): Promise<ParkingHit[]>;
   close(): void;
@@ -106,6 +113,7 @@ export function restrictionFromRow(row: Row): LandRestriction {
     summary: str(row.summary),
     sourceUrl: str(row.source_url),
     lastVerified: str(row.last_verified),
+    scope: (str(row.scope) ?? 'site') as LandRestriction['scope'],
   };
 }
 
@@ -355,6 +363,91 @@ export class QueryPackRepository implements PackRepository {
       if (deduped.length >= n) break;
     }
     return deduped;
+  }
+
+  private hazardFromRow(row: Row): Hazard {
+    return {
+      id: Number(row.id),
+      osmId: str(row.osm_id),
+      kind: String(row.kind) as Hazard['kind'],
+      name: str(row.name),
+      operator: str(row.operator),
+      ref: str(row.ref),
+      lon: Number(row.lon),
+      lat: Number(row.lat),
+    };
+  }
+
+  private hazardGeometry(row: Row): Geometry | undefined {
+    if (String(row.geom_fmt) === 'polyline6') return decodeLine(String(row.geom));
+    try {
+      return JSON.parse(String(row.geom)) as Geometry;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async hazardsNear(lon: number, lat: number, limitMetres = 500, n = 12): Promise<HazardHit[]> {
+    const { dLat, dLon } = metresToDegrees(limitMetres, lat);
+    const rows = await this.q.all(
+      `SELECT h.* FROM hazards_rtree r JOIN hazards h ON h.id = r.id
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?
+       LIMIT ?`,
+      [lon + dLon, lon - dLon, lat + dLat, lat - dLat, ROW_CANDIDATE_CAP]
+    );
+    const here = point([lon, lat]);
+    const hits: HazardHit[] = [];
+    for (const row of rows) {
+      const g = this.hazardGeometry(row);
+      let d: number;
+      if (!g || g.type === 'Point') d = distance(here, point([Number(row.lon), Number(row.lat)]), { units: 'meters' });
+      else if (g.type === 'LineString') d = pointToLineDistance(here, lineString(g.coordinates), { units: 'meters' });
+      else if (g.type === 'Polygon') d = booleanPointInPolygon(here, g) ? 0 : pointToLineDistance(here, lineString(g.coordinates[0]), { units: 'meters' });
+      else d = distance(here, point([Number(row.lon), Number(row.lat)]), { units: 'meters' });
+      if (d > limitMetres) continue;
+      hits.push({ ...this.hazardFromRow(row), distanceM: Math.round(d) });
+    }
+    hits.sort((a, b) => a.distanceM - b.distanceM);
+    const perKind = new Map<string, number>();
+    const out: HazardHit[] = [];
+    for (const h of hits) {
+      const k = perKind.get(h.kind) ?? 0;
+      if (k >= 3) continue;
+      perKind.set(h.kind, k + 1);
+      out.push(h);
+      if (out.length >= n) break;
+    }
+    return out;
+  }
+
+  async hazardsInBbox(bbox: BBox, limit = 300): Promise<Array<Hazard & { geometry: Geometry }>> {
+    const rows = await this.q.all(
+      `SELECT h.* FROM hazards_rtree r JOIN hazards h ON h.id = r.id
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ? LIMIT ?`,
+      [bbox[2], bbox[0], bbox[3], bbox[1], limit]
+    );
+    const out: Array<Hazard & { geometry: Geometry }> = [];
+    for (const row of rows) {
+      const geometry = this.hazardGeometry(row);
+      if (geometry) out.push({ ...this.hazardFromRow(row), geometry });
+    }
+    return out;
+  }
+
+  async adminAreaAt(lon: number, lat: number): Promise<AdminArea | null> {
+    const rows = await this.q.all(
+      `SELECT a.* FROM admin_areas_rtree r JOIN admin_areas a ON a.id = r.id
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ? LIMIT 50`,
+      [lon, lon, lat, lat]
+    );
+    const here = point([lon, lat]);
+    for (const row of rows) {
+      const g = parseGeometry(String(row.geom));
+      if (g && booleanPointInPolygon(here, g)) {
+        return { id: Number(row.id), code: String(row.code), name: String(row.name), kind: String(row.kind) as AdminArea['kind'], country: (str(row.country) as AdminArea['country']) ?? null };
+      }
+    }
+    return null;
   }
 
   async findAerodrome(nameOrIcao: string, n = 5): Promise<GazetteerHit[]> {

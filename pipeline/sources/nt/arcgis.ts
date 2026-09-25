@@ -60,6 +60,8 @@ export async function* fetchAllFeatures(layerUrl: string, opts: FetchFeaturesOpt
 }
 
 export interface NormalisedRestriction {
+  /** Defaults to 'site'; 'authority' marks a council-wide policy note carried on the council boundary. */
+  scope?: 'site' | 'authority';
   sourceId: string;
   entryId: string | null;
   kind: 'landowner' | 'byelaw' | 'pspo' | 'policy';
