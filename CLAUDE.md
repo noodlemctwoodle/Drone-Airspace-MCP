@@ -27,6 +27,11 @@ PACK_PATH=build/pack/pack-dev.sqlite npm run dev
 Node 22.13+ is required: the server uses the built-in `node:sqlite` (no native
 module) and silences its ExperimentalWarning in `src/index.ts`.
 
+`npm run build` typechecks then bundles everything into a single `dist/index.js`
+with esbuild (`scripts/bundle.mjs`). The published package has **no runtime
+dependencies**, so `npx` starts it in seconds instead of resolving 200+
+packages; keep it that way (all packages live in `devDependencies`).
+
 ## Architecture
 ```
 src/

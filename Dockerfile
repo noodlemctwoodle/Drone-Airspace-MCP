@@ -4,8 +4,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY tsconfig.json ./
+COPY scripts/bundle.mjs ./scripts/
 COPY src ./src
-RUN npm run build && npm prune --omit=dev
+RUN npm run build
 
 FROM node:22-alpine
 WORKDIR /app
@@ -14,7 +15,7 @@ ENV NODE_ENV=production \
     PORT=8080 \
     DRONE_AIRSPACE_CACHE_DIR=/data
 RUN mkdir -p /data && chown node:node /data
-COPY --from=build /app/node_modules ./node_modules
+# dist/index.js is a self-contained bundle; no node_modules needed at runtime.
 COPY --from=build /app/dist ./dist
 COPY package.json licences ./
 USER node

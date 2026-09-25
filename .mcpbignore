@@ -17,3 +17,4 @@ vitest.config.ts
 Dockerfile
 CLAUDE.md
 build-sw.log
+node_modules/

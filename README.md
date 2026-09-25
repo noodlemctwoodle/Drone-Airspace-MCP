@@ -17,7 +17,7 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 
 ## Quick start
 
-Requires Node 22.13 or newer (the server uses Node's built-in SQLite, so there is nothing native to compile).
+Requires Node 22.13 or newer (the server uses Node's built-in SQLite, so there is nothing native to compile). The package is a single bundled file with no dependencies, so `npx` starts it in a few seconds.
 
 ```bash
 npx -y uk-drone-airspace-mcp
