@@ -1,0 +1,58 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Verify build output
+        run: test -f dist/index.js && node dist/index.js --version
+      - name: Publish
+        run: npm publish --access public --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  desktop-extension:
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Production dependencies only
+        run: npm prune --omit=dev
+      - name: Sync manifest version with package.json
+        run: node -e "const fs=require('fs');const m=require('./manifest.json');m.version=require('./package.json').version;fs.writeFileSync('manifest.json',JSON.stringify(m,null,2)+'\n')"
+      - name: Pack .mcpb
+        run: npx --yes @anthropic-ai/mcpb pack . uk-drone-airspace.mcpb
+      - name: Attach to a GitHub release (never marked latest; pack releases own "latest")
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          make_latest: false
+          files: uk-drone-airspace.mcpb

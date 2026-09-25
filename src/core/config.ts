@@ -1,0 +1,130 @@
+import os from 'node:os';
+import path from 'node:path';
+import { parseArgs } from 'node:util';
+import { z } from 'zod';
+import { REPO_URL } from '../version.js';
+
+const DEFAULT_MANIFEST_URL = `${REPO_URL}/releases/latest/download/manifest.json`;
+
+function defaultCacheDir(env: NodeJS.ProcessEnv): string {
+  if (env.XDG_CACHE_HOME) return path.join(env.XDG_CACHE_HOME, 'uk-drone-airspace-mcp');
+  if (process.platform === 'win32' && env.LOCALAPPDATA) {
+    return path.join(env.LOCALAPPDATA, 'uk-drone-airspace-mcp', 'cache');
+  }
+  return path.join(os.homedir(), '.cache', 'uk-drone-airspace-mcp');
+}
+
+const intFromEnv = (fallback: number, min = 1) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === '' ? fallback : Number(v)))
+    .pipe(z.number().int().min(min));
+
+const boolFromEnv = (fallback: boolean) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === '' ? fallback : !/^(0|false|no|off)$/i.test(v)));
+
+const envSchema = z.object({
+  NOMINATIM_URL: z.string().url().default('https://nominatim.openstreetmap.org/search'),
+  OS_NAMES_API_KEY: z.string().optional().transform((v) => (v && v.trim() !== '' ? v.trim() : undefined)),
+  OS_NAMES_URL: z.string().url().default('https://api.os.uk/search/names/v1/find'),
+  POSTCODES_IO_URL: z.string().url().default('https://api.postcodes.io'),
+  NOTAM_PIB_URL: z.string().url().default('https://pibs.nats.co.uk/operational/pibs/PIB.xml'),
+  NOTAM_CACHE_TTL_SECONDS: intFromEnv(1800),
+  GEOCODE_CACHE_TTL_SECONDS: intFromEnv(30 * 24 * 3600),
+  HTTP_TIMEOUT_MS: intFromEnv(8000, 100),
+  DRONE_AIRSPACE_CACHE_DIR: z.string().optional(),
+  PACK_MANIFEST_URL: z.string().default(DEFAULT_MANIFEST_URL),
+  PACK_PATH: z.string().optional().transform((v) => (v && v.trim() !== '' ? v : undefined)),
+  PACK_UPDATE_CHECK: boolFromEnv(true),
+  PACK_STALE_HOURS: intFromEnv(24),
+  PACK_DOWNLOAD_TIMEOUT_MS: intFromEnv(600_000, 1000),
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'silent']).default('info'),
+  MCP_TRANSPORT: z.enum(['stdio', 'http']).default('stdio'),
+  PORT: intFromEnv(8080),
+  GITHUB_TOKEN: z.string().optional(),
+});
+
+export interface Config {
+  nominatimUrl: string;
+  osNamesApiKey: string | undefined;
+  osNamesUrl: string;
+  postcodesIoUrl: string;
+  notamPibUrl: string;
+  notamCacheTtlSeconds: number;
+  geocodeCacheTtlSeconds: number;
+  httpTimeoutMs: number;
+  cacheDir: string;
+  packManifestUrl: string;
+  packPath: string | undefined;
+  packUpdateCheck: boolean;
+  packStaleHours: number;
+  packDownloadTimeoutMs: number;
+  logLevel: 'debug' | 'info' | 'warn' | 'error' | 'silent';
+  transport: 'stdio' | 'http';
+  port: number;
+  githubToken: string | undefined;
+}
+
+export interface CliArgs {
+  transport?: 'stdio' | 'http';
+  port?: number;
+  version: boolean;
+  help: boolean;
+}
+
+export function parseCliArgs(argv: string[]): CliArgs {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      transport: { type: 'string' },
+      port: { type: 'string' },
+      version: { type: 'boolean', short: 'v', default: false },
+      help: { type: 'boolean', short: 'h', default: false },
+    },
+    strict: true,
+    allowPositionals: false,
+  });
+  const transport = values.transport;
+  if (transport !== undefined && transport !== 'stdio' && transport !== 'http') {
+    throw new Error(`--transport must be "stdio" or "http", got "${transport}"`);
+  }
+  const port = values.port === undefined ? undefined : Number(values.port);
+  if (port !== undefined && (!Number.isInteger(port) || port < 1 || port > 65535)) {
+    throw new Error(`--port must be an integer between 1 and 65535, got "${values.port}"`);
+  }
+  return { transport, port, version: values.version ?? false, help: values.help ?? false };
+}
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env, cli: Partial<CliArgs> = {}): Config {
+  const parsed = envSchema.safeParse(env);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const key = issue?.path.join('.') ?? 'environment';
+    throw new Error(`Invalid configuration for ${key}: ${issue?.message ?? 'unknown error'}`);
+  }
+  const e = parsed.data;
+  return Object.freeze({
+    nominatimUrl: e.NOMINATIM_URL,
+    osNamesApiKey: e.OS_NAMES_API_KEY,
+    osNamesUrl: e.OS_NAMES_URL,
+    postcodesIoUrl: e.POSTCODES_IO_URL.replace(/\/+$/, ''),
+    notamPibUrl: e.NOTAM_PIB_URL,
+    notamCacheTtlSeconds: e.NOTAM_CACHE_TTL_SECONDS,
+    geocodeCacheTtlSeconds: e.GEOCODE_CACHE_TTL_SECONDS,
+    httpTimeoutMs: e.HTTP_TIMEOUT_MS,
+    cacheDir: e.DRONE_AIRSPACE_CACHE_DIR && e.DRONE_AIRSPACE_CACHE_DIR.trim() !== '' ? e.DRONE_AIRSPACE_CACHE_DIR : defaultCacheDir(env),
+    packManifestUrl: e.PACK_MANIFEST_URL,
+    packPath: e.PACK_PATH,
+    packUpdateCheck: e.PACK_UPDATE_CHECK,
+    packStaleHours: e.PACK_STALE_HOURS,
+    packDownloadTimeoutMs: e.PACK_DOWNLOAD_TIMEOUT_MS,
+    logLevel: e.LOG_LEVEL,
+    transport: cli.transport ?? e.MCP_TRANSPORT,
+    port: cli.port ?? e.PORT,
+    githubToken: e.GITHUB_TOKEN && e.GITHUB_TOKEN.trim() !== '' ? e.GITHUB_TOKEN : undefined,
+  });
+}

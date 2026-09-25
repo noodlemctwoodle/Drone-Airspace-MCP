@@ -1,0 +1,4 @@
+{"type":"FeatureCollection","properties":{"exceededTransferLimit":true},"features":[
+ {"type":"Feature","id":1,"geometry":{"type":"Polygon","coordinates":[[[-1.985,50.685],[-1.96,50.685],[-1.96,50.697],[-1.985,50.697],[-1.985,50.685]]]},"properties":{"OBJECTID":1,"Name":"Brownsea Island","LastUpdated":1686614400000}},
+ {"type":"Feature","id":2,"geometry":{"type":"MultiPolygon","coordinates":[[[[-2.07,50.635],[-2.05,50.635],[-2.05,50.645],[-2.07,50.645],[-2.07,50.635]]],[[[-2.09,50.65],[-2.08,50.65],[-2.08,50.655],[-2.09,50.655],[-2.09,50.65]]]]},"properties":{"OBJECTID":2,"Name":"Corfe Castle","LastUpdated":1686614400000}}
+]}

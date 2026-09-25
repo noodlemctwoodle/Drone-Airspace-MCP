@@ -1,0 +1,4 @@
+[
+  {"place_id":20,"lat":"51.4545","lon":"-2.5879","display_name":"Bristol, England, United Kingdom","importance":0.95,"boundingbox":["51.39","51.54","-2.73","-2.51"],"class":"boundary","type":"administrative"},
+  {"place_id":21,"lat":"51.4490","lon":"-2.5810","display_name":"Bristol Temple Meads, Bristol, England, United Kingdom","importance":0.5,"class":"railway","type":"station"}
+]

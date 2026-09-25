@@ -1,0 +1,102 @@
+{
+  "name": "uk-drone-airspace-mcp",
+  "version": "0.1.0",
+  "description": "MCP server answering where a drone can legally take off and fly in the UK: NATS flight restriction zones, live NOTAMs, public rights of way and landowner rules",
+  "type": "module",
+  "bin": {
+    "uk-drone-airspace-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "licences",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "prepare": "npm run build",
+    "lint": "eslint src pipeline scripts test",
+    "lint:fix": "eslint src pipeline scripts test --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.pipeline.json --noEmit",
+    "pack:build": "tsx scripts/build-pack.ts",
+    "pack:verify": "tsx scripts/verify-pack.ts",
+    "pack:fetch-nats": "tsx scripts/fetch-nats.ts",
+    "pack:fetch-rowmaps": "tsx scripts/fetch-rowmaps.ts",
+    "pack:fetch-nt": "tsx scripts/fetch-nt.ts",
+    "pack:fetch-countries": "tsx scripts/fetch-countries.ts",
+    "pack:manifest": "tsx scripts/make-manifest.ts",
+    "pack:check-upstream": "tsx scripts/check-upstream.ts",
+    "mcpb:pack": "npm run build && npm prune --omit=dev && npx --yes @anthropic-ai/mcpb pack . build/uk-drone-airspace.mcpb; npm install --no-audit --no-fund >/dev/null 2>&1 || true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "drone",
+    "uas",
+    "uk",
+    "airspace",
+    "notam",
+    "flight-restriction-zone",
+    "rights-of-way",
+    "claude"
+  ],
+  "author": "Toby Goulden",
+  "license": "MIT",
+  "dependencies": {
+    "@mapbox/polyline": "^1.2.1",
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "@turf/area": "^7.4.0",
+    "@turf/bbox": "^7.4.0",
+    "@turf/bbox-polygon": "^7.4.0",
+    "@turf/boolean-intersects": "^7.4.0",
+    "@turf/boolean-point-in-polygon": "^7.4.0",
+    "@turf/boolean-valid": "^7.4.0",
+    "@turf/centroid": "^7.4.0",
+    "@turf/circle": "^7.4.0",
+    "@turf/destination": "^7.4.0",
+    "@turf/difference": "^7.4.0",
+    "@turf/distance": "^7.4.0",
+    "@turf/helpers": "^7.4.0",
+    "@turf/intersect": "^7.4.0",
+    "@turf/length": "^7.4.0",
+    "@turf/line-intersect": "^7.4.0",
+    "@turf/line-slice": "^7.4.0",
+    "@turf/nearest-point-on-line": "^7.4.0",
+    "@turf/point-to-line-distance": "^7.4.0",
+    "@turf/rewind": "^7.4.0",
+    "@turf/simplify": "^7.4.0",
+    "@turf/union": "^7.4.0",
+    "express": "^5.2.1",
+    "fast-xml-parser": "^5.11.1",
+    "proj4": "^2.22.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tmcw/togeojson": "^7.1.2",
+    "@types/express": "^5.0.6",
+    "@types/geojson": "^7946.0.16",
+    "@types/mapbox__polyline": "^1.0.5",
+    "@types/node": "^26.6.2",
+    "@types/proj4": "^2.5.6",
+    "@typescript-eslint/eslint-plugin": "^8.70.1",
+    "@typescript-eslint/parser": "^8.70.1",
+    "@vitest/coverage-v8": "^5.0.2",
+    "@xmldom/xmldom": "^0.9.12",
+    "eslint": "^10.11.0",
+    "fflate": "^0.8.3",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.2",
+    "yaml": "^2.9.1"
+  }
+}

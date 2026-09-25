@@ -1,0 +1,191 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { createHandlers } from '../../src/handlers/index.js';
+import { buildTestDeps, testConfig } from '../helpers/build-deps.js';
+import { fakeFetch } from '../helpers/fake-fetch.js';
+
+const fx = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/geocode/${name}`, import.meta.url), 'utf8'));
+const pib = readFileSync(new URL('../fixtures/notam/pib-excerpt.xml', import.meta.url), 'utf8');
+
+function setup(extra: Parameters<typeof fakeFetch>[0] = [], opts: Parameters<typeof buildTestDeps>[0] = {}) {
+  const ff = fakeFetch([
+    { match: 'q=Newport', body: fx('nominatim-newport.json') },
+    { match: 'q=Tyndale%20Monument', body: fx('nominatim-tyndale.json') },
+    { match: 'q=the%20layby', body: [] },
+    { match: 'q=Bristol', body: fx('nominatim-bristol.json') },
+    { match: 'q=Nowhere', body: [] },
+    { match: '/postcodes/BS16QF', body: fx('postcodes-io-bs1.json') },
+    { match: '/outcodes/GL11', body: fx('postcodes-io-outcode.json') },
+    { match: 'PIB.xml', body: pib, headers: { 'content-type': 'text/xml' } },
+    ...extra,
+  ]);
+  const built = buildTestDeps({ fetchImpl: ff.fetch, ...opts });
+  return { ...built, handlers: createHandlers(built.deps), calls: ff.calls };
+}
+const text = (r: { content: Array<{ text: string }> }) => r.content[0].text;
+const json = (r: { content: Array<{ text: string }> }) => JSON.parse(r.content[0].text);
+
+describe('check_location', () => {
+  it('returns ambiguity candidates for Newport', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('check_location')!({ place: 'Newport', format: 'json' }));
+    expect(r.status).toBe('ambiguous');
+    expect(r.candidates.length).toBe(3);
+  });
+  it('resolves informal names through the fallback and says so', async () => {
+    const { handlers } = setup();
+    const r = text(await handlers.get('check_location')!({ place: 'the layby below Tyndale Monument' }));
+    expect(r).toContain('results are for "Tyndale Monument"');
+    expect(r).toContain('No permanent airspace restriction at this point.');
+  });
+  it('short-circuits postcodes and outcodes', async () => {
+    const { handlers, calls } = setup();
+    const r = json(await handlers.get('check_location')!({ place: 'bs1 6qf', format: 'json' }));
+    expect(r.location.source).toBe('postcodes.io');
+    expect(calls.some((c) => c.url.includes('nominatim'))).toBe(false);
+    const o = json(await handlers.get('check_location')!({ place: 'GL11', format: 'json' }));
+    expect(o.location.name).toContain('GL11');
+  });
+  it('reports not found', async () => {
+    const { handlers } = setup();
+    expect(text(await handlers.get('check_location')!({ place: 'Nowhere' }))).toMatch(/No UK location found/);
+  });
+  it('lists landowner rules and the verdict for a point inside NT land', async () => {
+    const { handlers } = setup();
+    const r = text(await handlers.get('check_location')!({ lat: 50.69, lon: -1.97 }));
+    expect(r).toContain('Landowner rule: Brownsea Island');
+    expect(r).toContain('National Trust Open Data');
+  });
+  it('fails clearly on a geocoder outage', async () => {
+    const { handlers } = setup([], { fetchImpl: async () => new Response('down', { status: 503 }) });
+    await expect(handlers.get('check_location')!({ place: 'Anywhere' })).rejects.toThrow(/Geocoding is unavailable/);
+  });
+  it('explains when the pack is unavailable', async () => {
+    const { handlers } = setup([], { noPack: true });
+    await expect(handlers.get('check_location')!({ lat: 51, lon: -2 })).rejects.toThrow(/data pack unavailable/i);
+  });
+});
+
+describe('get_aerodrome_zone', () => {
+  it('finds by ICAO and by name, with geometry on request', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('get_aerodrome_zone')!({ aerodrome: 'EGGD', format: 'json' }));
+    expect(r.matches[0].icao).toBe('EGGD');
+    expect(r.matches[0].zone.geometry).toBeUndefined();
+    expect(r.matches[0].components.length).toBe(1);
+    const g = json(await handlers.get('get_aerodrome_zone')!({ aerodrome: 'bristol', include_geojson: true, format: 'json' }));
+    expect(g.matches[0].zone.geometry.type).toBe('Polygon');
+    expect(text(await handlers.get('get_aerodrome_zone')!({ aerodrome: 'Atlantis' }))).toMatch(/No aerodrome zone found/);
+  });
+});
+
+describe('check_notams', () => {
+  it('lists covering and unlocated NOTAMs from the bulletin', async () => {
+    const { handlers } = setup();
+    // Walney / Barrow: many fixture NOTAMs sit around 54.13N 3.27W
+    const r = json(await handlers.get('check_notams')!({ lat: 54.13, lon: -3.26, radius_km: 20, date: '2026-09-25T12:00Z', format: 'json' }));
+    expect(r.bulletin.count).toBe(20);
+    expect(r.covering.length + r.nearby.length).toBeGreaterThan(0);
+    expect(r.unlocatedTotal).toBeGreaterThan(0);
+    expect(r.attribution.join(' ')).toContain('NATS AIS');
+    const t = text(await handlers.get('check_notams')!({ lat: 54.13, lon: -3.26, radius_km: 20 }));
+    expect(t).toContain('Covering the point');
+    expect(t).toContain('Caveats');
+  });
+  it('rejects a bad date', async () => {
+    const { handlers } = setup();
+    await expect(handlers.get('check_notams')!({ lat: 54, lon: -3, date: 'tomorrow' })).rejects.toThrow(/ISO 8601/);
+  });
+  it('serves a stale bulletin with a caveat when the feed fails', async () => {
+    const { handlers, deps } = setup();
+    await handlers.get('check_notams')!({ lat: 54.13, lon: -3.26 });
+    // second setup sharing the cache dir but with a dead network
+    const dead = buildTestDeps({ config: deps.config, fetchImpl: async () => new Response('down', { status: 503 }), now: () => new Date('2026-09-25T13:00:00Z') });
+    const h2 = createHandlers(dead.deps);
+    const r = json(await h2.get('check_notams')!({ lat: 54.13, lon: -3.26, format: 'json' }));
+    expect(r.bulletin.stale).toBe(true);
+    expect(r.caveats.join(' ')).toMatch(/cached copy/);
+  });
+});
+
+describe('check_route', () => {
+  it('reports crossings with entry distances', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('check_route')!({ waypoints: [[-3.3, 51.207], [-2.7191, 51.207], [-2.7191, 51.3827]], format: 'json' }));
+    expect(r.mode).toBe('route');
+    expect(r.crossings.map((c: { id: number }) => c.id)).toEqual([2, 1]);
+    expect(r.crossings[0].entersAtKm).toBeGreaterThan(0);
+    expect(r.zonesAbove120m).toBe(1);
+    expect(r.verdict.line).toMatch(/^Route crosses 2 restrictions/);
+  });
+  it('geocodes place waypoints and surfaces ambiguity with the index', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('check_route')!({ waypoints: ['Bristol', 'Newport'], format: 'json' }));
+    expect(r.status).toBe('ambiguous');
+    expect(r.query).toContain('waypoint 2');
+  });
+  it('checks an area', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('check_route')!({ area: { bbox: [-3.2, 51.15, -3.0, 51.25] }, format: 'json' }));
+    expect(r.mode).toBe('area');
+    expect(r.zones.map((z: { id: number }) => z.id)).toEqual([2]);
+  });
+  it('rejects both or neither inputs and over-long routes', async () => {
+    const { handlers } = setup();
+    await expect(handlers.get('check_route')!({})).rejects.toThrow(/either waypoints/);
+    await expect(handlers.get('check_route')!({ waypoints: [[-5, 50], [1.5, 55.5]] })).rejects.toThrow(/maximum is 500 km/);
+  });
+});
+
+describe('check_takeoff_site', () => {
+  it('lists nearest rights of way with per-authority attribution', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277, format: 'json' }));
+    expect(r.rightsOfWay[0].pathType).toBe('footpath');
+    expect(r.rightsOfWay[0].distanceM).toBeLessThan(100);
+    expect(r.coverage).toBe('england_wales');
+    expect(r.attribution.join(' ')).toContain('council of Dorset');
+    const t = text(await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 }));
+    expect(t).toMatch(/^No permanent airspace restriction at this point\.\nNearest public right of way: \d+ m away \(footpath, Dorset\)\./);
+    expect(t).toContain('interpretation of each council');
+  });
+  it('flags landowner bans in the headline', async () => {
+    const { handlers } = setup();
+    const t = text(await handlers.get('check_takeoff_site')!({ lat: 51.455, lon: -2.6 }));
+    expect(t.startsWith('Take-off restricted by landowner rule.')).toBe(true);
+    expect(t).toContain('Test Park (Council byelaw)');
+  });
+  it('says there is no PRoW data in Scotland', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('check_takeoff_site')!({ lat: 56.5, lon: -4.0, format: 'json' }));
+    expect(r.coverage).toBe('no_prow_data');
+    expect(r.caveats.join(' ')).toMatch(/Scotland has no definitive map/);
+  });
+});
+
+describe('geocode and get_data_status', () => {
+  it('geocode returns candidates with attribution', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('geocode')!({ query: 'Newport', format: 'json' }));
+    expect(r.candidates.length).toBe(3);
+    expect(r.attribution[0]).toContain('OpenStreetMap');
+  });
+  it('status reports pack, notam and runtime', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('get_data_status')!({ format: 'json' }));
+    expect(r.pack.status.state).toBe('ready');
+    expect(r.pack.meta.packTag).toBe('pack-20260903-test');
+    expect(r.server.sqlite.rtree).toBe(true);
+    expect(r.geocoding.osNamesEnabled).toBe(false);
+    const t = text(await handlers.get('get_data_status')!({}));
+    expect(t).toContain('Data pack ready');
+  });
+  it('status uses OS Names when a key is configured', async () => {
+    const { handlers, calls } = setup([{ match: 'api.os.uk', body: fx('os-names-tyndale.json') }], { config: testConfig({ OS_NAMES_API_KEY: 'k' }) });
+    const r = json(await handlers.get('geocode')!({ query: 'Tyndale Monument', format: 'json' }));
+    expect(r.candidates[0].source).toBe('os_names');
+    expect(r.candidates[0].lat).toBeCloseTo(51.66, 1);
+    expect(r.candidates[0].lon).toBeCloseTo(-2.37, 1);
+    expect(calls.some((c) => c.url.includes('nominatim'))).toBe(false);
+  });
+});

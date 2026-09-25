@@ -1,0 +1,721 @@
+{
+  "source": "https://www.rowmaps.com/jsons/",
+  "scraped_at": "2026-09-25",
+  "authorities": [
+    {
+      "code": "BA",
+      "name": "Bradford",
+      "country": "england"
+    },
+    {
+      "code": "BB",
+      "name": "Blackburn with Darwen",
+      "country": "england"
+    },
+    {
+      "code": "BC",
+      "name": "Bracknell Forest",
+      "country": "england"
+    },
+    {
+      "code": "BD",
+      "name": "Barking and Dagenham",
+      "country": "england"
+    },
+    {
+      "code": "BE",
+      "name": "Bridgend",
+      "country": "wales"
+    },
+    {
+      "code": "BF",
+      "name": "Bedford",
+      "country": "england"
+    },
+    {
+      "code": "BG",
+      "name": "Blaenau Gwent",
+      "country": "wales"
+    },
+    {
+      "code": "BH",
+      "name": "City of Brighton and Hove",
+      "country": "england"
+    },
+    {
+      "code": "BI",
+      "name": "Birmingham",
+      "country": "england"
+    },
+    {
+      "code": "BK",
+      "name": "Central Bedfordshire",
+      "country": "england"
+    },
+    {
+      "code": "BL",
+      "name": "Barnsley",
+      "country": "england"
+    },
+    {
+      "code": "BM",
+      "name": "Buckinghamshire",
+      "country": "england"
+    },
+    {
+      "code": "BO",
+      "name": "Bolton",
+      "country": "england"
+    },
+    {
+      "code": "BP",
+      "name": "Blackpool",
+      "country": "england"
+    },
+    {
+      "code": "BR",
+      "name": "Bromley",
+      "country": "england"
+    },
+    {
+      "code": "BS",
+      "name": "Bath and North East Somerset",
+      "country": "england"
+    },
+    {
+      "code": "BX",
+      "name": "Bexley",
+      "country": "england"
+    },
+    {
+      "code": "BY",
+      "name": "Bury",
+      "country": "england"
+    },
+    {
+      "code": "BZ",
+      "name": "City of Bristol",
+      "country": "england"
+    },
+    {
+      "code": "CA",
+      "name": "Calderdale",
+      "country": "england"
+    },
+    {
+      "code": "CB",
+      "name": "Cambridgeshire",
+      "country": "england"
+    },
+    {
+      "code": "CC",
+      "name": "Cheshire West and Chester",
+      "country": "england"
+    },
+    {
+      "code": "CD",
+      "name": "Cardiff",
+      "country": "wales"
+    },
+    {
+      "code": "CE",
+      "name": "Ceredigion",
+      "country": "wales"
+    },
+    {
+      "code": "CF",
+      "name": "Caerphilly",
+      "country": "wales"
+    },
+    {
+      "code": "CH",
+      "name": "Cheshire East",
+      "country": "england"
+    },
+    {
+      "code": "CN",
+      "name": "Cornwall",
+      "country": "england"
+    },
+    {
+      "code": "CT",
+      "name": "Carmarthenshire",
+      "country": "wales"
+    },
+    {
+      "code": "CU",
+      "name": "Cumbria",
+      "country": "england"
+    },
+    {
+      "code": "CV",
+      "name": "Coventry",
+      "country": "england"
+    },
+    {
+      "code": "CW",
+      "name": "Conwy",
+      "country": "wales"
+    },
+    {
+      "code": "DB",
+      "name": "City of Derby",
+      "country": "england"
+    },
+    {
+      "code": "DE",
+      "name": "Denbighshire",
+      "country": "wales"
+    },
+    {
+      "code": "DL",
+      "name": "Darlington",
+      "country": "england"
+    },
+    {
+      "code": "DN",
+      "name": "Devon",
+      "country": "england"
+    },
+    {
+      "code": "DR",
+      "name": "Doncaster",
+      "country": "england"
+    },
+    {
+      "code": "DT",
+      "name": "Dorset",
+      "country": "england"
+    },
+    {
+      "code": "DU",
+      "name": "Durham",
+      "country": "england"
+    },
+    {
+      "code": "DY",
+      "name": "Derbyshire",
+      "country": "england"
+    },
+    {
+      "code": "DZ",
+      "name": "Dudley",
+      "country": "england"
+    },
+    {
+      "code": "EG",
+      "name": "Ealing",
+      "country": "england"
+    },
+    {
+      "code": "ES",
+      "name": "East Sussex",
+      "country": "england"
+    },
+    {
+      "code": "EX",
+      "name": "Essex",
+      "country": "england"
+    },
+    {
+      "code": "EY",
+      "name": "East Riding of Yorkshire",
+      "country": "england"
+    },
+    {
+      "code": "FL",
+      "name": "Flintshire",
+      "country": "wales"
+    },
+    {
+      "code": "GH",
+      "name": "Gateshead",
+      "country": "england"
+    },
+    {
+      "code": "GR",
+      "name": "Gloucestershire",
+      "country": "england"
+    },
+    {
+      "code": "GY",
+      "name": "Gwynedd",
+      "country": "wales"
+    },
+    {
+      "code": "HA",
+      "name": "Halton",
+      "country": "england"
+    },
+    {
+      "code": "HD",
+      "name": "Hertfordshire",
+      "country": "england"
+    },
+    {
+      "code": "HE",
+      "name": "Herefordshire",
+      "country": "england"
+    },
+    {
+      "code": "HG",
+      "name": "Haringey",
+      "country": "england"
+    },
+    {
+      "code": "HI",
+      "name": "Hillingdon",
+      "country": "england"
+    },
+    {
+      "code": "HP",
+      "name": "Hampshire",
+      "country": "england"
+    },
+    {
+      "code": "HS",
+      "name": "Hounslow",
+      "country": "england"
+    },
+    {
+      "code": "IA",
+      "name": "Isle of Anglesey",
+      "country": "wales"
+    },
+    {
+      "code": "IW",
+      "name": "Isle of Wight",
+      "country": "england"
+    },
+    {
+      "code": "KG",
+      "name": "Kingston upon Thames",
+      "country": "england"
+    },
+    {
+      "code": "KH",
+      "name": "City of Kingston upon Hull",
+      "country": "england"
+    },
+    {
+      "code": "KL",
+      "name": "Kirklees",
+      "country": "england"
+    },
+    {
+      "code": "KN",
+      "name": "Knowsley",
+      "country": "england"
+    },
+    {
+      "code": "KT",
+      "name": "Kent",
+      "country": "england"
+    },
+    {
+      "code": "LA",
+      "name": "Lancashire",
+      "country": "england"
+    },
+    {
+      "code": "LC",
+      "name": "City of Leicester",
+      "country": "england"
+    },
+    {
+      "code": "LD",
+      "name": "Leeds",
+      "country": "england"
+    },
+    {
+      "code": "LL",
+      "name": "Lincolnshire",
+      "country": "england"
+    },
+    {
+      "code": "LP",
+      "name": "Liverpool",
+      "country": "england"
+    },
+    {
+      "code": "LT",
+      "name": "Leicestershire",
+      "country": "england"
+    },
+    {
+      "code": "MA",
+      "name": "Manchester",
+      "country": "england"
+    },
+    {
+      "code": "MB",
+      "name": "Middlesbrough",
+      "country": "england"
+    },
+    {
+      "code": "ME",
+      "name": "Medway",
+      "country": "england"
+    },
+    {
+      "code": "MK",
+      "name": "Milton Keynes",
+      "country": "england"
+    },
+    {
+      "code": "MM",
+      "name": "Monmouthshire",
+      "country": "wales"
+    },
+    {
+      "code": "MT",
+      "name": "Merthyr Tydfil",
+      "country": "wales"
+    },
+    {
+      "code": "NC",
+      "name": "North East Lincolnshire",
+      "country": "england"
+    },
+    {
+      "code": "ND",
+      "name": "Northumberland",
+      "country": "england"
+    },
+    {
+      "code": "NE",
+      "name": "Newport",
+      "country": "wales"
+    },
+    {
+      "code": "NG",
+      "name": "City of Nottingham",
+      "country": "england"
+    },
+    {
+      "code": "NI",
+      "name": "North Lincolnshire",
+      "country": "england"
+    },
+    {
+      "code": "NK",
+      "name": "Norfolk",
+      "country": "england"
+    },
+    {
+      "code": "NP",
+      "name": "Neath Port Talbot",
+      "country": "wales"
+    },
+    {
+      "code": "NS",
+      "name": "North Somerset",
+      "country": "england"
+    },
+    {
+      "code": "NT",
+      "name": "Nottinghamshire",
+      "country": "england"
+    },
+    {
+      "code": "NW",
+      "name": "Newcastle upon Tyne",
+      "country": "england"
+    },
+    {
+      "code": "NY",
+      "name": "North Yorkshire",
+      "country": "england"
+    },
+    {
+      "code": "OH",
+      "name": "Oldham",
+      "country": "england"
+    },
+    {
+      "code": "ON",
+      "name": "Oxfordshire",
+      "country": "england"
+    },
+    {
+      "code": "PB",
+      "name": "Pembrokeshire",
+      "country": "wales"
+    },
+    {
+      "code": "PE",
+      "name": "City of Peterborough",
+      "country": "england"
+    },
+    {
+      "code": "PO",
+      "name": "City of Portsmouth",
+      "country": "england"
+    },
+    {
+      "code": "PW",
+      "name": "Powys",
+      "country": "wales"
+    },
+    {
+      "code": "PY",
+      "name": "City of Plymouth",
+      "country": "england"
+    },
+    {
+      "code": "RB",
+      "name": "Redbridge",
+      "country": "england"
+    },
+    {
+      "code": "RC",
+      "name": "Redcar and Cleveland",
+      "country": "england"
+    },
+    {
+      "code": "RD",
+      "name": "Rochdale",
+      "country": "england"
+    },
+    {
+      "code": "RG",
+      "name": "Reading",
+      "country": "england"
+    },
+    {
+      "code": "RH",
+      "name": "Rhondda Cynon Taff",
+      "country": "england"
+    },
+    {
+      "code": "RL",
+      "name": "Rutland",
+      "country": "england"
+    },
+    {
+      "code": "RO",
+      "name": "Rotherham",
+      "country": "england"
+    },
+    {
+      "code": "SA",
+      "name": "Sandwell",
+      "country": "england"
+    },
+    {
+      "code": "SC",
+      "name": "Salford",
+      "country": "england"
+    },
+    {
+      "code": "SD",
+      "name": "Swindon",
+      "country": "england"
+    },
+    {
+      "code": "SE",
+      "name": "Sefton",
+      "country": "england"
+    },
+    {
+      "code": "SF",
+      "name": "Staffordshire",
+      "country": "england"
+    },
+    {
+      "code": "SG",
+      "name": "South Gloucestershire",
+      "country": "england"
+    },
+    {
+      "code": "SH",
+      "name": "Shropshire",
+      "country": "england"
+    },
+    {
+      "code": "SK",
+      "name": "Suffolk",
+      "country": "england"
+    },
+    {
+      "code": "SM",
+      "name": "Stockton on Tees",
+      "country": "england"
+    },
+    {
+      "code": "SN",
+      "name": "St Helens",
+      "country": "england"
+    },
+    {
+      "code": "SO",
+      "name": "City of Southampton",
+      "country": "england"
+    },
+    {
+      "code": "SP",
+      "name": "Sheffield",
+      "country": "england"
+    },
+    {
+      "code": "SQ",
+      "name": "Solihull",
+      "country": "england"
+    },
+    {
+      "code": "SS",
+      "name": "Swansea",
+      "country": "wales"
+    },
+    {
+      "code": "ST",
+      "name": "Somerset",
+      "country": "england"
+    },
+    {
+      "code": "SU",
+      "name": "Surrey",
+      "country": "england"
+    },
+    {
+      "code": "SV",
+      "name": "Sunderland",
+      "country": "england"
+    },
+    {
+      "code": "SY",
+      "name": "South Tyneside",
+      "country": "england"
+    },
+    {
+      "code": "SZ",
+      "name": "Sutton",
+      "country": "england"
+    },
+    {
+      "code": "TB",
+      "name": "Torbay",
+      "country": "england"
+    },
+    {
+      "code": "TF",
+      "name": "Torfaen",
+      "country": "wales"
+    },
+    {
+      "code": "TR",
+      "name": "Trafford",
+      "country": "england"
+    },
+    {
+      "code": "TS",
+      "name": "Tameside",
+      "country": "england"
+    },
+    {
+      "code": "TU",
+      "name": "Thurrock",
+      "country": "england"
+    },
+    {
+      "code": "VG",
+      "name": "Vale of Glamorgan",
+      "country": "wales"
+    },
+    {
+      "code": "WA",
+      "name": "Walsall",
+      "country": "england"
+    },
+    {
+      "code": "WB",
+      "name": "West Berkshire",
+      "country": "england"
+    },
+    {
+      "code": "WC",
+      "name": "Windsor and Maidenhead",
+      "country": "england"
+    },
+    {
+      "code": "WE",
+      "name": "Wakefield",
+      "country": "england"
+    },
+    {
+      "code": "WF",
+      "name": "Waltham Forest",
+      "country": "england"
+    },
+    {
+      "code": "WG",
+      "name": "Warrington",
+      "country": "england"
+    },
+    {
+      "code": "WH",
+      "name": "City of Wolverhampton",
+      "country": "england"
+    },
+    {
+      "code": "WJ",
+      "name": "Wokingham",
+      "country": "england"
+    },
+    {
+      "code": "WK",
+      "name": "Warwickshire",
+      "country": "england"
+    },
+    {
+      "code": "WN",
+      "name": "Wigan",
+      "country": "england"
+    },
+    {
+      "code": "WO",
+      "name": "Worcestershire",
+      "country": "england"
+    },
+    {
+      "code": "WP",
+      "name": "Telford and Wrekin",
+      "country": "england"
+    },
+    {
+      "code": "WR",
+      "name": "Wirral",
+      "country": "england"
+    },
+    {
+      "code": "WS",
+      "name": "West Sussex",
+      "country": "england"
+    },
+    {
+      "code": "WT",
+      "name": "Wiltshire",
+      "country": "england"
+    },
+    {
+      "code": "WX",
+      "name": "Wrexham",
+      "country": "wales"
+    },
+    {
+      "code": "YK",
+      "name": "York",
+      "country": "england"
+    },
+    {
+      "code": "YT",
+      "name": "Slough",
+      "country": "england"
+    },
+    {
+      "code": "YY",
+      "name": "Stockport",
+      "country": "england"
+    }
+  ]
+}

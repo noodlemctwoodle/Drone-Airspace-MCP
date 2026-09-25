@@ -1,0 +1,5 @@
+[
+  {"place_id":1,"lat":"51.5877","lon":"-2.9984","display_name":"Newport, Wales, United Kingdom","importance":0.62,"boundingbox":["51.53","51.64","-3.08","-2.87"],"class":"boundary","type":"administrative"},
+  {"place_id":2,"lat":"50.7009","lon":"-1.2931","display_name":"Newport, Isle of Wight, England, United Kingdom","importance":0.55,"boundingbox":["50.68","50.72","-1.32","-1.26"],"class":"place","type":"town"},
+  {"place_id":3,"lat":"52.7691","lon":"-2.3776","display_name":"Newport, Shropshire, England, United Kingdom","importance":0.45,"boundingbox":["52.75","52.78","-2.40","-2.35"],"class":"place","type":"town"}
+]

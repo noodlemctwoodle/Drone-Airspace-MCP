@@ -1,0 +1,30 @@
+version: 1
+entries:
+  - id: test-park
+    authority: Test City Council
+    area_name: Test Park
+    rule_type: byelaw
+    takeoff_banned: true
+    summary: Byelaw 12 prohibits the flying of model aircraft and drones in the park.
+    source_url: https://example.org/byelaws
+    last_verified: 2026-09-01
+    geometry: { type: circle, centre: [-2.6, 51.455], radius_m: 500 }
+  - id: test-commons
+    authority: Test District Council
+    area_name: Test Commons
+    rule_type: pspo
+    takeoff_banned: true
+    landing_banned: false
+    summary: A PSPO restricts drone take-off from the commons between April and September.
+    source_url: https://example.org/pspo
+    last_verified: 2026-09-01
+    geometry: { type: file, path: geometries/test-commons.geojson }
+  - id: Bad Entry
+    authority: X
+    area_name: Y
+    rule_type: rumour
+    takeoff_banned: true
+    summary: too short
+    source_url: not-a-url
+    last_verified: yesterday
+    geometry: { type: circle, centre: [0, 0], radius_m: 1 }

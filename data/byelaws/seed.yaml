@@ -1,0 +1,32 @@
+# Community-maintained list of council byelaws, PSPOs and policies that restrict
+# drone take-off or landing from council-managed land. INCOMPLETE by nature.
+# See README.md in this folder before adding entries. Every entry needs a
+# source URL and the date it was last checked.
+version: 1
+entries:
+  - id: bcp-seafront-byelaws
+    authority: Bournemouth, Christchurch and Poole Council
+    area_name: Bournemouth, Poole and Christchurch seafront and beaches
+    rule_type: byelaw
+    takeoff_banned: true
+    landing_banned: true
+    summary: Seafront byelaws prohibit flying drones from the promenade and beaches without the council's permission.
+    source_url: https://www.bcpcouncil.gov.uk/parking-roads-and-transport/parking/beach-and-seafront-rules
+    last_verified: 2026-09-25
+    geometry:
+      type: circle
+      centre: [-1.8795, 50.7150]
+      radius_m: 3000
+  - id: royal-parks-london
+    authority: The Royal Parks
+    area_name: The Royal Parks (Hyde Park, Kensington Gardens, Regent's Park, Richmond Park and others)
+    rule_type: byelaw
+    takeoff_banned: true
+    landing_banned: true
+    summary: Royal Parks Regulations prohibit flying drones in any Royal Park without written permission.
+    source_url: https://www.royalparks.org.uk/visit/park-regulations-legislation-and-policies/park-regulations
+    last_verified: 2026-09-25
+    geometry:
+      type: circle
+      centre: [-0.1657, 51.5073]
+      radius_m: 1500

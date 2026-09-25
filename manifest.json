@@ -1,0 +1,72 @@
+{
+  "manifest_version": "0.3",
+  "name": "uk-drone-airspace",
+  "display_name": "UK Drone Airspace",
+  "version": "0.1.0",
+  "description": "Where can I legally take off and fly a drone in the UK? Flight restriction zones, live NOTAMs, public rights of way and landowner rules.",
+  "long_description": "Answers the three questions a UK drone pilot needs before a flight: is this point inside a flight restriction zone or other permanent restriction (NATS UK AIP ENR 5.1), is there a NOTAM in force (live NATS bulletin), and can I legally take off here (nearest public rights of way, National Trust land, known council byelaws). Place names, postcodes and landmarks are geocoded for you. Permanent data is a compact SQLite pack refreshed every AIRAC cycle and downloaded on first use.",
+  "author": {
+    "name": "Toby Goulden",
+    "url": "https://github.com/noodlemctwoodle"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP"
+  },
+  "homepage": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP",
+  "documentation": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP#readme",
+  "support": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP/issues",
+  "license": "MIT",
+  "keywords": ["drone", "uas", "uk", "airspace", "notam", "frz", "rights of way", "caa"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "OS_NAMES_API_KEY": "${user_config.os_names_api_key}",
+        "DRONE_AIRSPACE_CACHE_DIR": "${user_config.cache_dir}",
+        "LOG_LEVEL": "info"
+      }
+    }
+  },
+  "tools": [
+    { "name": "check_location", "description": "Permanent airspace restrictions and landowner rules at a point" },
+    { "name": "get_aerodrome_zone", "description": "An aerodrome's flight restriction zone by name or ICAO code" },
+    { "name": "check_notams", "description": "Temporary restrictions (NOTAMs) covering a point" },
+    { "name": "check_route", "description": "Restrictions crossed along a route or within an area" },
+    { "name": "check_takeoff_site", "description": "Nearest public rights of way and landowner rules for a take-off spot" },
+    { "name": "geocode", "description": "Resolve a UK place name or postcode to coordinates" },
+    { "name": "get_data_status", "description": "Data pack version, AIRAC dates, sources and attribution" }
+  ],
+  "user_config": {
+    "os_names_api_key": {
+      "type": "string",
+      "title": "OS Names API key (optional)",
+      "description": "Free key from osdatahub.os.uk. When set, Ordnance Survey place names are tried before OpenStreetMap.",
+      "sensitive": true,
+      "required": false
+    },
+    "cache_dir": {
+      "type": "directory",
+      "title": "Data cache folder",
+      "description": "Where the airspace data pack (tens of MB) and geocoding cache are stored.",
+      "required": false,
+      "default": "${HOME}/.cache/uk-drone-airspace-mcp"
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=22.13.0"
+    }
+  },
+  "privacy_policies": [
+    "https://osmfoundation.org/wiki/Privacy_Policy",
+    "https://www.ordnancesurvey.co.uk/legal/privacy-policy",
+    "https://postcodes.io/about",
+    "https://www.nats.aero/privacy-policy/"
+  ]
+}

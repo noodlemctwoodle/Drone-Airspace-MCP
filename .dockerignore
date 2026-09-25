@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+coverage
+test
+pipeline
+scripts
+data
+.git
+*.log

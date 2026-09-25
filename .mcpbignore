@@ -1,0 +1,19 @@
+# Everything the bundle does not need. node_modules (production only) and dist are kept.
+src/
+test/
+pipeline/
+scripts/
+data/
+build/
+coverage/
+.github/
+.git/
+*.log
+*.map
+tsconfig*.json
+eslint.config.js
+vitest.config.ts
+.dockerignore
+Dockerfile
+CLAUDE.md
+build-sw.log
