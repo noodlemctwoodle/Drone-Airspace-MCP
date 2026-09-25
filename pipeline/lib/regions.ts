@@ -8,7 +8,7 @@ export interface Region {
 }
 
 export const REGIONS: Record<string, Region> = {
-  national: { name: 'national', bbox: [-8.7, 49.8, 1.9, 60.9], authorities: 'all' },
+  national: { name: 'national', bbox: [-14, 48, 5, 62.5], authorities: 'all' }, // wide enough for every UK FIR danger area, including offshore ones
   'south-west': {
     name: 'south-west',
     bbox: [-6.5, 49.8, -1.5, 51.8],
