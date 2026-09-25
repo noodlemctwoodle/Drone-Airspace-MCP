@@ -36,7 +36,8 @@
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
     "pack:export-d1": "tsx scripts/export-d1.ts",
-    "worker:setup": "scripts/cloudflare-setup.sh"
+    "worker:setup": "scripts/cloudflare-setup.sh",
+    "worker:load": "scripts/d1-load.sh"
   },
   "repository": {
     "type": "git",

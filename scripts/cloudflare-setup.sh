@@ -40,8 +40,7 @@ if [ "${1:-}" != "--skip-load" ]; then
   echo "   $ASSET"
   curl -sSL -o pack.sqlite.gz "$ASSET" && gunzip -f pack.sqlite.gz
   cd ../..
-  npx tsx scripts/export-d1.ts build/d1-load/pack.sqlite --out build/d1-load/d1.sql
-  npx wrangler d1 execute "$DB_NAME" --remote --yes --file build/d1-load/d1.sql
+  scripts/d1-load.sh build/d1-load/pack.sqlite
 fi
 
 echo
