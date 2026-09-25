@@ -23,9 +23,9 @@ export interface VerifyOptions {
 }
 
 const FLOORS: Record<string, Record<string, number>> = {
-  national: { zones: 800, rights_of_way: 100_000, land_restrictions: 1000, gazetteer: 200, coverage: 4 }, // coverage counts polygon parts
-  'south-west': { zones: 40, rights_of_way: 10_000, land_restrictions: 100, gazetteer: 20, coverage: 1 },
-  default: { zones: 1, rights_of_way: 0, land_restrictions: 0, gazetteer: 1, coverage: 0 },
+  national: { zones: 800, rights_of_way: 100_000, land_restrictions: 1000, gazetteer: 200, coverage: 4, parking: 50_000 }, // coverage counts polygon parts
+  'south-west': { zones: 40, rights_of_way: 10_000, land_restrictions: 100, gazetteer: 20, coverage: 1, parking: 3000 },
+  default: { zones: 1, rights_of_way: 0, land_restrictions: 0, gazetteer: 1, coverage: 0, parking: 0 },
 };
 
 const SIZE_WARN = 400 * 1024 * 1024;
@@ -44,10 +44,10 @@ export async function verifyPack(file: string, opts: VerifyOptions): Promise<Ver
     if (!opts_.includes('ENABLE_RTREE')) failures.push('SQLite build lacks ENABLE_RTREE');
     if (!opts_.includes('ENABLE_FTS5')) failures.push('SQLite build lacks ENABLE_FTS5');
 
-    for (const t of ['zones', 'rights_of_way', 'land_restrictions', 'gazetteer', 'coverage', 'sources', 'authorities']) {
+    for (const t of ['zones', 'rights_of_way', 'land_restrictions', 'gazetteer', 'coverage', 'parking', 'sources', 'authorities']) {
       counts[t] = Number(db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get()?.c ?? 0);
     }
-    for (const t of ['zones', 'rights_of_way', 'land_restrictions', 'coverage']) {
+    for (const t of ['zones', 'rights_of_way', 'land_restrictions', 'coverage', 'parking']) {
       const rt = Number(db.prepare(`SELECT COUNT(*) AS c FROM ${t}_rtree`).get()?.c ?? 0);
       if (rt !== counts[t]) failures.push(`${t}_rtree has ${rt} rows but ${t} has ${counts[t]}`);
     }
@@ -99,6 +99,10 @@ export async function verifyPack(file: string, opts: VerifyOptions): Promise<Ver
         const hits = await repo.nearestRightsOfWay(kp.lon, kp.lat, e.withinMetres, 3);
         const hit = hits.find((h) => !e.authorityCode || h.authorityCode === e.authorityCode);
         if (!hit) failures.push(`known point "${kp.name}": no right of way within ${e.withinMetres} m`);
+      } else if (e.layer === 'parking') {
+        if (counts.parking === 0) continue;
+        const hits = await repo.nearestParking(kp.lon, kp.lat, e.withinMetres, 3, true);
+        if (hits.length === 0) failures.push(`known point "${kp.name}": no parking within ${e.withinMetres} m`);
       } else if (e.layer === 'land_restrictions') {
         if (counts.land_restrictions === 0) continue;
         const hits = await repo.landRestrictionsAt(kp.lon, kp.lat);

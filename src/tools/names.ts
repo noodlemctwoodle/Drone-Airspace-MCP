@@ -4,6 +4,7 @@ export const TOOL_NAMES = [
   'check_notams',
   'check_route',
   'check_takeoff_site',
+  'find_parking',
   'geocode',
   'get_data_status',
 ] as const;

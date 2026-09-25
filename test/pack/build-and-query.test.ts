@@ -65,6 +65,13 @@ describe('mini pack build and repository queries', () => {
     expect(await repo.findAerodrome('zzzz')).toEqual([]);
     expect((await repo.zonesByAerodrome('KEMBLE')).map((z) => z.designator)).toEqual(['EGR1U010E']);
   });
+  it('finds nearest public parking and includes private on request', async () => {
+    const pub = await repo.nearestParking(-2.277, 50.6212, 1000, 5);
+    expect(pub.map((p) => p.name)).toEqual(['Durdle Door Car Park']);
+    const all = await repo.nearestParking(-2.277, 50.6212, 1000, 5, true);
+    expect(all.length).toBe(2);
+    expect(all[0].distanceM).toBeLessThanOrEqual(all[1].distanceM);
+  });
   it('exposes meta and sources', async () => {
     const m = await repo.meta();
     expect(m.packTag).toBe('pack-20260903-test');

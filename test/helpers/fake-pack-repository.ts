@@ -6,7 +6,8 @@ import { lineString, point } from '@turf/helpers';
 import pointToLineDistance from '@turf/point-to-line-distance';
 import nearestPointOnLine from '@turf/nearest-point-on-line';
 import type { PackRepository, ZonesAtOptions } from '../../src/pack/repository.js';
-import type { BBox, GazetteerHit, LandRestriction, LineString, PackMeta, Polygon, Position, ProwCoverage, RightOfWay, RightOfWayHit, Zone } from '../../src/types.js';
+import distance from '@turf/distance';
+import type { BBox, GazetteerHit, LandRestriction, LineString, PackMeta, Parking, ParkingHit, Polygon, Position, ProwCoverage, RightOfWay, RightOfWayHit, Zone } from '../../src/types.js';
 
 const square = (w: number, s: number, e: number, n: number): Polygon => ({
   type: 'Polygon',
@@ -160,6 +161,12 @@ const COVERAGE: Array<{ country: 'england' | 'wales' | 'scotland' | 'northern_ir
   { country: 'scotland', geometry: square(-8.7, 55.8, -0.5, 60.9) },
 ];
 
+export const FIXTURE_PARKING: Parking[] = [
+  { id: 300, osmId: 'w1', kind: 'car_park', name: 'Durdle Door Car Park', access: null, fee: 'yes', capacity: 400, surface: 'gravel', operator: 'Lulworth Estate', lon: -2.2765, lat: 50.6227 },
+  { id: 301, osmId: 'n2', kind: 'layby', name: null, access: null, fee: 'no', capacity: null, surface: null, operator: null, lon: -2.29, lat: 50.63 },
+  { id: 302, osmId: 'w3', kind: 'car_park', name: 'Staff Only', access: 'private', fee: null, capacity: null, surface: null, operator: null, lon: -2.277, lat: 50.622 },
+];
+
 export const FIXTURE_META: PackMeta = {
   schemaVersion: 1,
   packTag: 'pack-20260903-test',
@@ -169,7 +176,7 @@ export const FIXTURE_META: PackMeta = {
   bbox: [-6.5, 49.8, 1.9, 60.9],
   airacEffective: '2026-09-03',
   airacNext: '2026-10-01',
-  counts: { zones: 4, rights_of_way: 2, land_restrictions: 2, gazetteer: 1 },
+  counts: { zones: 4, rights_of_way: 2, land_restrictions: 2, gazetteer: 1, parking: 3 },
   attribution: ['Airspace: NATS UK AIP ENR 5.1 UAS dataset © NATS Limited'],
   licences: { nats_uas: 'NATS-unspecified', rowmaps: 'OGL-3.0' },
   warnings: [],
@@ -177,6 +184,7 @@ export const FIXTURE_META: PackMeta = {
     { id: 'nats_uas', name: 'NATS UAS Flight Restrictions', url: 'https://nats-uk.ead-it.com/', licence: 'NATS-unspecified', attribution: 'Airspace: NATS UK AIP ENR 5.1 UAS dataset © NATS Limited', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: '2026-09-03', effectiveTo: '2026-09-30', version: '20260903', featureCount: 4, notes: null },
     { id: 'rowmaps', name: 'rowmaps rights of way', url: 'https://www.rowmaps.com/', licence: 'OGL-3.0', attribution: 'Rights of way: council open data via rowmaps.com (OGL v3). Contains Ordnance Survey data © Crown copyright and database right 2026.', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 2, notes: null },
     { id: 'nt_always_open', name: 'National Trust Land - Always Open', url: 'https://open-data-national-trust.hub.arcgis.com/', licence: 'OGL-3.0', attribution: 'National Trust Open Data (OGL v3)', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 1, notes: null },
+    { id: 'osm_parking', name: 'OpenStreetMap parking', url: 'https://download.geofabrik.de/', licence: 'ODbL-1.0', attribution: 'Parking and laybys: © OpenStreetMap contributors (ODbL)', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 3, notes: null },
     { id: 'byelaws', name: 'Council byelaw seed list', url: 'https://github.com/noodlemctwoodle/Drone-Airspace-MCP', licence: 'MIT', attribution: 'Council byelaws: community-maintained list in this repository', fetchedAt: '2026-09-25T05:00:00Z', effectiveFrom: null, effectiveTo: null, version: null, featureCount: 1, notes: null },
   ],
 };
@@ -237,6 +245,17 @@ export class FakePackRepository implements PackRepository {
       .filter((z) => z.icao && (z.icao.toLowerCase() === q || (z.aerodromeName ?? '').toLowerCase().includes(q)))
       .slice(0, n)
       .map((z) => ({ id: z.id, name: z.aerodromeName ?? z.name, icao: z.icao, kind: 'aerodrome', lon: z.centroid[0], lat: z.centroid[1], zoneId: z.id }));
+  }
+  async landRestrictionsInBbox(bbox: BBox): Promise<Array<LandRestriction & { geometry: Polygon }>> {
+    const poly = bboxPolygon(bbox);
+    return this.restrictions.filter((r) => booleanIntersects(poly, r.geometry));
+  }
+  async nearestParking(lon: number, lat: number, limitMetres = 2000, n = 5, includePrivate = false): Promise<ParkingHit[]> {
+    return FIXTURE_PARKING.filter((p) => includePrivate || !(p.access && /^(private|no|customers|permit)$/.test(p.access)))
+      .map((p) => ({ ...p, distanceM: Math.round(distance([lon, lat], [p.lon, p.lat], { units: 'meters' })) }))
+      .filter((p) => p.distanceM <= limitMetres)
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, n);
   }
   async zonesByAerodrome(aerodromeName: string): Promise<Zone[]> {
     return this.zones.filter((z) => (z.aerodromeName ?? '').toLowerCase() === aerodromeName.toLowerCase());

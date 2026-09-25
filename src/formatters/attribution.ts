@@ -1,6 +1,6 @@
 import type { PackMeta } from '../types.js';
 
-export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage';
+export type SourceId = 'airspace' | 'prow' | 'landowner' | 'byelaws' | 'nominatim' | 'os_names' | 'postcodes_io' | 'notam' | 'coverage' | 'parking';
 
 const LIVE: Record<string, string> = {
   nominatim: 'Geocoding © OpenStreetMap contributors (ODbL), via Nominatim',
@@ -15,6 +15,7 @@ const PACK_SOURCE_IDS: Record<string, string[]> = {
   landowner: ['nt_always_open', 'nt_limited_access'],
   byelaws: ['byelaws'],
   coverage: ['ons_countries'],
+  parking: ['osm_parking'],
 };
 
 const SHORT: Record<string, string> = {
@@ -23,6 +24,7 @@ const SHORT: Record<string, string> = {
   landowner: 'National Trust open data',
   byelaws: 'the council byelaw list',
   coverage: 'ONS boundaries',
+  parking: 'OpenStreetMap parking',
   nominatim: 'OpenStreetMap',
   os_names: 'Ordnance Survey',
   postcodes_io: 'postcodes.io',

@@ -3,13 +3,14 @@
  * Bump SCHEMA_VERSION on any incompatible change; the loader refuses packs whose
  * `PRAGMA user_version` does not match.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 export const APPLICATION_ID = 0x44524e41; // 'DRNA'
 
 export const ZONE_TYPES = ['frz', 'prohibited', 'restricted', 'danger', 'other'] as const;
 export const PATH_TYPES = ['footpath', 'bridleway', 'restricted_byway', 'boat'] as const;
 export const RESTRICTION_KINDS = ['landowner', 'byelaw', 'pspo', 'policy'] as const;
 export const COUNTRIES = ['england', 'wales', 'scotland', 'northern_ireland'] as const;
+export const PARKING_KINDS = ['car_park', 'layby', 'rest_area', 'street_side'] as const;
 
 export const SOURCE_IDS = {
   nats: 'nats_uas',
@@ -18,6 +19,7 @@ export const SOURCE_IDS = {
   ntLimitedAccess: 'nt_limited_access',
   byelaws: 'byelaws',
   countries: 'ons_countries',
+  parking: 'osm_parking',
 } as const;
 
 const list = (values: readonly string[]) => values.map((v) => `'${v}'`).join(',');
@@ -108,6 +110,21 @@ export const DDL: string[] = [
     geom TEXT NOT NULL
   )`,
   `CREATE VIRTUAL TABLE coverage_rtree USING rtree(id, min_lon, max_lon, min_lat, max_lat)`,
+  `CREATE TABLE parking (
+    id INTEGER PRIMARY KEY,
+    osm_id TEXT,
+    kind TEXT NOT NULL CHECK (kind IN (${list(PARKING_KINDS)})),
+    name TEXT,
+    access TEXT,
+    fee TEXT,
+    capacity INTEGER,
+    surface TEXT,
+    operator TEXT,
+    lon REAL NOT NULL, lat REAL NOT NULL,
+    min_lon REAL NOT NULL, max_lon REAL NOT NULL, min_lat REAL NOT NULL, max_lat REAL NOT NULL
+  )`,
+  `CREATE VIRTUAL TABLE parking_rtree USING rtree(id, min_lon, max_lon, min_lat, max_lat)`,
+  `CREATE INDEX parking_kind ON parking(kind)`,
   `CREATE TABLE gazetteer (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -122,7 +139,7 @@ export const DDL: string[] = [
 ];
 
 /** Tables that carry a bbox and a companion `<table>_rtree`; used to rebuild rtrees after a D1 import. */
-export const SPATIAL_TABLES = ['zones', 'rights_of_way', 'land_restrictions', 'coverage'] as const;
+export const SPATIAL_TABLES = ['zones', 'rights_of_way', 'land_restrictions', 'coverage', 'parking'] as const;
 
 export const META_KEYS = [
   'schema_version',

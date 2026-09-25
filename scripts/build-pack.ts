@@ -11,13 +11,14 @@ import { createBuildLog } from '../pipeline/lib/log.js';
 import { parsePipelineArgs, readReport, writeReport, type PipelineArgs, type SourceReport } from '../pipeline/lib/cli.js';
 import { readNdjson } from '../pipeline/lib/ndjson.js';
 import { createPackDb, finaliseDb } from '../pipeline/assemble/create-db.js';
-import { insertAuthority, insertCoverage, insertLandRestrictions, insertMeta, insertRightsOfWay, insertSource, insertZones } from '../pipeline/assemble/insert.js';
+import { insertAuthority, insertCoverage, insertLandRestrictions, insertMeta, insertParking, insertRightsOfWay, insertSource, insertZones } from '../pipeline/assemble/insert.js';
 import { buildGazetteer } from '../pipeline/assemble/gazetteer.js';
 import { verifyPack } from '../pipeline/verify/assertions.js';
 import type { NormalisedZone } from '../pipeline/sources/nats/aixm-parser.js';
 import type { NormalisedPath } from '../pipeline/sources/rowmaps/geojson-parser.js';
 import type { NormalisedRestriction } from '../pipeline/sources/nt/arcgis.js';
 import type { CountryPolygon } from '../pipeline/sources/countries/ons.js';
+import type { NormalisedParking } from '../pipeline/sources/osm/parking.js';
 import { SCHEMA_VERSION, SOURCE_IDS } from '../src/pack/schema.js';
 import type { PackSource, Position } from '../src/types.js';
 import { nextCycle } from '../pipeline/lib/airac.js';
@@ -26,6 +27,7 @@ import { run as fetchRowmaps, type AuthorityReport } from './fetch-rowmaps.js';
 import { run as fetchNt } from './fetch-nt.js';
 import { run as fetchCountries } from './fetch-countries.js';
 import { run as loadByelaws } from './load-byelaws.js';
+import { run as fetchParking } from './fetch-parking.js';
 import { writeManifest } from './make-manifest.js';
 
 function gitCommit(): string | null {
@@ -65,8 +67,9 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     if (has('nt')) reports.push(...(await fetchNt(args)));
     if (has('countries')) reports.push(await fetchCountries(args));
     if (has('byelaws')) reports.push(await loadByelaws(args));
+    if (has('parking')) reports.push(await fetchParking(args));
   } else {
-    for (const name of ['nats', 'rowmaps', 'nt', 'countries', 'byelaws']) {
+    for (const name of ['nats', 'rowmaps', 'nt', 'countries', 'byelaws', 'parking']) {
       const r = await readReport<SourceReport | SourceReport[]>(args.reportsDir, name);
       if (!r) continue;
       reports.push(...(Array.isArray(r) ? r : [r]));
@@ -127,6 +130,9 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     const countries: CountryPolygon[] = [];
     if (await exists(coverageFile)) for await (const c of readNdjson<CountryPolygon>(coverageFile)) countries.push(c);
     counts.coverage = insertCoverage(db, countries);
+    const parkingFile = path.join(args.normalisedDir, 'parking.ndjson');
+    counts.parking = (await exists(parkingFile)) ? await insertParking(db, readNdjson<NormalisedParking>(parkingFile)) : 0;
+    log.info(`parking: ${counts.parking}`);
     counts.gazetteer = buildGazetteer(db);
     log.info(`gazetteer: ${counts.gazetteer}`);
 

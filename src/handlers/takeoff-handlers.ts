@@ -8,8 +8,10 @@ import { buildVerdict } from '../services/airspace/verdict.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
 import { renderRightOfWay, rightOfWayToJson } from '../formatters/rights-of-way.js';
+import { parkingSentence, renderParking } from '../formatters/parking.js';
 import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
 import { formatDistance } from '../formatters/units.js';
+import { mapUrl } from '../map/view-data.js';
 import {
   CAVEAT_BAN_LAYER_INCOMPLETE,
   CAVEAT_NOTAMS_NOT_INCLUDED,
@@ -35,9 +37,11 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     const coverage = await deps.rightsOfWay.coverageAt(loc.lon, loc.lat);
     const paths = coverage === 'scotland' || coverage === 'northern_ireland' ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, radiusM, maxPaths);
     const takeoffBanned = restrictions.some((r) => r.takeoffBanned);
+    const parking = await pack.nearestParking(loc.lon, loc.lat, 2000, 3, false);
 
     const used = new Set<SourceId>(['airspace']);
     if (paths.length > 0) used.add('prow');
+    if (parking.length > 0) used.add('parking');
     if (restrictions.some((r) => r.sourceId.startsWith('nt_'))) used.add('landowner');
     if (restrictions.some((r) => r.sourceId === 'byelaws')) used.add('byelaws');
     const s = sourceOfLocation(loc);
@@ -74,6 +78,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
       zonesAbove120m: above.length,
       landownerRules: restrictions,
       rightsOfWay: paths.map(rightOfWayToJson),
+      parking,
       coverage: coverage === 'england_wales' ? 'england_wales' : coverage === 'unknown' ? 'unknown' : 'no_prow_data',
       searchRadiusM: radiusM,
       caveats,
@@ -82,6 +87,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     return respond(format, data, () => {
       const sections: ReportSection[] = [
         { title: `Nearest public rights of way (${paths.length} within ${formatDistance(radiusM)})`, lines: paths.map(renderRightOfWay) },
+        { title: 'Nearest parking (public, within 2 km)', lines: parking.map(renderParking) },
         { title: `Landowner rules at this point (${restrictions.length})`, lines: restrictions.map(renderRestriction) },
         { title: `Airspace restrictions at this point (${relevant.length})`, lines: relevant.map(renderZone) },
       ];
@@ -92,10 +98,12 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
         loc.resolvedFrom ? `I could not find ${loc.resolvedFrom.original}, so this is for ${loc.resolvedFrom.used}` : null,
         `For take-off near ${loc.name.split(',').slice(0, 2).join(',')}: ${headlineParts.join(' ')}`,
         paths.length > 1 ? `${paths.length} public rights of way within ${formatDistance(radiusM)} in total` : null,
+        parking.length > 0 ? `Nearest parking: ${parkingSentence(parking[0])}` : null,
         coverage === 'scotland' || coverage === 'northern_ireland' ? 'There is no rights-of-way data for this area' : 'Rights of way are an interpretation of the council definitive map',
         'Check NOTAMs separately and remember the landowner rule layer is incomplete',
         attributionSentence(used)
-      )
+      ),
+      { view: { lat: loc.lat, lon: loc.lon, radiusM: radiusM }, mapUrl: mapUrl(deps.config.publicUrl, { lat: loc.lat, lon: loc.lon, radiusM }) }
     );
   };
 }

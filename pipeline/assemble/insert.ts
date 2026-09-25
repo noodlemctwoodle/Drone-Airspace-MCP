@@ -5,6 +5,7 @@ import type { NormalisedZone } from '../sources/nats/aixm-parser.js';
 import type { NormalisedPath } from '../sources/rowmaps/geojson-parser.js';
 import type { NormalisedRestriction } from '../sources/nt/arcgis.js';
 import type { CountryPolygon } from '../sources/countries/ons.js';
+import type { NormalisedParking } from '../sources/osm/parking.js';
 import { bboxOfPositions } from '../../src/pack/geometry.js';
 import type { MultiPolygon, Polygon } from '../../src/types.js';
 
@@ -130,6 +131,33 @@ export async function insertLandRestrictions(db: SqliteDriver, items: AsyncItera
       batch.push({ ...x, geometry: part });
       if (batch.length >= BATCH) flush();
     }
+  }
+  if (batch.length > 0) flush();
+  return n;
+}
+
+export async function insertParking(db: SqliteDriver, items: AsyncIterable<NormalisedParking> | Iterable<NormalisedParking>): Promise<number> {
+  const ins = db.prepare(
+    `INSERT INTO parking (osm_id, kind, name, access, fee, capacity, surface, operator, lon, lat, min_lon, max_lon, min_lat, max_lat)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const rtree = db.prepare('INSERT INTO parking_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)');
+  let n = 0;
+  let batch: NormalisedParking[] = [];
+  const flush = () => {
+    const rows = batch;
+    batch = [];
+    db.transaction(() => {
+      for (const p of rows) {
+        const r = ins.run(p.osmId, p.kind, p.name, p.access, p.fee, p.capacity, p.surface, p.operator, p.lon, p.lat, p.lon, p.lon, p.lat, p.lat);
+        rtree.run(Number(r.lastInsertRowid), p.lon, p.lon, p.lat, p.lat);
+        n += 1;
+      }
+    });
+  };
+  for await (const p of items as AsyncIterable<NormalisedParking>) {
+    batch.push(p);
+    if (batch.length >= BATCH) flush();
   }
   if (batch.length > 0) flush();
   return n;

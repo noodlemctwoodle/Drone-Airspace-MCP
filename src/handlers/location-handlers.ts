@@ -10,6 +10,7 @@ import { renderReport, type ReportSection } from '../formatters/report.js';
 import { renderRestriction, renderZone, zoneToJson } from '../formatters/zones.js';
 import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
 import { formatCoord } from '../formatters/units.js';
+import { mapUrl } from '../map/view-data.js';
 import { CAVEAT_AIRSPACE_ONLY_BELOW_120M, CAVEAT_BAN_LAYER_INCOMPLETE, CAVEAT_NOTAMS_NOT_INCLUDED, CAVEAT_NOT_BRIEFING } from './caveats.js';
 
 export function sourceOfLocation(loc: ResolvedLocation): SourceId | null {
@@ -102,7 +103,8 @@ export function createCheckLocationHandler(deps: HandlerDependencies): ToolHandl
         relevant.length > 1 ? `${relevant.length} restrictions apply in total` : null,
         'This does not include temporary NOTAMs',
         attributionSentence(used)
-      )
+      ),
+      { view: { lat: loc.lat, lon: loc.lon, radiusM: 1500 }, mapUrl: mapUrl(deps.config.publicUrl, { lat: loc.lat, lon: loc.lon, radiusM: 1500 }) }
     );
   };
 }

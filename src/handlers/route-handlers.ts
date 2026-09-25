@@ -12,6 +12,7 @@ import { renderZone, zoneToJson } from '../formatters/zones.js';
 import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
 import { formatCoord, formatKm } from '../formatters/units.js';
 import area from '@turf/area';
+import { mapUrl } from '../map/view-data.js';
 import { CAVEAT_AIRSPACE_ONLY_BELOW_120M, CAVEAT_NOTAMS_NOT_INCLUDED, CAVEAT_NOT_BRIEFING } from './caveats.js';
 
 const MAX_ROUTE_KM = 500;
@@ -93,7 +94,11 @@ export function createCheckRouteHandler(deps: HandlerDependencies): ToolHandler 
           crossings.length > 0 ? `First entered ${crossings[0].crossing.startsInside ? 'at the start' : `after ${formatKm(crossings[0].crossing.entersAtKm)}`}` : null,
           'Temporary NOTAMs are not included',
           attributionSentence(used)
-        )
+        ),
+        {
+          view: { lat: resolved[0].lat, lon: resolved[0].lon, radiusM: 1000, route: line.coordinates },
+          mapUrl: mapUrl(deps.config.publicUrl, { lat: resolved[0].lat, lon: resolved[0].lon, radiusM: 1000, route: line.coordinates }),
+        }
       );
     }
 

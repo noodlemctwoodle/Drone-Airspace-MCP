@@ -4,12 +4,17 @@ import bboxPolygon from '@turf/bbox-polygon';
 import { lineString, point } from '@turf/helpers';
 import pointToLineDistance from '@turf/point-to-line-distance';
 import nearestPointOnLine from '@turf/nearest-point-on-line';
+import distance from '@turf/distance';
 import type {
   BBox,
   GazetteerHit,
+  MultiPolygon,
+  Polygon,
   LandRestriction,
   LineString,
   PackMeta,
+  Parking,
+  ParkingHit,
   PackSource,
   Position,
   ProwCoverage,
@@ -46,6 +51,10 @@ export interface PackRepository {
   findAerodrome(nameOrIcao: string, n?: number): Promise<GazetteerHit[]>;
   /** Every zone component (FRZ circle plus runway protection zones) for an aerodrome name. */
   zonesByAerodrome(aerodromeName: string): Promise<Zone[]>;
+  /** Land restrictions intersecting a bbox, with geometry (map rendering). */
+  landRestrictionsInBbox(bbox: BBox, limit?: number): Promise<Array<LandRestriction & { geometry: Polygon | MultiPolygon }>>;
+  /** Car parks, laybys and rest areas within `limitMetres`, nearest first. Private ones are excluded unless asked for. */
+  nearestParking(lon: number, lat: number, limitMetres?: number, n?: number, includePrivate?: boolean): Promise<ParkingHit[]>;
   close(): void;
 }
 
@@ -287,6 +296,61 @@ export class QueryPackRepository implements PackRepository {
       if (geom && booleanPointInPolygon(pt, geom)) out.push(restrictionFromRow(row));
     }
     return out;
+  }
+
+  async landRestrictionsInBbox(bbox: BBox, limit = 200): Promise<Array<LandRestriction & { geometry: Polygon | MultiPolygon }>> {
+    const rows = await this.q.all(
+      `SELECT l.* FROM land_restrictions_rtree r JOIN land_restrictions l ON l.id = r.id
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ? LIMIT ?`,
+      [bbox[2], bbox[0], bbox[3], bbox[1], limit]
+    );
+    const out: Array<LandRestriction & { geometry: Polygon | MultiPolygon }> = [];
+    for (const row of rows) {
+      const geometry = parseGeometry(String(row.geom));
+      if (geometry) out.push({ ...restrictionFromRow(row), geometry });
+    }
+    return out;
+  }
+
+  async nearestParking(lon: number, lat: number, limitMetres = 2000, n = 5, includePrivate = false): Promise<ParkingHit[]> {
+    const { dLat, dLon } = metresToDegrees(limitMetres, lat);
+    const rows = await this.q.all(
+      `SELECT p.* FROM parking_rtree r JOIN parking p ON p.id = r.id
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?
+       LIMIT ?`,
+      [lon + dLon, lon - dLon, lat + dLat, lat - dLat, ROW_CANDIDATE_CAP]
+    );
+    const here = point([lon, lat]);
+    const hits: ParkingHit[] = [];
+    for (const row of rows) {
+      const access = str(row.access);
+      if (!includePrivate && access && /^(private|no|customers|permit|employees|residents|delivery|military)$/i.test(access)) continue;
+      const p: Parking = {
+        id: Number(row.id),
+        osmId: str(row.osm_id),
+        kind: String(row.kind) as Parking['kind'],
+        name: str(row.name),
+        access,
+        fee: str(row.fee),
+        capacity: num(row.capacity),
+        surface: str(row.surface),
+        operator: str(row.operator),
+        lon: Number(row.lon),
+        lat: Number(row.lat),
+      };
+      const distanceM = distance(here, point([p.lon, p.lat]), { units: 'meters' });
+      if (distanceM > limitMetres) continue;
+      hits.push({ ...p, distanceM: Math.round(distanceM) });
+    }
+    hits.sort((a, b) => a.distanceM - b.distanceM);
+    // OSM often maps one car park as several polygons; keep the nearest of same-named neighbours.
+    const deduped: ParkingHit[] = [];
+    for (const h of hits) {
+      if (h.name && deduped.some((d) => d.name === h.name && distance(point([d.lon, d.lat]), point([h.lon, h.lat]), { units: 'meters' }) < 400)) continue;
+      deduped.push(h);
+      if (deduped.length >= n) break;
+    }
+    return deduped;
   }
 
   async findAerodrome(nameOrIcao: string, n = 5): Promise<GazetteerHit[]> {

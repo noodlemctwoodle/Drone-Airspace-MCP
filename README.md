@@ -12,7 +12,9 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 - **What is this aerodrome's zone?** `get_aerodrome_zone` by name or ICAO code, including runway protection zones.
 - **Is there a NOTAM in force?** `check_notams` reads the live NATS UK bulletin, filters by point, radius and date, and never silently drops NOTAMs it cannot place.
 - **What does my route cross?** `check_route` for a list of waypoints or an area, with the distance along the route at which each zone is entered.
-- **Can I take off here?** `check_takeoff_site` lists the nearest public rights of way with distances and the responsible council, plus National Trust land and known council byelaws at the point.
+- **Can I take off here?** `check_takeoff_site` lists the nearest public rights of way with distances and the responsible council, the nearest public parking, plus National Trust land and known council byelaws at the point.
+- **Where can I park?** `find_parking` lists car parks, laybys and rest areas from OpenStreetMap, nearest first, with fee and access notes.
+- **Show me.** On the hosted server every location answer carries a map link, and clients that support MCP Apps (Claude web, desktop and mobile) render the map inline: zones coloured by severity, NOTAM circles, footpaths, landowner land and parking.
 - Plus `geocode` to disambiguate place names and `get_data_status` for data provenance and attribution.
 
 ## Quick start
@@ -153,6 +155,21 @@ Nearest public right of way: 120 m away (footpath, Dorset).
 ...
 ```
 
+### `find_parking`
+
+| Argument | Type | Notes |
+|---|---|---|
+| `place` / `lat`+`lon` | | |
+| `max_results` | 1–20 | Default 5 |
+| `search_radius_m` | 100–10000 | Default 2000 |
+| `include_private` | boolean | Also list private, customers-only and permit parking |
+
+Example prompt: *"Where can I park near Durdle Door?"*
+
+### Maps
+
+The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map and `GET /api/view` as the JSON behind it. It also publishes an MCP App resource (`ui://uk-drone-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer. Map tiles © OpenStreetMap contributors.
+
 ### `geocode`
 
 | Argument | Type | Notes |
@@ -173,6 +190,7 @@ No arguments. Reports pack tag, AIRAC effective dates, per-source fetch dates an
 | Rights of way | Council open data aggregated by [rowmaps.com](https://www.rowmaps.com/) (143 authorities, England and Wales) | Weekly | Open Government Licence v3 per council, OS attribution, see [licences/rowmaps.md](licences/rowmaps.md) |
 | National Trust land | [National Trust Open Data](https://open-data-national-trust.hub.arcgis.com/) Always Open and Limited Access | When edited | OGL v3 / CC-BY |
 | Council byelaws | [data/byelaws/seed.yaml](data/byelaws/seed.yaml) in this repository | Manual | MIT; incomplete by nature |
+| Parking and laybys | OpenStreetMap via the [Geofabrik Great Britain extract](https://download.geofabrik.de/europe/great-britain.html) (`amenity=parking`, `highway=rest_area`) | Weekly | ODbL |
 | Country boundaries | ONS Countries (December 2024) BUC | Yearly | OGL v3 |
 | Geocoding | postcodes.io, OS Names API (optional), Nominatim | Live, cached 30 days | OGL v3; ODbL |
 

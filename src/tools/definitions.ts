@@ -83,6 +83,20 @@ export const toolDefinitions: ToolDefinition[] = [
     annotations: { readOnlyHint: true, openWorldHint: true, title: 'Check a take-off site' },
   },
   {
+    name: 'find_parking',
+    description:
+      'Find car parks, laybys and rest areas near a UK point, nearest first, from OpenStreetMap. Give a place name or postcode, or lat/lon. ' +
+      'Returns name, type, distance, fee and access notes. Publicly accessible places only unless include_private is set.',
+    inputSchema: {
+      ...locationInput,
+      max_results: z.number().int().min(1).max(20).default(5),
+      search_radius_m: z.number().int().min(100).max(10_000).default(2000).describe('Search radius in metres.'),
+      include_private: z.boolean().default(false).describe('Also list parking tagged private, customers-only or permit-only.'),
+      format: formatArg,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true, title: 'Find parking near a location' },
+  },
+  {
     name: 'geocode',
     description:
       'Resolve a UK place name, postcode or landmark to coordinates. Use it to disambiguate before running a check when a name could match several places. ' +

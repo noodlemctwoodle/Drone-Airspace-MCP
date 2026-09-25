@@ -18,6 +18,7 @@ import { NAME, REPO_URL, USER_AGENT, VERSION } from '../version.js';
 import { D1PackAccess } from './d1-pack.js';
 import type { WorkerEnv } from './env.js';
 import { KvCacheStore } from './kv-cache.js';
+import { buildViewData, mapHtml, parseViewQuery } from '../map/index.js';
 
 // One Nominatim bucket per isolate; the platform may run several isolates, so
 // prefer an OS Names key on the Worker for heavy use.
@@ -53,6 +54,7 @@ function buildDeps(env: WorkerEnv) {
 }
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
+const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, OPTIONS', 'access-control-allow-headers': 'content-type' };
 
 function landing(env: WorkerEnv): Response {
   const url = env.PUBLIC_URL ?? '';
@@ -72,6 +74,21 @@ export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === '/' && request.method === 'GET') return landing(env);
+    if (url.pathname === '/map' && request.method === 'GET') {
+      return new Response(mapHtml({ mode: 'page', apiBase: env.PUBLIC_URL ?? url.origin }), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
+    }
+    if (url.pathname === '/api/view') {
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+      const req = parseViewQuery(url.searchParams);
+      if (!req) return new Response(JSON.stringify({ error: 'lat and lon query parameters are required' }), { status: 400, headers: { ...JSON_HEADERS, ...CORS } });
+      const { deps } = buildDeps(env);
+      try {
+        const view = await buildViewData(deps, req);
+        return new Response(JSON.stringify(view), { headers: { ...JSON_HEADERS, ...CORS, 'cache-control': 'public, max-age=300' } });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: (error as Error).message }), { status: 503, headers: { ...JSON_HEADERS, ...CORS } });
+      }
+    }
     if (url.pathname === '/healthz') {
       const { pack, notams } = buildDeps(env);
       const meta = await pack.metaOrNull();

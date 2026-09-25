@@ -5,6 +5,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Logger } from '../core/logger.js';
 import type { MCPTransport } from './index.js';
 
+export interface ExtraRoutes {
+  mapHtml?: (origin: string) => string;
+  viewData?: (params: URLSearchParams) => Promise<unknown>;
+}
+
 export interface HealthInfo {
   version: string;
   pack: unknown;
@@ -20,7 +25,8 @@ export class StreamableHttpTransport implements MCPTransport {
     private readonly logger: Logger,
     port: number,
     private readonly health: () => HealthInfo,
-    private readonly host = '0.0.0.0'
+    private readonly host = '0.0.0.0',
+    private readonly extra: ExtraRoutes = {}
   ) {
     this.port = port;
   }
@@ -32,6 +38,26 @@ export class StreamableHttpTransport implements MCPTransport {
     app.get('/healthz', (_req, res) => {
       res.json({ ok: true, ...this.health() });
     });
+    if (this.extra.mapHtml) {
+      const html = this.extra.mapHtml;
+      app.get('/map', (req, res) => {
+        res.type('html').send(html(`${req.protocol}://${req.get('host')}`));
+      });
+    }
+    if (this.extra.viewData) {
+      const view = this.extra.viewData;
+      app.get('/api/view', async (req, res) => {
+        res.set('access-control-allow-origin', '*');
+        try {
+          const params = new URLSearchParams(req.query as Record<string, string>);
+          const data = await view(params);
+          if (data === undefined) res.status(400).json({ error: 'lat and lon query parameters are required' });
+          else res.json(data);
+        } catch (error) {
+          res.status(503).json({ error: (error as Error).message });
+        }
+      });
+    }
 
     // Stateless: a fresh server + transport per request, no session ids.
     app.post('/mcp', async (req: Request, res: Response) => {

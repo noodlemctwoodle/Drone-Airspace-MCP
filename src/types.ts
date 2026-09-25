@@ -71,6 +71,27 @@ export interface LandRestriction {
 }
 
 export type Country = 'england' | 'wales' | 'scotland' | 'northern_ireland';
+
+export type ParkingKind = 'car_park' | 'layby' | 'rest_area' | 'street_side';
+
+export interface Parking {
+  id: number;
+  osmId: string | null;
+  kind: ParkingKind;
+  name: string | null;
+  /** OSM access tag: yes, public, customers, permissive, private, no ... */
+  access: string | null;
+  fee: string | null;
+  capacity: number | null;
+  surface: string | null;
+  operator: string | null;
+  lon: number;
+  lat: number;
+}
+
+export interface ParkingHit extends Parking {
+  distanceM: number;
+}
 export type ProwCoverage = 'england_wales' | 'scotland' | 'northern_ireland' | 'unknown';
 
 export interface GazetteerHit {
@@ -190,6 +211,7 @@ export interface Verdict {
 
 export type ToolResponse = {
   content: Array<{ type: 'text'; text: string }>;
+  structuredContent?: Record<string, unknown>;
   isError?: boolean;
 };
 

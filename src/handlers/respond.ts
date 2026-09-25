@@ -15,10 +15,19 @@ export function jsonResponse(value: unknown): ToolResponse {
  * Render `data` as JSON, as the full text report, or as a brief spoken-friendly
  * summary (falls back to the full report when a tool has no brief renderer).
  */
-export function respond(format: OutputFormat, data: unknown, renderText: () => string, renderBrief?: () => string): ToolResponse {
-  if (format === 'json') return jsonResponse(data);
-  if (format === 'brief' && renderBrief) return textResponse(renderBrief());
-  return textResponse(renderText());
+export interface RespondExtras {
+  /** Small descriptor for the map app; never bulky geometry. */
+  view?: { lat: number; lon: number; radiusM?: number; route?: number[][] };
+  mapUrl?: string | null;
+}
+
+export function respond(format: OutputFormat, data: unknown, renderText: () => string, renderBrief?: () => string, extras: RespondExtras = {}): ToolResponse {
+  let res: ToolResponse;
+  if (format === 'json') res = jsonResponse(extras.mapUrl ? { ...(data as object), mapUrl: extras.mapUrl } : data);
+  else if (format === 'brief' && renderBrief) res = textResponse(renderBrief());
+  else res = textResponse(extras.mapUrl ? `${renderText()}\nMap: ${extras.mapUrl}` : renderText());
+  if (extras.view) res.structuredContent = { view: extras.view };
+  return res;
 }
 
 /** Join sentences for speech: one paragraph, no bullets, no coordinates. */

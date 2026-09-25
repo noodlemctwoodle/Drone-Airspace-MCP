@@ -46,6 +46,7 @@ const envSchema = z.object({
   MCP_TRANSPORT: z.enum(['stdio', 'http']).default('stdio'),
   PORT: intFromEnv(8080),
   GITHUB_TOKEN: z.string().optional(),
+  PUBLIC_URL: z.string().optional().transform((v) => (v && /^https?:\/\//.test(v) ? v.replace(/\/+$/, '') : undefined)),
 });
 
 export interface Config {
@@ -67,6 +68,8 @@ export interface Config {
   transport: 'stdio' | 'http';
   port: number;
   githubToken: string | undefined;
+  /** Base URL of a hosted deployment; enables map links and the map app. */
+  publicUrl: string | undefined;
 }
 
 export interface CliArgs {
@@ -141,5 +144,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cli: Partial<Cl
     transport: cli.transport ?? e.MCP_TRANSPORT,
     port: cli.port ?? e.PORT,
     githubToken: e.GITHUB_TOKEN && e.GITHUB_TOKEN.trim() !== '' ? e.GITHUB_TOKEN : undefined,
+    publicUrl: e.PUBLIC_URL,
   });
 }

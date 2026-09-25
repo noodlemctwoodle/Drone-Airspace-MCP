@@ -20,6 +20,7 @@ import { StreamableHttpTransport } from './transport/http.js';
 import type { MCPTransport } from './transport/index.js';
 import { StdioTransport } from './transport/stdio.js';
 import { NAME, USER_AGENT, VERSION } from './version.js';
+import { buildViewData, mapHtml, parseViewQuery } from './map/index.js';
 import type { PackRepository } from './pack/repository.js';
 
 const HELP = `${NAME} ${VERSION}
@@ -75,6 +76,8 @@ export function buildDeps(config: Config, logger: Logger, overrides: Partial<{ f
     landRestrictionsAt: (lon, lat) => proxy.get().landRestrictionsAt(lon, lat),
     findAerodrome: (q, n) => proxy.get().findAerodrome(q, n),
     zonesByAerodrome: (name) => proxy.get().zonesByAerodrome(name),
+    nearestParking: (lon, lat, m, n, priv) => proxy.get().nearestParking(lon, lat, m, n, priv),
+    landRestrictionsInBbox: (b, l) => proxy.get().landRestrictionsInBbox(b, l),
     close: () => undefined,
   };
 
@@ -107,11 +110,20 @@ export async function bootstrap(argv: string[]): Promise<void> {
 
   const transport: MCPTransport =
     config.transport === 'http'
-      ? new StreamableHttpTransport(() => createServer(deps), logger, config.port, () => ({
-          version: VERSION,
-          pack: packManager.status(),
-          notamCacheAgeSeconds: deps.notams.status().ageSeconds,
-        }))
+      ? new StreamableHttpTransport(
+          () => createServer(deps),
+          logger,
+          config.port,
+          () => ({ version: VERSION, pack: packManager.status(), notamCacheAgeSeconds: deps.notams.status().ageSeconds }),
+          '0.0.0.0',
+          {
+            mapHtml: (origin) => mapHtml({ mode: 'page', apiBase: config.publicUrl ?? origin }),
+            viewData: async (params) => {
+              const req = parseViewQuery(params);
+              return req ? buildViewData(deps, req) : undefined;
+            },
+          }
+        )
       : new StdioTransport(() => createServer(deps), logger);
 
   // Start serving first; the pack loads (or downloads) without blocking the handshake.

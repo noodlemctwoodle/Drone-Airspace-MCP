@@ -50,12 +50,14 @@ src/
   pack/                    schema.ts (DDL, SCHEMA_VERSION), driver.ts (node:sqlite), repository.ts (rtree + turf), loader.ts, manifest.ts
   formatters/              report.ts (plain text), units.ts, attribution.ts
   transport/               stdio.ts, http.ts (Express, stateless POST /mcp, GET /healthz)
-pipeline/                  build-time only: lib/ (http cache, zip, airac, regions, geometry, ordered xml), sources/{nats,rowmaps,nt,byelaws,countries}, assemble/, verify/
+pipeline/                  build-time only: lib/ (http cache, zip, airac, regions, geometry, ordered xml), sources/{nats,rowmaps,nt,byelaws,countries,osm}, assemble/, verify/
+                           osm/parking.ts needs `osmium` (brew/apt osmium-tool) and the 1.9 GB Geofabrik GB extract, cached a week in build/raw/osm
 scripts/                   tsx CLIs: fetch-*, build-pack, verify-pack, make-manifest, check-upstream, prune-releases, inspect-pib
 data/byelaws/seed.yaml     community-maintained council byelaw list
 test/                      fixtures/ (real NATS excerpts, PIB excerpt, rowmaps, NT, byelaws), helpers/ (FakePackRepository, mini-pack, fake-fetch)
 ```
-  worker/                  Cloudflare Worker entry (fetch handler, WebStandard streamable HTTP), d1-pack.ts (PackAccess over D1), kv-cache.ts
+  worker/                  Cloudflare Worker entry (fetch handler, WebStandard streamable HTTP, /map, /api/view), d1-pack.ts (PackAccess over D1), kv-cache.ts
+  map/                     view-data.ts (JSON for the map), html.ts (Leaflet page; also the MCP App resource ui://uk-drone-airspace/map)
 Flow: tool -> `resolveOrRespond` (geocode) -> `pack.require()` -> engine/service -> formatter -> `respond(format, data, renderText, renderBrief)`.
 
 Three runtimes share everything above `pack/` and `core/`:
@@ -63,6 +65,7 @@ Three runtimes share everything above `pack/` and `core/`:
 - **Cloudflare Worker**: the same pack loaded into D1 by `scripts/export-d1.ts` (rtree and FTS5 rebuilt after import; rows split so no statement exceeds D1's 100 KB limit), KV for caches. `npm run worker:dev` runs it locally against `.wrangler/state`; `wrangler d1 execute uk-drone-airspace --local --file build/d1.sql` loads a pack for local dev.
 - **Docker / --transport http**: Express in `transport/http.ts`.
 `format: "brief"` exists for voice: two or three sentences, no coordinates, one short "Sources:" sentence.
+Maps: with `PUBLIC_URL` set, location tools append `Map: <url>` to text output and return `structuredContent.view` (a tiny descriptor, never geometry); the MCP App HTML fetches `/api/view` itself. Keep tool results small; geometry only ever travels through `/api/view`.
 
 ## Conventions (follow these)
 - Tool descriptions and zod schemas in `src/tools/` are the model-facing contract. Keep them tight, en-GB, no emoji, no em-dashes.

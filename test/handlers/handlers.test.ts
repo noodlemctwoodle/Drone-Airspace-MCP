@@ -163,6 +163,37 @@ describe('check_takeoff_site', () => {
   });
 });
 
+describe('find_parking', () => {
+  it('lists public parking nearest first and hides private unless asked', async () => {
+    const { handlers } = setup();
+    const r = json(await handlers.get('find_parking')!({ lat: 50.6212, lon: -2.277, format: 'json' }));
+    expect(r.parking.map((p: { name: string | null }) => p.name)).toEqual(['Durdle Door Car Park', null]);
+    expect(r.parking[0].distanceM).toBeLessThan(300);
+    const all = json(await handlers.get('find_parking')!({ lat: 50.6212, lon: -2.277, include_private: true, format: 'json' }));
+    expect(all.parking.length).toBe(3);
+    const t = text(await handlers.get('find_parking')!({ lat: 50.6212, lon: -2.277, format: 'brief' }));
+    expect(t).toMatch(/^Near .*Nearest parking: Durdle Door Car Park \(car park\) \d+ m away \(pay to park\)\./);
+    expect(t).toContain('OpenStreetMap');
+  });
+  it('adds a map link and view descriptor when a public url is configured', async () => {
+    const { handlers } = setup([], { config: testConfig({ PUBLIC_URL: 'https://x.test/' }) });
+    const r = await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 });
+    expect(r.content[0].text).toMatch(/\nMap: https:\/\/x\.test\/map\?lat=50\.62120&lon=-2\.27700&radius=1000$/);
+    expect(r.structuredContent).toEqual({ view: { lat: 50.6212, lon: -2.277, radiusM: 1000 } });
+    const plain = await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 });
+    const { handlers: noUrl } = setup();
+    const p = await noUrl.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 });
+    expect(p.content[0].text).not.toContain('Map:');
+    expect(plain.content[0].text).toContain('Map:');
+  });
+  it('mentions parking in the take-off report', async () => {
+    const { handlers } = setup();
+    const t = text(await handlers.get('check_takeoff_site')!({ lat: 50.6212, lon: -2.277 }));
+    expect(t).toContain('Nearest parking (public, within 2 km)');
+    expect(t).toContain('Durdle Door Car Park');
+  });
+});
+
 describe('geocode and get_data_status', () => {
   it('geocode returns candidates with attribution', async () => {
     const { handlers } = setup();

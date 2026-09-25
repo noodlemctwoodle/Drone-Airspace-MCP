@@ -6,6 +6,7 @@ import { createCheckNotamsHandler } from './notam-handlers.js';
 import { createCheckRouteHandler } from './route-handlers.js';
 import { createCheckTakeoffSiteHandler } from './takeoff-handlers.js';
 import { createGetDataStatusHandler } from './status-handlers.js';
+import { createFindParkingHandler } from './parking-handlers.js';
 import type { ToolResponse } from '../types.js';
 
 export type { HandlerDependencies, ToolHandler } from './deps.js';
@@ -17,6 +18,7 @@ export function createHandlers(deps: HandlerDependencies): Map<ToolName, ToolHan
   handlers.set('check_notams', createCheckNotamsHandler(deps));
   handlers.set('check_route', createCheckRouteHandler(deps));
   handlers.set('check_takeoff_site', createCheckTakeoffSiteHandler(deps));
+  handlers.set('find_parking', createFindParkingHandler(deps));
   handlers.set('geocode', createGeocodeHandler(deps));
   handlers.set('get_data_status', createGetDataStatusHandler(deps));
   return handlers;

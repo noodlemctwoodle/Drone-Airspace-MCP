@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createPackDb, finaliseDb } from '../../pipeline/assemble/create-db.js';
-import { insertAuthority, insertCoverage, insertLandRestrictions, insertMeta, insertRightsOfWay, insertSource, insertZones } from '../../pipeline/assemble/insert.js';
+import { insertAuthority, insertCoverage, insertLandRestrictions, insertMeta, insertParking, insertRightsOfWay, insertSource, insertZones } from '../../pipeline/assemble/insert.js';
 import { buildGazetteer } from '../../pipeline/assemble/gazetteer.js';
 import { parseAixmAirspaces } from '../../pipeline/sources/nats/aixm-parser.js';
 import { parseRowmapsGeojson } from '../../pipeline/sources/rowmaps/geojson-parser.js';
@@ -36,11 +36,15 @@ export async function buildMiniPack(dir: string): Promise<string> {
   const byelaws = (await loadByelaws(fx('byelaws/seed.yaml').pathname)).restrictions;
   const nLand = await insertLandRestrictions(db, [...nt, ...byelaws]);
   const nCov = insertCoverage(db, parseCountries(JSON.parse(readFileSync(fx('countries/countries-thin.geojson'), 'utf8'))));
+  const nParking = await insertParking(db, [
+    { osmId: 'w1', kind: 'car_park', name: 'Durdle Door Car Park', access: null, fee: 'yes', capacity: 400, surface: null, operator: null, lon: -2.2765, lat: 50.6227 },
+    { osmId: 'w2', kind: 'car_park', name: 'Private Yard', access: 'private', fee: null, capacity: null, surface: null, operator: null, lon: -2.2768, lat: 50.6225 },
+  ]);
   const nGaz = buildGazetteer(db);
   insertMeta(db, {
     schema_version: SCHEMA_VERSION, pack_tag: 'pack-20260903-test', built_at: now, build_commit: 'test', region: 'test',
     bbox: [-8.7, 49.8, 1.9, 60.9], airac_effective: '2026-09-03', airac_next: '2026-10-01',
-    counts: { zones: nZones, rights_of_way: nPaths, land_restrictions: nLand, coverage: nCov, gazetteer: nGaz },
+    counts: { zones: nZones, rights_of_way: nPaths, land_restrictions: nLand, coverage: nCov, gazetteer: nGaz, parking: nParking },
     attribution: ['a', 'b', 'c', 'd', 'e'], licences: {}, warnings: [],
   });
   finaliseDb(db);

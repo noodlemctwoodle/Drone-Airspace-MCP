@@ -58,10 +58,15 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Install osmium (OpenStreetMap parking extraction)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
       - name: Restore upstream download cache
         uses: actions/cache@v4
         with:
-          path: build/raw
+          path: |
+            build/raw
+            !build/raw/osm/*.pbf
+            !build/raw/osm/*.geojsonseq
           key: pack-raw-${{ github.run_id }}
           restore-keys: |
             pack-raw-
