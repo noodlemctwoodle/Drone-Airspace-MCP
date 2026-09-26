@@ -297,6 +297,8 @@ ${iconLinks}
   .wind-canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
   .leaflet-zoom-anim .wind-canvas { visibility: hidden; }
   .leaflet-popup-content hr.sep { border: 0; border-top: 1px solid var(--line); margin: 7px 0; }
+  .leaflet-popup-content a.dir { display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; padding: 5px 9px; border-radius: 7px; background: var(--accent); color: #fff; font-weight: 600; font-size: 12px; text-decoration: none; }
+  .leaflet-popup-content a.dir svg { width: 13px; height: 13px; }
   #bottom { display: contents; }
   #layers-fab { position: absolute; left: 10px; bottom: 10px; z-index: 1001; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; padding: 0; color: var(--ink); cursor: pointer; }
   #layers-fab svg { width: 24px; height: 24px; }
@@ -874,6 +876,20 @@ ${iconLinks}
   } else {
     document.getElementById('drone-row').style.display = 'none';
   }
+  // Directions in the device's own maps app: Apple Maps on iOS, the maps chooser on Android, Google Maps in a tab elsewhere.
+  var UA = navigator.userAgent || '';
+  var IS_IOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var IS_ANDROID = /Android/.test(UA);
+  function directionsHref(lat, lon, label) {
+    var ll = lat.toFixed(5) + ',' + lon.toFixed(5);
+    if (IS_IOS) return 'https://maps.apple.com/?daddr=' + ll + '&dirflg=d';
+    if (IS_ANDROID) return 'geo:' + ll + '?q=' + ll + '(' + encodeURIComponent(label || 'Destination') + ')';
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + ll;
+  }
+  function directionsLink(lat, lon, label) {
+    return '<a class="dir" href="' + directionsHref(lat, lon, label) + '" target="_blank" rel="noopener">' +
+      '<svg viewBox="0 0 16 16"><path d="M8 1.5l6.5 6.5L8 14.5 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6 9.5V7h3.5M8 5.5L9.5 7 8 8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Directions</a>';
+  }
   // Parking: a UK-style sign, blue square with a white P.
   var parkingIcon = L.divIcon({ className: 'p-sign', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12], html:
     '<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="4" fill="' + COLOUR.parking + '" stroke="#fff" stroke-width="1.5"/>' +
@@ -938,7 +954,7 @@ ${iconLinks}
       hitTargets.push({ key: 'prow', geometry: f.geometry, html: '<b>Public ' + esc(f.properties.pathType.replace('_', ' ')) + (f.properties.routeNo ? ' ' + esc(f.properties.routeNo) : '') + '</b><br>' + esc(f.properties.authority) + '<br>' + f.properties.distanceM + ' m from the point' });
     });
     view.parking.forEach(function (p) {
-      L.marker([p.lat, p.lon], { icon: parkingIcon, keyboard: false }).bindPopup('<b>' + esc(p.name || (p.kind === 'layby' ? 'Layby' : 'Car park')) + '</b><br>' + p.distanceM + ' m away' + (p.fee === 'yes' ? '<br>Pay to park' : p.fee === 'no' ? '<br>Free' : '')).addTo(groups.parking);
+      L.marker([p.lat, p.lon], { icon: parkingIcon, keyboard: false }).bindPopup('<b>' + esc(p.name || (p.kind === 'layby' ? 'Layby' : 'Car park')) + '</b><br>' + p.distanceM + ' m away' + (p.fee === 'yes' ? '<br>Pay to park' : p.fee === 'no' ? '<br>Free' : '') + directionsLink(p.lat, p.lon, p.name || 'Parking')).addTo(groups.parking);
     });
     if (view.route && view.route.length > 1) {
       L.polyline(view.route.map(function (p) { return [p[1], p[0]]; }), { color: COLOUR.route, weight: 3, dashArray: '8 6' }).addTo(groups.route);
@@ -946,9 +962,9 @@ ${iconLinks}
     if (opts.silent && currentCentre) {
       // An area load: the chosen point, its route and the spots stay where they were.
       if (currentRoute) L.polyline(currentRoute.map(function (p) { return [p[1], p[0]]; }), { color: COLOUR.route, weight: 3, dashArray: '8 6' }).addTo(groups.route);
-      centreMarker = L.marker(currentCentre, { icon: currentPinIcon() }).bindPopup(esc(currentName || 'Your location')).addTo(groups.route);
+      centreMarker = L.marker(currentCentre, { icon: currentPinIcon() }).bindPopup(esc(currentName || 'Your location') + directionsLink(currentCentre[0], currentCentre[1], currentName || 'Your location')).addTo(groups.route);
     } else {
-      centreMarker = L.marker([view.centre.lat, view.centre.lon], { icon: currentPinIcon() }).bindPopup(esc(view.centre.name || 'Your location')).addTo(groups.route);
+      centreMarker = L.marker([view.centre.lat, view.centre.lon], { icon: currentPinIcon() }).bindPopup(esc(view.centre.name || 'Your location') + directionsLink(view.centre.lat, view.centre.lon, view.centre.name || 'Your location')).addTo(groups.route);
       currentWeather = view.weather || null;
       selectedHour = null;
       currentCentre = [view.centre.lat, view.centre.lon];
@@ -956,7 +972,7 @@ ${iconLinks}
       currentRoute = view.route && view.route.length > 1 ? view.route : null;
       setStatus(view.centre.name || (view.route ? 'Your route' : 'Your location'));
     }
-    pendingSpots.forEach(function (s) { L.marker([s.lat, s.lon], { icon: spotIcon(s.rank) }).bindPopup('<b>Spot ' + esc(s.rank) + '</b><br>' + esc(s.label)).addTo(groups.spots); });
+    pendingSpots.forEach(function (s) { L.marker([s.lat, s.lon], { icon: spotIcon(s.rank) }).bindPopup('<b>Spot ' + esc(s.rank) + '</b><br>' + esc(s.label) + directionsLink(s.lat, s.lon, 'Take-off spot ' + s.rank)).addTo(groups.spots); });
     counts.spots = pendingSpots.length;
     loaded = true;
     placeLineIcons();
