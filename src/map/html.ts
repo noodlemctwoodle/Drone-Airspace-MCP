@@ -436,10 +436,12 @@ ${iconLinks}
     }
     function closeCheckout() { modal.hidden = true; if (embedded) { try { embedded.destroy(); } catch (err) { /* already gone */ } embedded = null; } checkoutEl.innerHTML = ''; checkoutNote.textContent = ''; }
     document.getElementById('checkout-close').onclick = closeCheckout;
-    modal.addEventListener('click', function (e) { if (e.target === modal) closeCheckout(); });
+    var openedAt = 0;
+    // Ignore a backdrop click in the first moments after opening: a tap on the link can be followed by a synthetic click at the same spot.
+    modal.addEventListener('click', function (e) { if (e.target === modal && Date.now() - openedAt > 600) closeCheckout(); });
     function openCheckout(kind) {
       donateEl.classList.remove('open');
-      modal.hidden = false;
+      modal.hidden = false; openedAt = Date.now();
       document.getElementById('checkout-title').textContent = kind === 'monthly' ? 'Monthly donation' : 'One-off donation';
       checkoutNote.textContent = 'Loading secure checkout…';
       Promise.all([loadStripe(), fetch(API_BASE + '/api/donate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: kind }) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status); return j; }); })])
