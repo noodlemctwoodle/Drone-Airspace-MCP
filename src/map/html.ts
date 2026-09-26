@@ -389,7 +389,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     pylon: ['M8 21L12 3l4 18M9.3 15h5.4M10.4 9.5h3.2M5 7.5h14', 0],
     substation: ['M13 2L5 13h6l-1 9 9-12h-6z', 1],
     power_generator: ['M12 21V10m0 0V3m0 7l6 3.5M12 10l-6 3.5', 0],
-    power_line: ['M4 6h16M4 18h16M12 6v12', 0],
+    power_line: ['M8 21L12 3l4 18M9.3 15h5.4M10.4 9.5h3.2M5 7.5h14', 0],
     minor_power_line: ['M4 12h16', 0],
     railway: ['M7 4h10v12H7zM8 8h8M9 16l-2 4m8-4l2 4M10 12.5h.5M13.5 12.5h.5', 0],
     motorway: ['M8 3l-4 18M16 3l4 18M12 3v4m0 4v4m0 4v2', 0],
@@ -415,11 +415,46 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     if (!hazardIcons[kind]) hazardIcons[kind] = L.divIcon({ className: 'hz', iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12], html: hazardSvg(kind, COLOUR[HAZARD_GROUP[kind] || 'sites']) });
     return hazardIcons[kind];
   }
+  // Icons along line hazards (railways, roads, power lines): one every LINE_ICON_GAP screen pixels of
+  // visible line, re-laid on every move so they thin out zoomed out and fill in zoomed in.
+  var LINE_ICON_GAP = 180, LINE_ICON_MAX = 400, lineHazards = [], lineIconMarkers = [];
+  function placeLineIcons() {
+    lineIconMarkers.forEach(function (m) { m.group.removeLayer(m.marker); });
+    lineIconMarkers = [];
+    if (!lineHazards.length) return;
+    var bounds = map.getBounds().pad(0.1), placed = 0;
+    for (var li = 0; li < lineHazards.length && placed < LINE_ICON_MAX; li++) {
+      var line = lineHazards[li];
+      if (line.kind === 'minor_power_line') continue; // too dense, and the pylons mark them
+      var pts = line.coords.map(function (c) { return map.latLngToLayerPoint([c[1], c[0]]); });
+      var total = 0, i;
+      for (i = 1; i < pts.length; i++) total += pts[i].distanceTo(pts[i - 1]);
+      if (total < 60) continue;
+      var next = Math.min(total / 2, LINE_ICON_GAP / 2), walked = 0;
+      for (i = 1; i < pts.length && placed < LINE_ICON_MAX; i++) {
+        var seg = pts[i].distanceTo(pts[i - 1]);
+        while (next <= walked + seg && seg > 0) {
+          var t = (next - walked) / seg;
+          var pt = L.point(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t, pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t);
+          var ll = map.layerPointToLatLng(pt);
+          if (bounds.contains(ll)) {
+            var marker = L.marker(ll, { icon: hazardIcon(line.kind), interactive: false, keyboard: false }).addTo(groups[line.key]);
+            lineIconMarkers.push({ marker: marker, group: groups[line.key] });
+            placed++;
+          }
+          next += LINE_ICON_GAP;
+        }
+        walked += seg;
+      }
+    }
+  }
+  var lineIconTimer = null;
+  map.on('moveend zoomend', function () { clearTimeout(lineIconTimer); lineIconTimer = setTimeout(placeLineIcons, 120); });
   function hazardLineStyle(kind, colour) {
     if (kind === 'minor_power_line') return { color: colour, weight: 1.5, opacity: 0.8, dashArray: '3 5' };
-    if (kind === 'power_line') return { color: colour, weight: 2, opacity: 0.9, dashArray: '6 4' };
-    if (kind === 'railway') return { color: colour, weight: 3, opacity: 0.85, dashArray: '8 5' };
-    return { color: colour, weight: 3, opacity: 0.7 };
+    if (kind === 'power_line') return { color: colour, weight: 2.5, opacity: 0.95, dashArray: '7 5' };
+    if (kind === 'railway') return { color: colour, weight: 3.5, opacity: 0.9, dashArray: '9 6' };
+    return { color: colour, weight: 4, opacity: 0.75 };
   }
   // Layers panel: one mechanism everywhere. The round button toggles it; on a desktop it pops up
   // above the button, on a phone it is a sheet in the bottom stack. The header closes it.
@@ -753,6 +788,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   function render(view) {
     infoEl.classList.remove('empty');
     hitTargets = [];
+    lineHazards = [];
     if (SMALL) setLayersSheet(false);
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
     var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, power: 0, transport: 0, aviation: 0, sites: 0, spots: 0 };
@@ -772,7 +808,11 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       counts[key]++;
       var label = '<b>' + esc(HAZARD_LABEL[kind] || kind) + '</b>' + (f.properties.name ? '<br>' + esc(f.properties.name) : '') + (f.properties.operator ? '<br>' + esc(f.properties.operator) : '');
       if (f.geometry.type === 'Point') L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { icon: hazardIcon(kind) }).bindPopup(label).addTo(groups[key]);
-      else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') { L.geoJSON(f, { style: hazardLineStyle(kind, colour) }).addTo(groups[key]); hitTargets.push({ key: key, geometry: f.geometry, html: label }); }
+      else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') {
+        L.geoJSON(f, { style: hazardLineStyle(kind, colour) }).addTo(groups[key]);
+        hitTargets.push({ key: key, geometry: f.geometry, html: label });
+        (f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates).forEach(function (c) { lineHazards.push({ kind: kind, key: key, coords: c }); });
+      }
       else {
         var poly = L.geoJSON(f, { style: { color: colour, weight: 1.5, opacity: 0.9, fillOpacity: 0.12 } }).addTo(groups[key]);
         hitTargets.push({ key: key, geometry: f.geometry, html: label });
@@ -805,6 +845,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     currentCentre = [view.centre.lat, view.centre.lon];
     loaded = true;
     setStatus(view.centre.name || (view.route ? 'Your route' : 'Your location'));
+    placeLineIcons();
     view.zones.forEach(function (f) { counts[zoneGroup(f.properties)]++; });
     setCounts(counts);
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
