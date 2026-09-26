@@ -79,7 +79,11 @@ function landing(env: WorkerEnv): Response {
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname === '/' && request.method === 'GET') return landing(env);
+    if (url.pathname === '/' && request.method === 'GET') {
+      // A person in a browser gets the map; MCP clients and scripts get the JSON card.
+      if ((request.headers.get('accept') ?? '').includes('text/html')) return Response.redirect(new URL('/map', env.PUBLIC_URL ?? url.origin).toString(), 302);
+      return landing(env);
+    }
     if (url.pathname === '/map' && request.method === 'GET') {
       return new Response(mapHtml({ mode: 'page', apiBase: env.PUBLIC_URL ?? url.origin }), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
     }

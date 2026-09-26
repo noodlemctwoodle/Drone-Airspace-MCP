@@ -124,6 +124,9 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   #search input::-webkit-search-cancel-button { -webkit-appearance: none; }
   #search button { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   #search button svg { width: 14px; height: 14px; }
+  #search button.locate { background: rgba(128,140,152,.16); color: var(--ink); margin-right: 2px; }
+  #search button.locate svg { width: 15px; height: 15px; }
+  #search button.locate.busy { opacity: .5; }
   #search .results { border-top: 1px solid var(--line); max-height: 240px; overflow: auto; }
   #search .results:empty { display: none; }
   #search .results div { padding: 8px 12px; font-size: 13px; line-height: 1.3; cursor: pointer; }
@@ -143,6 +146,14 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   #info.closed .pill.mini.on { display: inline-block; }
   #info.closed .chips, #info.closed #weather { display: none; }
   #info .chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 14px 11px; }
+  #info .empty { display: none; padding: 0 14px 12px; }
+  #info.empty .empty { display: block; }
+  #info.empty .chips, #info.empty .drone-row, #info.empty .drone-summary, #info.empty #weather, #info.empty .place .chev { display: none; }
+  #info.empty .place { cursor: default; }
+  #info .empty p { margin: 0 0 10px; font-size: 13px; line-height: 1.4; color: var(--muted); }
+  #info .empty button { font: inherit; font-size: 13.5px; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 9px; padding: 9px 14px; cursor: pointer; width: 100%; }
+  #info .empty small { display: block; margin-top: 8px; font-size: 12px; color: var(--poor); }
+  #info .empty small:empty { display: none; }
   .chip { font-size: 11.5px; line-height: 1; padding: 5px 8px; border-radius: 999px; background: rgba(128,140,152,.16); color: var(--ink); white-space: nowrap; }
   .chip b { font-weight: 600; }
   .chip.zero { color: var(--muted); }
@@ -244,7 +255,31 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .leaflet-tooltip-top::before { border-top-color: var(--panel); }
   .wind-canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
   .leaflet-zoom-anim .wind-canvas { visibility: hidden; }
-  @media (max-width: 720px) { #search { width: calc(100vw - 66px); } #info { top: 58px; } }
+  #bottom { display: contents; }
+  #layers-fab { display: none; }
+
+  /* Phones: search on top, a bottom stack of credit pill + layers button, the layers sheet and the location sheet.
+     Pinch replaces the zoom buttons; the location sheet starts collapsed so the map stays visible. */
+  @media (max-width: 720px) {
+    .leaflet-control-zoom { display: none; }
+    #search { left: 10px; right: 10px; width: auto; max-width: none; }
+    #search .results { max-height: 40vh; }
+    #bottom { display: flex; flex-direction: column; gap: 8px; position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; max-height: calc(100vh - 80px); }
+    #bottom .fabrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+    #sources { position: static; max-width: calc(100vw - 80px); }
+    #layers-fab { display: flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; border: 0; padding: 0; color: var(--ink); cursor: pointer; }
+    #layers-fab svg { width: 24px; height: 24px; }
+    #info, #info.closed { position: static; width: auto; max-width: none; overflow: auto; min-height: 0; }
+    #info.closed .place { padding-bottom: 10px; }
+    .drone-summary { font-size: 12.5px; }
+    .leaflet-bottom.leaflet-left .layers { display: none; }
+    #bottom .layers { display: none; width: auto; max-height: none; min-height: 0; overflow: auto; margin: 0 !important; }
+    body.layers-open #bottom .layers { display: block; }
+    body.layers-open #info { display: none; }
+    body.layers-open #layers-fab { background: var(--accent); color: #fff; }
+    #bottom .layers.closed .body { display: block; }
+    #bottom .layers h2 .chev { transform: rotate(0); }
+  }
 </style>
 </head>
 <body>
@@ -253,20 +288,31 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   <div class="bar">
     <svg class="ico" viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 10l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     <input id="search-input" type="search" placeholder="Search a place, postcode or lat, lon" aria-label="Search for a place" enterkeyhint="search">
+    <button type="button" class="locate" id="locate-btn" aria-label="Use my location" title="Use my location"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><path d="M8 1v3M8 12v3M1 8h3M12 8h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <button type="submit" aria-label="Search"><svg viewBox="0 0 16 16"><path d="M3 8h9M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <div class="results" id="search-results"></div>
 </form>
+<div id="bottom">
+<div class="fabrow">
+<div id="sources" class="card">
+  <button type="button" id="sources-btn"><span id="sources-label">Sources</span><svg class="chev" viewBox="0 0 16 16"><path d="M3 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  <ul id="sources-list"></ul>
+</div>
+<button type="button" id="layers-fab" class="card" aria-label="Layers"><svg viewBox="0 0 20 20"><path d="M10 3l7 4-7 4-7-4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3 11l7 4 7-4M3 14.5l7 4 7-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" opacity=".65"/></svg></button>
+</div>
 <div id="info" class="card">
   <div class="place" id="info-head"><span id="place">Loading…</span><span class="pill mini" id="info-pill"></span><svg class="chev" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+  <div class="empty" id="empty">
+    <p>Search for a place, a postcode or coordinates above, or start from where you are.</p>
+    <button type="button" id="locate-btn-2">Use my location</button>
+    <small id="empty-note"></small>
+  </div>
   <div class="chips" id="chips"></div>
   <div class="drone-row" id="drone-row"><span class="lbl">Your drone</span><select id="drone-select" aria-label="Your drone"><option value="">None</option></select></div>
   <div class="drone-summary" id="drone-summary"></div>
   <div id="weather"></div>
 </div>
-<div id="sources" class="card">
-  <button type="button" id="sources-btn"><span id="sources-label">Sources</span><svg class="chev" viewBox="0 0 16 16"><path d="M3 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
-  <ul id="sources-list"></ul>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -283,8 +329,9 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   function setStatus(text) { placeEl.textContent = text; }
   document.getElementById('sources-btn').onclick = function () { sourcesEl.classList.toggle('open'); };
   var infoEl = document.getElementById('info'), infoPill = document.getElementById('info-pill');
-  if (!recall('infoOpen', true)) infoEl.classList.add('closed');
-  document.getElementById('info-head').onclick = function () { infoEl.classList.toggle('closed'); remember('infoOpen', !infoEl.classList.contains('closed')); };
+  var SMALL = window.innerWidth <= 720;
+  if (!recall('infoOpen', !SMALL)) infoEl.classList.add('closed');
+  document.getElementById('info-head').onclick = function () { if (infoEl.classList.contains('empty')) return; infoEl.classList.toggle('closed'); if (!SMALL) remember('infoOpen', !infoEl.classList.contains('closed')); };
   L.DomEvent.disableClickPropagation(document.getElementById('info'));
   L.DomEvent.disableClickPropagation(sourcesEl);
   L.DomEvent.disableScrollPropagation(document.getElementById('info'));
@@ -374,12 +421,16 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
   var LayersPanel = L.Control.extend({
     onAdd: function () {
-      var el = L.DomUtil.create('div', 'layers card' + (recall('layersOpen', window.innerWidth > 600) ? '' : ' closed'));
+      var el = L.DomUtil.create('div', 'layers card' + (!SMALL && recall('layersOpen', true) ? '' : ' closed'));
+      layersEl = el;
       L.DomEvent.disableClickPropagation(el);
       L.DomEvent.disableScrollPropagation(el);
       var h = L.DomUtil.create('h2', '', el);
       h.innerHTML = 'Layers <svg class="chev" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
-      h.onclick = function () { el.classList.toggle('closed'); remember('layersOpen', !el.classList.contains('closed')); };
+      h.onclick = function () {
+        if (SMALL) { setLayersSheet(false); return; }
+        el.classList.toggle('closed'); remember('layersOpen', !el.classList.contains('closed'));
+      };
       var body = L.DomUtil.create('div', 'body', el);
       var b = L.DomUtil.create('h3', '', body); b.textContent = 'Base map';
       var seg = L.DomUtil.create('div', 'seg', body);
@@ -420,7 +471,17 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       return el;
     }
   });
+  var layersEl = null;
   new LayersPanel({ position: 'bottomleft' }).addTo(map);
+  function setLayersSheet(open) { document.body.classList.toggle('layers-open', open); if (open) infoEl.classList.add('closed'); }
+  if (SMALL && layersEl) {
+    // On a phone the panel is a sheet in the bottom stack, opened from the layers button, not a map control.
+    layersEl.classList.remove('closed');
+    document.getElementById('bottom').insertBefore(layersEl, infoEl);
+    L.DomEvent.disableClickPropagation(document.getElementById('bottom'));
+    L.DomEvent.disableScrollPropagation(document.getElementById('bottom'));
+  }
+  document.getElementById('layers-fab').onclick = function () { setLayersSheet(!document.body.classList.contains('layers-open')); };
   updateSources();
   function setCounts(counts) {
     Array.prototype.forEach.call(document.querySelectorAll('.layers .row[data-key]'), function (row) {
@@ -693,6 +754,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   var viewBounds = null, viewFittedAt = 0;
   window.addEventListener('resize', function () { if (viewBounds && Date.now() - viewFittedAt < 3000) { map.invalidateSize(); map.fitBounds(viewBounds, { padding: [20, 20] }); } });
   function render(view) {
+    infoEl.classList.remove('empty');
+    if (SMALL) setLayersSheet(false);
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
     var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, power: 0, transport: 0, aviation: 0, sites: 0, spots: 0 };
     var b = view.bbox;
@@ -791,6 +854,32 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       .catch(function () { showResults([{ name: 'Search failed, try again', msg: 1 }]); });
   };
   document.addEventListener('click', function (e) { if (!searchForm.contains(e.target)) searchResults.innerHTML = ''; });
+  // Where you are: browser geolocation, then the same path as a search hit. Errors show in the card, never a guess.
+  var locateBtn = document.getElementById('locate-btn'), emptyNote = document.getElementById('empty-note');
+  function locateMe() {
+    if (!navigator.geolocation) { showResults([{ name: 'This browser cannot share its location', msg: 1 }]); return; }
+    if (!API_BASE) { showResults([{ name: 'Map data needs the hosted server', msg: 1 }]); return; }
+    locateBtn.classList.add('busy');
+    emptyNote.textContent = '';
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      locateBtn.classList.remove('busy');
+      var lat = Math.round(pos.coords.latitude * 1e5) / 1e5, lon = Math.round(pos.coords.longitude * 1e5) / 1e5;
+      if (lat < 49 || lat > 62 || lon < -14 || lon > 5) { emptyNote.textContent = 'You seem to be outside the UK; this map only covers UK airspace.'; showResults([{ name: 'Outside the UK', msg: 1 }]); return; }
+      goTo({ lat: lat, lon: lon, name: 'Your location' });
+    }, function (err) {
+      locateBtn.classList.remove('busy');
+      var why = err && err.code === 1 ? 'Location permission was refused; search for a place instead.' : 'Could not get your location; search for a place instead.';
+      emptyNote.textContent = why;
+      showResults([{ name: why, msg: 1 }]);
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+  }
+  locateBtn.onclick = locateMe;
+  document.getElementById('locate-btn-2').onclick = locateMe;
+  function startEmpty() {
+    infoEl.classList.add('empty');
+    infoEl.classList.remove('closed');
+    setStatus('Where do you want to fly?');
+  }
   searchInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') { searchResults.innerHTML = ''; searchInput.blur(); } });
   searchInput.addEventListener('focus', function () { searchInput.select(); });
 
@@ -818,7 +907,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     if (isFinite(lat) && isFinite(lon)) load({ lat: lat, lon: lon, name: qs.get('name') || undefined, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined, spots: spots });
     else if (qs.get('place')) load({ place: qs.get('place'), radiusM: parseFloat(qs.get('radius')) || undefined });
     else if (wps.length > 1) load({ waypoints: wps });
-    else setStatus('Add ?lat=&lon= or ?place= to the URL');
+    else startEmpty();
   } else {
     // MCP App: JSON-RPC over postMessage with the host (ui/initialize, then ui/notifications/tool-result).
     var nextId = 1;
