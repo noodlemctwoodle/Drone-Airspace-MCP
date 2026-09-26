@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Load a built pack into the remote D1 database and verify the row counts.
-#   scripts/d1-load.sh build/pack/<tag>.sqlite
+#   scripts/d1-load.sh build/pack/<tag>.sqlite            # everything
+#   scripts/d1-load.sh build/pack/<tag>.sqlite --indexes  # only the rtree and FTS rebuilds (base tables already loaded)
 # wrangler sometimes exits non-zero from a status poll after a long import has
 # finished, so the exit code is ignored and the counts are the source of truth.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-PACK="${1:?usage: d1-load.sh <pack.sqlite>}"
+PACK="${1:?usage: d1-load.sh <pack.sqlite> [--indexes]}"
+GLOB="[0-9][0-9][0-9]-*.sql"
+[ "${2:-}" = "--indexes" ] && GLOB="[0-9][0-9][0-9]-indexes-*.sql"
 DB_NAME="${D1_DATABASE_NAME:-uk-drone-airspace}"
 PARTS="build/d1-parts"
 
@@ -14,7 +17,7 @@ PARTS="build/d1-parts"
 # imported on its own. A failure part-way leaves D1 inconsistent; rerunning the
 # whole script starts again from the drops, so it is safe to retry.
 npx tsx scripts/export-d1.ts "$PACK" --parts "$PARTS" || exit 1
-for f in "$PARTS"/[0-9][0-9][0-9]-*.sql; do
+for f in "$PARTS"/$GLOB; do
   echo "[d1-load] importing $f ($(du -h "$f" | cut -f1))"
   npx wrangler d1 execute "$DB_NAME" --remote --yes --file "$f" || echo "[d1-load] wrangler exited non-zero on $f; continuing to the count check"
 done

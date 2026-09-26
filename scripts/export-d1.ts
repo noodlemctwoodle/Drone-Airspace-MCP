@@ -105,15 +105,21 @@ for (const table of BASE_TABLES) {
   flush();
   console.error(`[export-d1] ${table}: ${rows.length} rows${skipped ? ` (${skipped} skipped as oversize)` : ''}`);
 }
-currentLabel = 'indexes';
-if (partsDir) openPart('indexes');
+// Index rebuilds: every remote import runs as one transaction and D1 times out
+// on a few million rtree inserts at once, so in parts mode each file rebuilds at
+// most ROWS_PER_INDEX_PART rows and the FTS rebuild has a file of its own.
+const ROWS_PER_INDEX_PART = 200_000;
 for (const t of SPATIAL_TABLES) {
+  currentLabel = `indexes-${t}`;
   const maxId = Number(db.prepare(`SELECT COALESCE(MAX(id), 0) AS m FROM ${t}`).get()?.m ?? 0);
   if (maxId === 0) continue;
   for (let lo = 0; lo < maxId; lo += RTREE_CHUNK) {
+    if (partsDir && lo % ROWS_PER_INDEX_PART === 0) openPart(currentLabel);
     write(`INSERT INTO ${t}_rtree (id, min_lon, max_lon, min_lat, max_lat) SELECT id, min_lon, max_lon, min_lat, max_lat FROM ${t} WHERE id > ${lo} AND id <= ${lo + RTREE_CHUNK};`);
   }
 }
+currentLabel = 'indexes-fts';
+if (partsDir) openPart(currentLabel);
 write(`INSERT INTO gazetteer_fts(gazetteer_fts) VALUES('rebuild');`);
 out!.end(() => console.error(`[export-d1] wrote ${partsDir ? `${partIndex} parts in ${partsDir}` : values.out} (${total} rows)`));
 db.close();
