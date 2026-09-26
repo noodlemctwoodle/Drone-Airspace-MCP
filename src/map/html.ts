@@ -270,8 +270,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     #bottom { display: flex; flex-direction: column; gap: 8px; position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; max-height: calc(100vh - 80px); }
     #bottom .fabrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
     #sources { position: relative; right: auto; bottom: auto; flex: none; }
-    #sources ul { right: auto; left: 0; width: calc(100vw - 20px); }
-    #layers-fab { position: static; flex: none; }
+    #sources ul { right: 0; left: auto; width: calc(100vw - 20px); }
+    #layers-fab { position: static; flex: none; order: -1; }
     #info, #info.closed { position: static; width: auto; max-width: none; overflow: auto; min-height: 0; }
     #info.closed .place { padding-bottom: 10px; }
     .drone-summary { font-size: 12.5px; }
