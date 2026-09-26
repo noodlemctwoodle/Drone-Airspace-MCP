@@ -21,7 +21,7 @@ SUPPORT_URL = "https://donate.stripe.com/3cI28sesu6T0f4n7IP2Nq00"
 SUPPORT_MONTHLY_URL = "https://donate.stripe.com/8x2bJ23NQcdke0j3sz2Nq01"
 # Embedded checkout on the map. STRIPE_SECRET_KEY is a secret: `wrangler secret put STRIPE_SECRET_KEY`. Without it the Donate
 # button opens the Payment Links above instead.
-STRIPE_PUBLISHABLE_KEY = ""
+STRIPE_PUBLISHABLE_KEY = "pk_live_51UJvGQLuAdK4E4Q2ZHxqhVQ2eZZDlZcML9s8L2EhCqZkHSWeCulvyfaty8cuIvHtQ5gPYmF2GlChmLLQQvlWcVca00sI8K6Twf"
 STRIPE_PRICE_ONCE = "price_1UJvboLuAdK4E4Q24yMrQ6xb"
 STRIPE_PRICE_MONTHLY = "price_1UJviTLuAdK4E4Q2bKc1LnHK"
 # OS_NAMES_API_KEY is a secret: `wrangler secret put OS_NAMES_API_KEY`
