@@ -105,10 +105,11 @@ const BASE_OVERLAYS: Overlay[] = [
 ];
 export const OVERLAYS: readonly Overlay[] = [...BASE_OVERLAYS, ...HAZARD_OVERLAYS];
 
-export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }): string {
+export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null; supportUrl?: string | null }): string {
   const iconSvgBase64 = Buffer.from(ICON_SVG).toString('base64');
   const iconLinks = opts.apiBase ? `<link rel="apple-touch-icon" href="${opts.apiBase}/icon-180.png">\n<link rel="manifest" href="${opts.apiBase}/manifest.webmanifest">` : '';
   const apiBase = JSON.stringify(opts.apiBase ?? '');
+  const supportUrl = JSON.stringify(opts.supportUrl && /^https:\/\//.test(opts.supportUrl) ? opts.supportUrl : '');
   const mode = JSON.stringify(opts.mode);
   const basemaps = JSON.stringify(BASEMAPS);
   const radar = JSON.stringify(RADAR);
@@ -231,6 +232,7 @@ ${iconLinks}
   #sources.open ul { display: block; }
   #sources li { padding: 5px 0; border-top: 1px solid var(--line); line-height: 1.35; }
   #sources li:first-child { border-top: 0; }
+  #sources li.support a { color: var(--accent); font-weight: 600; text-decoration: none; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* Layers panel */
@@ -362,6 +364,7 @@ ${iconLinks}
 <script>
 (function () {
   var API_BASE = ${apiBase};
+  var SUPPORT_URL = ${supportUrl};
   var MODE = ${mode};
   var BASEMAPS = ${basemaps};
   var RADAR = ${radar};
@@ -403,7 +406,8 @@ ${iconLinks}
     var items = [sat ? BASEMAPS.satellite.attribution : 'Map tiles ' + BASEMAPS.map.attribution].concat(dataSources);
     if (map.hasLayer(groups.radar)) items.push(RADAR.attribution);
     items.push('Built with Leaflet');
-    sourcesList.innerHTML = items.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('');
+    sourcesList.innerHTML = items.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') +
+      (SUPPORT_URL ? '<li class="support">Free to use, funded by donations. <a href="' + esc(SUPPORT_URL) + '" target="_blank" rel="noopener">Support this project</a></li>' : '');
   }
 
   // One layer group per overlay so each can be switched off; hidden ones are remembered.

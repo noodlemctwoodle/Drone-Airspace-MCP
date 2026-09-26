@@ -74,6 +74,7 @@ function landing(env: WorkerEnv): Response {
     repository: REPO_URL,
     add_to_claude: 'Settings > Connectors > Add custom connector, paste the mcp_endpoint URL.',
     icon: `${url}/icon.svg`,
+    ...(env.SUPPORT_URL ? { support: env.SUPPORT_URL } : {}),
   };
   return new Response(JSON.stringify(body, null, 2), { headers: JSON_HEADERS });
 }
@@ -87,7 +88,7 @@ export default {
       return landing(env);
     }
     if (url.pathname === '/map' && request.method === 'GET') {
-      return new Response(mapHtml({ mode: 'page', apiBase: env.PUBLIC_URL ?? url.origin }), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
+      return new Response(mapHtml({ mode: 'page', apiBase: env.PUBLIC_URL ?? url.origin, supportUrl: env.SUPPORT_URL ?? null }), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
     }
     if (url.pathname === '/api/view') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });

@@ -8,6 +8,10 @@ Airspace restriction data is the easy half. A UK pilot actually has to clear thr
 
 Informational only. It is not a substitute for a NATS pre-flight briefing, the CAA Drone Code, or permission from the landowner and any relevant aerodrome.
 
+[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/noodlemctwoodle)
+
+FPV Airspace is free and stays free: the data licences it relies on are for non-commercial use, so nothing is ever paywalled. If it saves you a wasted trip, [sponsoring on GitHub](https://github.com/sponsors/noodlemctwoodle) helps cover the hosting and the weather API.
+
 ## What it answers
 
 - **Is this point inside a restriction?** `check_location`: a one-line verdict and every zone containing the point, prisons included.

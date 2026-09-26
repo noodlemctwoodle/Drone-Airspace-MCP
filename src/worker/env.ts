@@ -19,6 +19,8 @@ export interface WorkerEnv {
   HTTP_TIMEOUT_MS?: string;
   LOG_LEVEL?: string;
   PUBLIC_URL?: string;
+  /** Optional donation link (GitHub Sponsors or a Stripe Payment Link) shown in the map credits and the landing JSON. */
+  SUPPORT_URL?: string;
   OPEN_METEO_URL?: string;
   WEATHER_CACHE_TTL_SECONDS?: string;
   OPEN_METEO_ELEVATION_URL?: string;
