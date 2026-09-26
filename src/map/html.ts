@@ -73,7 +73,7 @@ export const OVERLAYS = [
   { key: 'prow', label: 'Public right of way', colour: '#2e7d32', section: 'ground', shape: 'line' },
   { key: 'land', label: 'Landowner rules', colour: '#00838f', section: 'ground', shape: 'area' },
   { key: 'access', label: 'Open access land', colour: '#7cb342', section: 'ground', shape: 'area' },
-  { key: 'designation', label: 'Nature and park designations', colour: '#9e9d24', section: 'ground', shape: 'area' },
+  { key: 'designation', label: 'Nature designations', colour: '#9e9d24', section: 'ground', shape: 'area' },
   { key: 'parking', label: 'Parking / layby', colour: '#1a56c4', section: 'ground', shape: 'parking' },
   { key: 'hazards', label: 'Ground hazards', colour: '#8d6e63', section: 'ground', shape: 'line' },
   { key: 'route', label: 'Route and location', colour: '#2a81cb', section: 'ground', shape: 'pin' },
@@ -618,9 +618,11 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, hazards: (view.hazards || []).length, spots: 0 };
     var b = view.bbox;
     map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [20, 20] });
+    var seenLand = {};
     view.landRestrictions.forEach(function (f) {
       var key = f.properties.kind === 'access_land' ? 'access' : f.properties.kind === 'designation' ? 'designation' : 'land';
-      counts[key]++;
+      var entryKey = key + ':' + (f.properties.entryId || f.properties.name);
+      if (!seenLand[entryKey]) { seenLand[entryKey] = 1; counts[key]++; }
       L.geoJSON(f, { style: { color: COLOUR[key], weight: 1, fillOpacity: key === 'land' ? 0.18 : 0.1 } }).bindPopup('<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '')).addTo(groups[key]);
     });
     var HAZARD_LABEL = { railway: 'Railway', motorway: 'Motorway', trunk_road: 'Trunk road', power_line: 'Power line', helipad: 'Helipad', military: 'Military land' };

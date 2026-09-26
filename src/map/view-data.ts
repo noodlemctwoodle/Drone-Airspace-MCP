@@ -53,7 +53,7 @@ export interface ViewData {
   route: Position[] | null;
   zones: Array<{ type: 'Feature'; properties: { id: number; designator: string | null; name: string; zoneType: string; label: string; severity: number; relevant: boolean; limits: string }; geometry: unknown }>;
   rightsOfWay: Array<{ type: 'Feature'; properties: { id: number; pathType: string; routeNo: string | null; authority: string; distanceM: number }; geometry: LineString }>;
-  landRestrictions: Array<{ type: 'Feature'; properties: { id: number; name: string; owner: string; kind: string; takeoffBanned: boolean }; geometry: unknown }>;
+  landRestrictions: Array<{ type: 'Feature'; properties: { id: number; entryId: string | null; name: string; owner: string; kind: string; takeoffBanned: boolean }; geometry: unknown }>;
   parking: Array<{ lat: number; lon: number; name: string | null; kind: string; fee: string | null; distanceM: number }>;
   hazards: Array<{ type: 'Feature'; properties: { id: number; kind: string; name: string | null; operator: string | null }; geometry: unknown }>;
   notams: Array<{ id: string; lat: number; lon: number; radiusKm: number; itemE: string }>;
@@ -140,7 +140,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
       geometry: z.geometry,
     })),
     rightsOfWay: paths.map((p) => ({ type: 'Feature', properties: { id: p.id, pathType: p.pathType, routeNo: p.routeNo, authority: p.authorityName, distanceM: p.distanceM }, geometry: p.geometry })),
-    landRestrictions: land.filter((l) => l.scope !== 'authority').map((l) => ({ type: 'Feature', properties: { id: l.id, name: l.name, owner: l.owner, kind: l.kind, takeoffBanned: l.takeoffBanned }, geometry: l.geometry })),
+    landRestrictions: land.filter((l) => l.scope !== 'authority').map((l) => ({ type: 'Feature', properties: { id: l.id, entryId: l.entryId, name: l.name, owner: l.owner, kind: l.kind, takeoffBanned: l.takeoffBanned }, geometry: l.geometry })),
     parking: parking.map((p) => ({ lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, fee: p.fee, distanceM: p.distanceM })),
     hazards: hazards.map((h) => ({ type: 'Feature', properties: { id: h.id, kind: h.kind, name: h.name, operator: h.operator }, geometry: h.geometry })),
     notams,
