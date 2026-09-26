@@ -12,7 +12,7 @@ function readVersion(): string {
   }
 }
 
-export const NAME = 'uk-drone-airspace-mcp';
+export const NAME = 'fpv-airspace';
 export const VERSION: string = readVersion();
-export const REPO_URL = 'https://github.com/noodlemctwoodle/Drone-Airspace-MCP';
+export const REPO_URL = 'https://github.com/noodlemctwoodle/fpv-airspace';
 export const USER_AGENT = `${NAME}/${VERSION} (+${REPO_URL})`;

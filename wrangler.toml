@@ -1,4 +1,4 @@
-name = "uk-drone-airspace-mcp"
+name = "fpv-airspace"
 main = "src/worker/index.ts"
 compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
@@ -6,7 +6,7 @@ workers_dev = true
 
 # Custom domain (DNS and certificate are managed by Cloudflare).
 [[routes]]
-pattern = "drone-airspace.fetchlabs.co.uk"
+pattern = "fpv-airspace.fetchlabs.co.uk"
 custom_domain = true
 
 [define]
@@ -15,7 +15,7 @@ __PKG_VERSION__ = "\"0.1.5\""
 [vars]
 LOG_LEVEL = "info"
 NOTAM_CACHE_TTL_SECONDS = "1800"
-PUBLIC_URL = "https://drone-airspace.fetchlabs.co.uk"
+PUBLIC_URL = "https://fpv-airspace.fetchlabs.co.uk"
 # OS_NAMES_API_KEY is a secret: `wrangler secret put OS_NAMES_API_KEY`
 # Optional overrides with defaults in src/core/config.ts: OPEN_METEO_URL, OPEN_METEO_ELEVATION_URL,
 # NOAA_KP_URL, WEATHER_CACHE_TTL_SECONDS, ELEVATION_CACHE_TTL_SECONDS, SPACE_WEATHER_CACHE_TTL_SECONDS

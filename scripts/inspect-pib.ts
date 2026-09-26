@@ -5,7 +5,7 @@ import { parsePib } from '../src/services/notam/pib-parser.js';
 
 const url = process.env.NOTAM_PIB_URL ?? 'https://pibs.nats.co.uk/operational/pibs/PIB.xml';
 (async () => {
-  const xml = await (await fetch(url, { headers: { 'User-Agent': 'uk-drone-airspace-mcp inspect-pib' } })).text();
+  const xml = await (await fetch(url, { headers: { 'User-Agent': 'fpv-airspace inspect-pib' } })).text();
   const doc = new XMLParser({ ignoreAttributes: false, parseTagValue: false }).parse(xml) as Record<string, unknown>;
   const counts = new Map<string, { n: number; sample: string }>();
   const walk = (node: unknown, p: string) => {

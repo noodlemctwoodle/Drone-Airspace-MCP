@@ -20,7 +20,7 @@ interface Release {
 async function latestPackRelease(): Promise<{ tag: string; date: string; publishedAt: string; manifest: Record<string, unknown> | null } | null> {
   const m = /github\.com\/([^/]+)\/([^/]+)/.exec(REPO_URL);
   if (!m) return null;
-  const headers: Record<string, string> = { Accept: 'application/vnd.github+json', 'User-Agent': 'uk-drone-airspace-pack-builder' };
+  const headers: Record<string, string> = { Accept: 'application/vnd.github+json', 'User-Agent': 'fpv-airspace-pack-builder' };
   if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
   const res = await fetch(`https://api.github.com/repos/${m[1]}/${m[2]}/releases?per_page=30`, { headers });
   if (!res.ok) return null;

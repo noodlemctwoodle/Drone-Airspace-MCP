@@ -1,4 +1,4 @@
-# Streamable HTTP deployment. stdio users should use `npx uk-drone-airspace-mcp` instead.
+# Streamable HTTP deployment. stdio users should use `npx fpv-airspace` instead.
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

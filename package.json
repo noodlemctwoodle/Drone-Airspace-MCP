@@ -1,10 +1,10 @@
 {
-  "name": "uk-drone-airspace-mcp",
+  "name": "fpv-airspace",
   "version": "0.3.0",
   "description": "MCP server answering where a drone can legally take off and fly in the UK: NATS flight restriction zones, live NOTAMs, public rights of way and landowner rules",
   "type": "module",
   "bin": {
-    "uk-drone-airspace-mcp": "dist/index.js"
+    "fpv-airspace": "dist/index.js"
   },
   "main": "dist/index.js",
   "files": [
@@ -32,7 +32,7 @@
     "pack:fetch-countries": "tsx scripts/fetch-countries.ts",
     "pack:manifest": "tsx scripts/make-manifest.ts",
     "pack:check-upstream": "tsx scripts/check-upstream.ts",
-    "mcpb:pack": "npm run build && npx --yes @anthropic-ai/mcpb pack . build/uk-drone-airspace.mcpb",
+    "mcpb:pack": "npm run build && npx --yes @anthropic-ai/mcpb pack . build/fpv-airspace.mcpb",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
     "pack:export-d1": "tsx scripts/export-d1.ts",
@@ -48,7 +48,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/noodlemctwoodle/Drone-Airspace-MCP.git"
+    "url": "git+https://github.com/noodlemctwoodle/fpv-airspace.git"
   },
   "keywords": [
     "mcp",

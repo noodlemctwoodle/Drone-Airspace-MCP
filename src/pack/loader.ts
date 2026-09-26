@@ -173,7 +173,7 @@ export class PackManager implements PackAccess {
   private async downloadAsset(manifest: PackManifest, partPath: string, reportProgress: boolean): Promise<void> {
     const { config, logger } = this.opts;
     const res = await this.fetchImpl(manifest.asset.url, {
-      headers: { 'User-Agent': `uk-drone-airspace-mcp (+${REPO_URL})` },
+      headers: { 'User-Agent': `fpv-airspace (+${REPO_URL})` },
       signal: AbortSignal.timeout(config.packDownloadTimeoutMs),
       redirect: 'follow',
     });

@@ -1,4 +1,4 @@
-# UK Drone Airspace MCP
+# FPV Airspace
 
 An MCP server that answers the question existing airspace tools do not: **can I legally take off and fly a drone here, in the UK?**
 
@@ -27,7 +27,7 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 Requires Node 22.13 or newer (the server uses Node's built-in SQLite, so there is nothing native to compile). The package is a single bundled file with no dependencies, so `npx` starts it in a few seconds.
 
 ```bash
-npx -y uk-drone-airspace-mcp
+npx -y fpv-airspace
 ```
 
 ### Claude Desktop
@@ -37,9 +37,9 @@ Add to `claude_desktop_config.json` (Settings > Developer > Edit Config):
 ```json
 {
   "mcpServers": {
-    "uk-drone-airspace": {
+    "fpv-airspace": {
       "command": "npx",
-      "args": ["-y", "uk-drone-airspace-mcp"],
+      "args": ["-y", "fpv-airspace"],
       "env": {
         "OS_NAMES_API_KEY": ""
       }
@@ -50,21 +50,21 @@ Add to `claude_desktop_config.json` (Settings > Developer > Edit Config):
 
 `OS_NAMES_API_KEY` is optional. Without it, geocoding uses OpenStreetMap's Nominatim. With a free key from the [OS Data Hub](https://osdatahub.os.uk/), Ordnance Survey place names are tried first.
 
-On first use the server downloads the current airspace data pack (about 49 MB compressed, 115 MB on disk: 1,050 restriction zones, 520,391 rights of way, 1,694 landowner polygons) into `~/.cache/uk-drone-airspace-mcp` and reports progress on stderr. NOTAM and geocoding tools work while it downloads. The pack is refreshed automatically when a new AIRAC cycle is published.
+On first use the server downloads the current airspace data pack (about 49 MB compressed, 115 MB on disk: 1,050 restriction zones, 520,391 rights of way, 1,694 landowner polygons) into `~/.cache/fpv-airspace` and reports progress on stderr. NOTAM and geocoding tools work while it downloads. The pack is refreshed automatically when a new AIRAC cycle is published.
 
 ### Claude Desktop extension (.mcpb)
 
-Each release also ships `uk-drone-airspace.mcpb`. Download it from the [releases page](https://github.com/noodlemctwoodle/Drone-Airspace-MCP/releases), double-click it, and Claude Desktop installs the server with its bundled Node runtime and a settings panel for the optional OS Names key.
+Each release also ships `fpv-airspace.mcpb`. Download it from the [releases page](https://github.com/noodlemctwoodle/fpv-airspace/releases), double-click it, and Claude Desktop installs the server with its bundled Node runtime and a settings panel for the optional OS Names key.
 
 ### Claude Code
 
 ```bash
-claude mcp add uk-drone-airspace -- npx -y uk-drone-airspace-mcp
+claude mcp add fpv-airspace -- npx -y fpv-airspace
 ```
 
 ### Remote connector (Claude web, mobile and voice)
 
-The same server runs as a Cloudflare Worker at **`https://drone-airspace.fetchlabs.co.uk/mcp`**, which is what Claude's mobile app and voice mode can reach: they cannot run local servers, only remote connectors. Add it on claude.ai under Settings > Connectors > Add custom connector with that URL, and it becomes available on every surface, including voice conversations. Every tool accepts `format: "brief"`, which returns two or three spoken-friendly sentences instead of the full report.
+The same server runs as a Cloudflare Worker at **`https://fpv-airspace.fetchlabs.co.uk/mcp`**, which is what Claude's mobile app and voice mode can reach: they cannot run local servers, only remote connectors. Add it on claude.ai under Settings > Connectors > Add custom connector with that URL, and it becomes available on every surface, including voice conversations. Every tool accepts `format: "brief"`, which returns two or three spoken-friendly sentences instead of the full report.
 
 Hosting your own copy:
 
@@ -81,9 +81,9 @@ The setup script creates the D1 database and KV namespace, writes their ids into
 ### Hosted (streamable HTTP on your own server)
 
 ```bash
-npx -y uk-drone-airspace-mcp --transport http --port 8080
+npx -y fpv-airspace --transport http --port 8080
 # or
-docker build -t uk-drone-airspace-mcp . && docker run -p 8080:8080 -v drone-data:/data uk-drone-airspace-mcp
+docker build -t fpv-airspace . && docker run -p 8080:8080 -v drone-data:/data fpv-airspace
 ```
 
 `POST /mcp` speaks the MCP streamable HTTP transport (stateless), `GET /healthz` reports pack and NOTAM cache state.
@@ -203,7 +203,7 @@ Which UK open category rules apply to a consumer drone. Give `model` (looked up 
 
 ### Maps
 
-The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map, `GET /api/view` as the JSON behind it, and `GET /api/wind?bbox=w,s,e,n&z=` for the wind field (one Open-Meteo request per view, snapped to a fixed lattice of at most 64 points and cached per point). It also publishes an MCP App resource (`ui://uk-drone-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer; `preflight_briefing`, `check_terrain` and `find_takeoff_spots` carry it too, the last with its spots numbered on the map. Claude web, desktop and mobile render it; Claude Code shows the text only.
+The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map, `GET /api/view` as the JSON behind it, and `GET /api/wind?bbox=w,s,e,n&z=` for the wind field (one Open-Meteo request per view, snapped to a fixed lattice of at most 64 points and cached per point). It also publishes an MCP App resource (`ui://fpv-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer; `preflight_briefing`, `check_terrain` and `find_takeoff_spots` carry it too, the last with its spots numbered on the map. Claude web, desktop and mobile render it; Claude Code shows the text only.
 
 The layers panel (top left) offers Map or Satellite base layers and a checkbox for every overlay, grouped into Airspace (each zone class and NOTAMs), On the ground (rights of way, landowner land, parking, route) and Weather. Prohibited and restricted areas and aerodrome FRZs are always drawn and cannot be switched off. Satellite is Esri World Imagery with a place-name overlay; add `basemap=satellite` to the `/map` URL to open in that view. Weather has three toggles: Conditions now (a badge with the Open-Meteo flyability rating for the coming hour, including the wind at 120 m), Wind flow (animated streamlines over the visible map, as on a forecast chart, coloured by the advisory thresholds; a still frame when the browser prefers reduced motion) and Rain radar (the latest RainViewer frame, coarse at about 600 m per pixel on the free tier). `weather=0` on `/api/view` skips the forecast. Base layer, overlay and panel choices are remembered per browser.
 
@@ -271,7 +271,7 @@ The permanent layers are assembled into a data pack by [`.github/workflows/build
 | `WEATHER_CACHE_TTL_SECONDS` | `900` | |
 | `GEOCODE_CACHE_TTL_SECONDS` | `2592000` | 30 days |
 | `HTTP_TIMEOUT_MS` | `8000` | Live calls |
-| `DRONE_AIRSPACE_CACHE_DIR` | `~/.cache/uk-drone-airspace-mcp` | Pack and caches |
+| `FPV_AIRSPACE_CACHE_DIR` | `~/.cache/fpv-airspace` | Pack and caches (`DRONE_AIRSPACE_CACHE_DIR` and an existing `~/.cache/uk-drone-airspace-mcp` are still honoured) |
 | `PACK_MANIFEST_URL` | latest GitHub release manifest | Point at a mirror or `file://` |
 | `PACK_PATH` | unset | Use a local pack and skip downloads |
 | `PACK_UPDATE_CHECK` | `true` | Background check for a newer pack |

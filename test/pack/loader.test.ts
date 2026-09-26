@@ -15,9 +15,9 @@ import { SCHEMA_VERSION } from '../../src/pack/schema.js';
 
 const sha = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 
-function manifestFor(tag: string, sqlite: Buffer, gz: Buffer, schema = SCHEMA_VERSION) {
+function manifestFor(tag: string, sqlite: Buffer, gz: Buffer, schema = SCHEMA_VERSION, kind = 'fpv-airspace-pack') {
   return {
-    kind: 'uk-drone-airspace-pack',
+    kind,
     manifest_version: 1,
     schema_version: schema,
     tag,

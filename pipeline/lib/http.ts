@@ -3,7 +3,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { REPO_URL } from '../../src/version.js';
 
-export const BUILD_USER_AGENT = `uk-drone-airspace-pack-builder (+${REPO_URL})`;
+export const BUILD_USER_AGENT = `fpv-airspace-pack-builder (+${REPO_URL})`;
 
 export interface FetchCachedOptions {
   cacheDir: string;

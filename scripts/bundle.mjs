@@ -1,5 +1,5 @@
 // Bundle the server into a single ESM file with no runtime dependencies, so
-// `npx uk-drone-airspace-mcp` downloads one small tarball and starts in seconds.
+// `npx fpv-airspace` downloads one small tarball and starts in seconds.
 import { build } from 'esbuild';
 import { chmod, mkdir, readFile, rm } from 'node:fs/promises';
 

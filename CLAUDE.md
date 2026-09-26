@@ -6,7 +6,7 @@ Context for Claude Code working on this repo.
 A TypeScript MCP server answering **where a drone can legally take off and fly
 in the UK**: NATS ENR 5.1 flight restriction zones, live NOTAMs, public rights
 of way, National Trust land and known council byelaws. Runs over stdio for
-Claude Desktop (`npx uk-drone-airspace-mcp`) or streamable HTTP
+Claude Desktop (`npx fpv-airspace`) or streamable HTTP
 (`--transport http`) for a hosted deployment. Permanent data comes from a
 SQLite **data pack** built by GitHub Actions and downloaded on first run;
 geocoding and NOTAMs are live.
@@ -59,7 +59,7 @@ data/byelaws/seed.yaml     community-maintained council byelaw list
 test/                      fixtures/ (real NATS excerpts, PIB excerpt, rowmaps, NT, byelaws), helpers/ (FakePackRepository, mini-pack, fake-fetch)
 ```
   worker/                  Cloudflare Worker entry (fetch handler, WebStandard streamable HTTP, /map, /api/view), d1-pack.ts (PackAccess over D1), kv-cache.ts
-  map/                     view-data.ts (JSON for the map, wind lattice, drone index), html.ts (Leaflet page; also the MCP App resource ui://uk-drone-airspace/map), silhouettes.ts (drawn drone marker outlines)
+  map/                     view-data.ts (JSON for the map, wind lattice, drone index), html.ts (Leaflet page; also the MCP App resource ui://fpv-airspace/map), silhouettes.ts (drawn drone marker outlines)
 Flow: tool -> `resolveOrRespond` (geocode) -> `pack.require()` -> engine/service -> formatter -> `respond(format, data, renderText, renderBrief)`.
 
 Three runtimes share everything above `pack/` and `core/`:

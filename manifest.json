@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.3",
-  "name": "uk-drone-airspace",
-  "display_name": "UK Drone Airspace",
+  "name": "fpv-airspace",
+  "display_name": "FPV Airspace",
   "version": "0.1.0",
   "description": "Where can I legally take off and fly a drone in the UK? Flight restriction zones, live NOTAMs, public rights of way and landowner rules.",
   "long_description": "Answers the three questions a UK drone pilot needs before a flight: is this point inside a flight restriction zone or other permanent restriction (NATS UK AIP ENR 5.1), is there a NOTAM in force (live NATS bulletin), and can I legally take off here (nearest public rights of way, National Trust land, known council byelaws). Place names, postcodes and landmarks are geocoded for you. Permanent data is a compact SQLite pack refreshed every AIRAC cycle and downloaded on first use.",
@@ -11,11 +11,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP"
+    "url": "https://github.com/noodlemctwoodle/fpv-airspace"
   },
-  "homepage": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP",
-  "documentation": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP#readme",
-  "support": "https://github.com/noodlemctwoodle/Drone-Airspace-MCP/issues",
+  "homepage": "https://github.com/noodlemctwoodle/fpv-airspace",
+  "documentation": "https://github.com/noodlemctwoodle/fpv-airspace#readme",
+  "support": "https://github.com/noodlemctwoodle/fpv-airspace/issues",
   "license": "MIT",
   "keywords": [
     "drone",
@@ -37,7 +37,7 @@
       ],
       "env": {
         "OS_NAMES_API_KEY": "${user_config.os_names_api_key}",
-        "DRONE_AIRSPACE_CACHE_DIR": "${user_config.cache_dir}",
+        "FPV_AIRSPACE_CACHE_DIR": "${user_config.cache_dir}",
         "LOG_LEVEL": "info"
       }
     }
@@ -83,7 +83,7 @@
     "cache_dir": {
       "type": "directory",
       "title": "Data cache folder",
-      "description": "Where the airspace data pack (about 49 MB download, 115 MB on disk) and geocoding cache are stored. Leave empty for ~/.cache/uk-drone-airspace-mcp.",
+      "description": "Where the airspace data pack (about 49 MB download, 115 MB on disk) and geocoding cache are stored. Leave empty for ~/.cache/fpv-airspace.",
       "required": false
     }
   },

@@ -14,7 +14,7 @@ export interface Logger {
 /**
  * All logging goes to stderr. Stdout is the MCP stdio channel and must stay clean.
  */
-export function createLogger(level: LogLevel = 'info', prefix = 'uk-drone-airspace-mcp'): Logger {
+export function createLogger(level: LogLevel = 'info', prefix = 'fpv-airspace'): Logger {
   const emit = (lvl: LogLevel, msg: string, rest: unknown[]) => {
     if (ORDER[lvl] < ORDER[level]) return;
     const line = `[${prefix}] ${lvl.toUpperCase()} ${msg}`;

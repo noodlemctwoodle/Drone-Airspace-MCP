@@ -1,6 +1,6 @@
 /**
  * Leaflet map used both as a standalone page (`/map?lat=&lon=`) and as the MCP
- * App view (`ui://uk-drone-airspace/map`). Same HTML; the app variant receives
+ * App view (`ui://fpv-airspace/map`). Same HTML; the app variant receives
  * its view descriptor from the host over postMessage and fetches the data from
  * the hosted API, while the page reads the query string.
  *
@@ -98,7 +98,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UK Drone Airspace map</title>
+<title>FPV Airspace map</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
@@ -837,7 +837,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
         else if (Array.isArray(a.waypoints)) load({ waypoints: a.waypoints });
       }
     });
-    send({ jsonrpc: '2.0', id: nextId++, method: 'ui/initialize', params: { protocolVersion: '2026-01-26', appInfo: { name: 'uk-drone-airspace-map', version: '1' }, appCapabilities: {} } });
+    send({ jsonrpc: '2.0', id: nextId++, method: 'ui/initialize', params: { protocolVersion: '2026-01-26', appInfo: { name: 'fpv-airspace-map', version: '1' }, appCapabilities: {} } });
     send({ jsonrpc: '2.0', method: 'ui/notifications/initialized' });
     setStatus('Waiting for the tool result…');
   }

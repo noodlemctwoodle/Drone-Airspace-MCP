@@ -4,10 +4,12 @@ import type { HttpClient } from '../core/http-client.js';
 import { UpstreamError } from '../core/errors.js';
 import { SCHEMA_VERSION } from './schema.js';
 
-export const MANIFEST_KIND = 'uk-drone-airspace-pack';
+export const MANIFEST_KIND = 'fpv-airspace-pack';
+/** Packs released before the rename carry this kind; both are accepted. */
+export const LEGACY_MANIFEST_KIND = 'uk-drone-airspace-pack';
 
 export const manifestSchema = z.object({
-  kind: z.literal(MANIFEST_KIND),
+  kind: z.enum([MANIFEST_KIND, LEGACY_MANIFEST_KIND]),
   manifest_version: z.number().int(),
   schema_version: z.number().int(),
   tag: z.string().min(1),

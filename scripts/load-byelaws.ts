@@ -36,7 +36,7 @@ export async function run(args: PipelineArgs, seedPath = path.resolve('data/byel
       name: 'Council byelaw and PSPO seed list (community maintained)',
       url: `${REPO_URL}/blob/main/data/byelaws/seed.yaml`,
       licence: 'MIT',
-      attribution: 'Council byelaws: hand-curated list maintained in the Drone-Airspace-MCP repository; incomplete, each entry cites its source and verification date.',
+      attribution: 'Council byelaws: hand-curated list maintained in the fpv-airspace repository; incomplete, each entry cites its source and verification date.',
       fetchedAt: new Date().toISOString(),
       effectiveFrom: null,
       effectiveTo: null,

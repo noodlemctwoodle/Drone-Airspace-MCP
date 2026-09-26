@@ -30,7 +30,7 @@ jobs:
         id: check
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          if npm view "uk-drone-airspace-mcp@$VERSION" version >/dev/null 2>&1; then
+          if npm view "fpv-airspace@$VERSION" version >/dev/null 2>&1; then
             echo "already published $VERSION"; echo "publish=false" >> "$GITHUB_OUTPUT"
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
@@ -58,11 +58,11 @@ jobs:
       - name: Sync manifest version with package.json
         run: node -e "const fs=require('fs');const m=require('./manifest.json');m.version=require('./package.json').version;fs.writeFileSync('manifest.json',JSON.stringify(m,null,2)+'\n')"
       - name: Pack .mcpb
-        run: npx --yes @anthropic-ai/mcpb pack . uk-drone-airspace.mcpb
+        run: npx --yes @anthropic-ai/mcpb pack . fpv-airspace.mcpb
       - name: Attach to a GitHub release (never marked latest; pack releases own "latest")
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           make_latest: false
-          files: uk-drone-airspace.mcpb
+          files: fpv-airspace.mcpb

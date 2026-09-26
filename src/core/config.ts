@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -6,12 +7,22 @@ import { REPO_URL } from '../version.js';
 
 const DEFAULT_MANIFEST_URL = `${REPO_URL}/releases/latest/download/manifest.json`;
 
-function defaultCacheDir(env: NodeJS.ProcessEnv): string {
-  if (env.XDG_CACHE_HOME) return path.join(env.XDG_CACHE_HOME, 'uk-drone-airspace-mcp');
+const CACHE_DIR_NAME = 'fpv-airspace';
+/** The directory name before the rename; still used when it exists and the new one does not, so nobody re-downloads the pack. */
+const LEGACY_CACHE_DIR_NAME = 'uk-drone-airspace-mcp';
+
+function cacheDirCandidates(env: NodeJS.ProcessEnv): [string, string] {
+  if (env.XDG_CACHE_HOME) return [path.join(env.XDG_CACHE_HOME, CACHE_DIR_NAME), path.join(env.XDG_CACHE_HOME, LEGACY_CACHE_DIR_NAME)];
   if (process.platform === 'win32' && env.LOCALAPPDATA) {
-    return path.join(env.LOCALAPPDATA, 'uk-drone-airspace-mcp', 'cache');
+    return [path.join(env.LOCALAPPDATA, CACHE_DIR_NAME, 'cache'), path.join(env.LOCALAPPDATA, LEGACY_CACHE_DIR_NAME, 'cache')];
   }
-  return path.join(os.homedir(), '.cache', 'uk-drone-airspace-mcp');
+  return [path.join(os.homedir(), '.cache', CACHE_DIR_NAME), path.join(os.homedir(), '.cache', LEGACY_CACHE_DIR_NAME)];
+}
+
+function defaultCacheDir(env: NodeJS.ProcessEnv): string {
+  const [current, legacy] = cacheDirCandidates(env);
+  if (!existsSync(current) && existsSync(legacy)) return legacy;
+  return current;
 }
 
 const intFromEnv = (fallback: number, min = 1) =>
@@ -42,6 +53,8 @@ const envSchema = z.object({
   NOTAM_CACHE_TTL_SECONDS: intFromEnv(1800),
   GEOCODE_CACHE_TTL_SECONDS: intFromEnv(30 * 24 * 3600),
   HTTP_TIMEOUT_MS: intFromEnv(8000, 100),
+  FPV_AIRSPACE_CACHE_DIR: z.string().optional(),
+  /** The pre-rename name of FPV_AIRSPACE_CACHE_DIR; still honoured. */
   DRONE_AIRSPACE_CACHE_DIR: z.string().optional(),
   PACK_MANIFEST_URL: z.string().default(DEFAULT_MANIFEST_URL),
   PACK_PATH: z.string().optional().transform((v) => (v && v.trim() !== '' ? v : undefined)),
@@ -152,7 +165,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cli: Partial<Cl
     spaceWeatherCacheTtlSeconds: e.SPACE_WEATHER_CACHE_TTL_SECONDS,
     geocodeCacheTtlSeconds: e.GEOCODE_CACHE_TTL_SECONDS,
     httpTimeoutMs: e.HTTP_TIMEOUT_MS,
-    cacheDir: e.DRONE_AIRSPACE_CACHE_DIR && e.DRONE_AIRSPACE_CACHE_DIR.trim() !== '' ? e.DRONE_AIRSPACE_CACHE_DIR : defaultCacheDir(env),
+    cacheDir: [e.FPV_AIRSPACE_CACHE_DIR, e.DRONE_AIRSPACE_CACHE_DIR].find((v) => v && v.trim() !== '') ?? defaultCacheDir(env),
     packManifestUrl: e.PACK_MANIFEST_URL,
     packPath: e.PACK_PATH,
     packUpdateCheck: e.PACK_UPDATE_CHECK,

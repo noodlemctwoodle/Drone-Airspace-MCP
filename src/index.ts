@@ -10,6 +10,6 @@ process.on('warning', (warning) => {
 import { bootstrap } from './bootstrap.js';
 
 bootstrap(process.argv.slice(2)).catch((error) => {
-  console.error(`[uk-drone-airspace-mcp] fatal: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`[fpv-airspace] fatal: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 });

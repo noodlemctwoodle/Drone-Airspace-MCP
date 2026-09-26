@@ -5,6 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Resource names predate the rename to fpv-airspace; D1 databases cannot be renamed in place.
 DB_NAME="uk-drone-airspace"
 KV_TITLE="uk-drone-airspace-cache"
 
@@ -35,7 +36,7 @@ grep -E "database_id|^id =" wrangler.toml
 if [ "${1:-}" != "--skip-load" ]; then
   echo "== Loading the latest national pack into D1 (this takes several minutes)"
   mkdir -p build/d1-load && cd build/d1-load
-  curl -sSL -o manifest.json https://github.com/noodlemctwoodle/Drone-Airspace-MCP/releases/latest/download/manifest.json
+  curl -sSL -o manifest.json https://github.com/noodlemctwoodle/fpv-airspace/releases/latest/download/manifest.json
   ASSET=$(node -p "require('./manifest.json').asset.url")
   echo "   $ASSET"
   curl -sSL -o pack.sqlite.gz "$ASSET" && gunzip -f pack.sqlite.gz
