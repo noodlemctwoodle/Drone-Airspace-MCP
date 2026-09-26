@@ -53,8 +53,29 @@ export const RADAR = {
 export const SECTIONS = [
   ['airspace', 'Airspace'],
   ['ground', 'On the ground'],
+  ['hazards', 'Ground hazards'],
   ['weather', 'Weather'],
 ] as const;
+
+export interface Overlay {
+  key: string;
+  label: string;
+  colour: string;
+  section: (typeof SECTIONS)[number][0];
+  shape: string;
+  locked?: boolean;
+  icon?: string;
+}
+
+/** One key row and toggle per hazard kind, coloured by its group; the key is `hz_<kind>`. */
+const HAZARD_GROUP_COLOUR: Record<string, string> = { power: '#e65100', transport: '#5d4037', aviation: '#6a1b9a', sites: '#c6a700' };
+const HAZARD_KIND_ROWS: Array<[string, string, string]> = [
+  ['power_line', 'Power line', 'power'], ['minor_power_line', 'Minor power line', 'power'], ['pylon', 'Pylon', 'power'], ['substation', 'Substation', 'power'], ['power_generator', 'Power generator', 'power'],
+  ['railway', 'Railway', 'transport'], ['motorway', 'Motorway', 'transport'], ['trunk_road', 'Trunk road', 'transport'], ['bridge', 'Bridge', 'transport'],
+  ['helipad', 'Helipad', 'aviation'], ['tower', 'Mast or tower', 'aviation'], ['military', 'Military land', 'aviation'],
+  ['school', 'School', 'sites'], ['kindergarten', 'Nursery', 'sites'], ['hospital', 'Hospital', 'sites'], ['fire_station', 'Fire station', 'sites'], ['fuel_station', 'Fuel station', 'sites'], ['park', 'Park', 'sites'], ['cemetery', 'Cemetery', 'sites'],
+];
+const HAZARD_OVERLAYS: Overlay[] = HAZARD_KIND_ROWS.map(([kind, label, group]) => ({ key: `hz_${kind}`, label, colour: HAZARD_GROUP_COLOUR[group], section: 'hazards', shape: 'icon', icon: kind }));
 
 /**
  * Toggleable overlays. `shape` picks the swatch: area (filled square), line,
@@ -63,7 +84,7 @@ export const SECTIONS = [
  * switched off: prohibited and restricted airspace and aerodrome FRZs must never
  * be hidden.
  */
-export const OVERLAYS = [
+const BASE_OVERLAYS: Overlay[] = [
   { key: 'prohibited', label: 'Prohibited / restricted', colour: '#c62828', section: 'airspace', shape: 'area', locked: true },
   { key: 'frz', label: 'Aerodrome FRZ', colour: '#ef6c00', section: 'airspace', shape: 'area', locked: true },
   { key: 'prison', label: 'Prison (no-fly)', colour: '#6d4c41', section: 'airspace', shape: 'area', locked: true },
@@ -75,16 +96,13 @@ export const OVERLAYS = [
   { key: 'access', label: 'Open access land', colour: '#7cb342', section: 'ground', shape: 'area' },
   { key: 'designation', label: 'Nature designations', colour: '#9e9d24', section: 'ground', shape: 'area' },
   { key: 'parking', label: 'Parking / layby', colour: '#1a56c4', section: 'ground', shape: 'parking' },
-  { key: 'power', label: 'Power lines and pylons', colour: '#e65100', section: 'ground', shape: 'icon', icon: 'pylon' },
-  { key: 'transport', label: 'Railways and major roads', colour: '#5d4037', section: 'ground', shape: 'icon', icon: 'railway' },
-  { key: 'aviation', label: 'Helipads and military', colour: '#6a1b9a', section: 'ground', shape: 'icon', icon: 'helipad' },
-  { key: 'sites', label: 'Schools and parks', colour: '#c6a700', section: 'ground', shape: 'icon', icon: 'school' },
   { key: 'route', label: 'Route and location', colour: '#2a81cb', section: 'ground', shape: 'pin' },
   { key: 'spots', label: 'Take-off spots', colour: '#2a81cb', section: 'ground', shape: 'spot' },
   { key: 'conditions', label: 'Conditions now', colour: '#4fc3f7', section: 'weather', shape: 'badge' },
   { key: 'wind', label: 'Wind flow', colour: '#4fc3f7', section: 'weather', shape: 'flow' },
   { key: 'radar', label: 'Rain radar', colour: '#4fc3f7', section: 'weather', shape: 'radar' },
-] as const;
+];
+export const OVERLAYS: readonly Overlay[] = [...BASE_OVERLAYS, ...HAZARD_OVERLAYS];
 
 export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }): string {
   const apiBase = JSON.stringify(opts.apiBase ?? '');
@@ -203,6 +221,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .layers .body { padding: 0 8px 10px; }
   .layers h3 { display: flex; align-items: center; gap: 8px; margin: 8px 6px 4px; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
   .layers h3::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
+  .layers h3 button.mini { order: 2; font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: none; border: 0; padding: 0 2px; cursor: pointer; }
   .layers .seg { display: flex; margin: 2px 6px 4px; padding: 3px; background: rgba(128,140,152,.16); border-radius: 9px; }
   .layers .seg label { flex: 1; cursor: pointer; }
   .layers .seg input { display: none; }
@@ -413,7 +432,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
   var hazardIcons = {};
   function hazardIcon(kind) {
-    if (!hazardIcons[kind]) hazardIcons[kind] = L.divIcon({ className: 'hz', iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12], html: hazardSvg(kind, COLOUR[HAZARD_GROUP[kind] || 'sites']) });
+    if (!hazardIcons[kind]) hazardIcons[kind] = L.divIcon({ className: 'hz', iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12], html: hazardSvg(kind, COLOUR['hz_' + kind] || COLOUR.hz_school) });
     return hazardIcons[kind];
   }
   // Icons along line hazards (railways, roads, power lines): one every LINE_ICON_GAP screen pixels of
@@ -481,6 +500,19 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       });
       SECTIONS.forEach(function (sec) {
         var hd = L.DomUtil.create('h3', '', body); hd.textContent = sec[1];
+        if (sec[0] === 'hazards') {
+          [['All', true], ['None', false]].forEach(function (opt) {
+            var b = L.DomUtil.create('button', 'mini', hd); b.type = 'button'; b.textContent = opt[0];
+            b.onclick = function (ev) {
+              ev.preventDefault();
+              OVERLAYS.filter(function (o) { return o.section === 'hazards'; }).forEach(function (o) {
+                setOverlay(o.key, opt[1]);
+                var row = body.querySelector('.row[data-key="' + o.key + '"]');
+                if (row) { row.classList.toggle('off', !opt[1]); var cb = row.querySelector('input'); if (cb) cb.checked = opt[1]; }
+              });
+            };
+          });
+        }
         OVERLAYS.filter(function (o) { return o.section === sec[0]; }).forEach(function (o) {
           var row = L.DomUtil.create('label', 'row' + (map.hasLayer(groups[o.key]) ? '' : ' off'), body);
           row.dataset.key = o.key;
@@ -792,7 +824,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     lineHazards = [];
     if (SMALL) setLayersSheet(false);
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
-    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, power: 0, transport: 0, aviation: 0, sites: 0, spots: 0 };
+    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, spots: 0 };
+    OVERLAYS.forEach(function (o) { if (o.section === 'hazards') counts[o.key] = 0; });
     var b = view.bbox;
     viewBounds = [[b[1], b[0]], [b[3], b[2]]]; viewFittedAt = Date.now();
     map.fitBounds(viewBounds, { padding: [20, 20] });
@@ -805,7 +838,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       hitTargets.push({ key: key, geometry: f.geometry, html: '<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '') });
     });
     (view.hazards || []).forEach(function (f) {
-      var kind = f.properties.kind, key = HAZARD_GROUP[kind] || 'sites', colour = COLOUR[key];
+      var kind = f.properties.kind, key = 'hz_' + kind, colour = COLOUR[key] || COLOUR.hz_school;
+      if (!groups[key]) return; // a kind this page does not know yet
       counts[key]++;
       var label = '<b>' + esc(HAZARD_LABEL[kind] || kind) + '</b>' + (f.properties.name ? '<br>' + esc(f.properties.name) : '') + (f.properties.operator ? '<br>' + esc(f.properties.operator) : '');
       if (f.geometry.type === 'Point') L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { icon: hazardIcon(kind) }).bindPopup(label).addTo(groups[key]);
@@ -851,7 +885,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     setCounts(counts);
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
     chipsEl.innerHTML = [
-      [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas'], [counts.power + counts.transport + counts.aviation + counts.sites, 'hazard', 'hazards']
+      [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas'], [OVERLAYS.reduce(function (n, o) { return n + (o.section === 'hazards' ? counts[o.key] : 0); }, 0), 'hazard', 'hazards']
     ].map(function (c) { return '<span class="chip' + (c[0] ? '' : ' zero') + '"><b>' + c[0] + '</b> ' + (c[0] === 1 ? c[1] : c[2]) + (c[3] ? ' ' + c[3] : '') + '</span>'; }).join('');
     dataSources = view.attribution || [];
     updateSources();
