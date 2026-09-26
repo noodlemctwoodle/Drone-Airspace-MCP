@@ -302,7 +302,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 <div id="info" class="card">
   <div class="place" id="info-head"><span id="place">Loading…</span><span class="pill mini" id="info-pill"></span><svg class="chev" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
   <div class="empty" id="empty">
-    <p>Search for a place, a postcode or coordinates above, or start from where you are.</p>
+    <p>Search for a place, a postcode or coordinates above, tap anywhere on the map, or start from where you are.</p>
     <button type="button" id="locate-btn-2">Use my location</button>
     <small id="empty-note"></small>
   </div>
@@ -797,6 +797,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     currentCentre = [view.centre.lat, view.centre.lon];
     loaded = true;
     setStatus(view.centre.name || (view.route ? 'Your route' : 'Your location'));
+    if (pendingPopup) { L.popup().setLatLng(pendingPopup.latlng).setContent(pendingPopup.content).openOn(map); pendingPopup = null; }
     view.zones.forEach(function (f) { counts[zoneGroup(f.properties)]++; });
     setCounts(counts);
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
@@ -869,6 +870,26 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
   locateBtn.onclick = locateMe;
   document.getElementById('locate-btn-2').onclick = locateMe;
+  // Tap or click the map to check that point. Markers, popups and controls keep their taps;
+  // a tap on a zone or line loads the point too, and that shape's popup is shown again afterwards,
+  // since zones often cover the whole view. A short delay lets a double tap zoom instead of loading.
+  // Listened for on the container, because a shape with a popup stops Leaflet's own map click.
+  var tapTimer = null, pendingPopup = null;
+  map.getContainer().addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (t && t.closest && t.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-control')) return;
+    if (!API_BASE || (map.dragging && map.dragging.moved && map.dragging.moved())) return;
+    clearTimeout(tapTimer);
+    var ll = map.mouseEventToLatLng(ev);
+    var lat = Math.round(ll.lat * 1e5) / 1e5, lon = Math.round(ll.lng * 1e5) / 1e5;
+    tapTimer = setTimeout(function () {
+      if (lat < 49 || lat > 62 || lon < -14 || lon > 5) { showResults([{ name: 'Outside the UK', msg: 1 }]); return; }
+      var open = map._popup && map._popup.isOpen && map._popup.isOpen() ? map._popup : null;
+      pendingPopup = open ? { latlng: open.getLatLng(), content: open.getContent() } : null;
+      goTo({ lat: lat, lon: lon, name: lat.toFixed(4) + ', ' + lon.toFixed(4) });
+    }, 280);
+  });
+  map.getContainer().addEventListener('dblclick', function () { clearTimeout(tapTimer); });
   function startEmpty() {
     infoEl.classList.add('empty');
     infoEl.classList.remove('closed');
