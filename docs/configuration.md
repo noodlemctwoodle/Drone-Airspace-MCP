@@ -23,6 +23,10 @@ Back to the [README](../README.md).
 | `FPV_AIRSPACE_CACHE_DIR` | `~/.cache/fpv-airspace` | Pack and caches (`DRONE_AIRSPACE_CACHE_DIR` and an existing `~/.cache/uk-drone-airspace-mcp` are still honoured) |
 | `SUPPORT_URL` | unset | One-off donation link shown in the map credits and the worker's landing JSON; empty hides it |
 | `SUPPORT_MONTHLY_URL` | unset | Recurring donation link shown beside it |
+| `STRIPE_SECRET_KEY` | unset | Enables embedded Stripe Checkout on the map through `POST /api/donate`; keep it a secret (`wrangler secret put`), never a var |
+| `STRIPE_PUBLISHABLE_KEY` | unset | Publishable key the map passes to Stripe.js; safe to commit |
+| `STRIPE_PRICE_ONCE` | unset | Price id for the one-off donation (customer chooses the amount) |
+| `STRIPE_PRICE_MONTHLY` | unset | Price id for the monthly donation, £1 per unit with an adjustable quantity |
 | `PACK_MANIFEST_URL` | latest GitHub release manifest | Point at a mirror or `file://` |
 | `PACK_PATH` | unset | Use a local pack and skip downloads |
 | `PACK_UPDATE_CHECK` | `true` | Background check for a newer pack |

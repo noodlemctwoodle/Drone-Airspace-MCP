@@ -26,7 +26,7 @@ The hosted server serves the same map three ways: inline in Claude as an MCP App
 
 <p align="center"><img src="images/giants-causeway.webp" alt="Giant's Causeway in Northern Ireland with the ASSI and AONB designations, hazards and parking" width="900"></p>
 
-**Donations.** A heart button next to the credits opens a small card with the one-off and monthly donation links, when the hosting sets `SUPPORT_URL` and `SUPPORT_MONTHLY_URL`. Donations never unlock anything.
+**Donations.** A heart button next to the credits opens a small card with the one-off and monthly donation links, when the hosting sets `SUPPORT_URL` and `SUPPORT_MONTHLY_URL`. With the Stripe keys configured as well, the buttons open Stripe's embedded checkout in a modal on the map instead, with the hosted links as the fallback if that fails. Donations never unlock anything.
 
 **Your drone.** The location card has a picker fed by `GET /api/drones` (the catalogue with each model's rules summary and a drawn silhouette). Choosing a model makes it the location marker and the key swatch, and shows its subcategory and overflight rule in the card. Add `drone=<catalogue id>` to the `/map` URL to preselect one; `check_takeoff_site` called with a `drone` does this for the MCP App. The silhouettes are original drawings, one per family (palm, mini, air, mavic, fpv, phantom), because manufacturer photographs are copyrighted.
 
