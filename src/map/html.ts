@@ -201,6 +201,20 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .wx-foot { margin-top: 9px; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
   .wx-foot .why { color: var(--caution); }
   .wx-foot .why.poor { color: var(--poor); }
+  .wx-days { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+  .wx-days::-webkit-scrollbar { display: none; }
+  .wx-d { flex: none; font: inherit; text-align: left; border: 1.5px solid transparent; border-radius: 8px; padding: 4px 7px; background: rgba(128,140,152,.16); color: var(--ink); cursor: pointer; }
+  .wx-d b { display: block; font-size: 11.5px; font-weight: 600; line-height: 1.2; }
+  .wx-d small { display: block; font-size: 10px; color: var(--muted); }
+  .wx-d.good { border-color: var(--good); } .wx-d.caution { border-color: var(--caution); } .wx-d.poor { border-color: var(--poor); }
+  .wx-d.sel { background: var(--accent); color: #fff; } .wx-d.sel small { color: rgba(255,255,255,.8); }
+  .wx-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; margin-top: 6px; }
+  .wx-h { font: inherit; border: 0; border-radius: 3px; padding: 0; height: 22px; cursor: pointer; opacity: .85; position: relative; }
+  .wx-h.good { background: var(--good); } .wx-h.caution { background: var(--caution); } .wx-h.poor { background: var(--poor); }
+  .wx-h i { position: absolute; left: 0; right: 0; top: 24px; font-size: 9px; font-style: normal; color: var(--muted); display: none; text-align: center; }
+  .wx-h:nth-child(3n+1) i { display: block; }
+  .wx-h.sel { opacity: 1; outline: 2px solid var(--ink); outline-offset: 1px; z-index: 1; }
+  .wx-strip { margin-bottom: 14px; }
 
   /* Sources: collapsed credit line that expands to the full attribution */
   #sources { position: absolute; right: 10px; bottom: 10px; z-index: 1001; width: 44px; height: 44px; font-size: 11.5px; }
@@ -556,7 +570,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
 
   // Weather: rain radar tiles from RainViewer's latest frame, plus the conditions badge.
-  var radarLayer = null, radarTime = null, currentWeather = null, currentCentre = null, pendingSpots = [];
+  var radarLayer = null, radarTime = null, currentWeather = null, currentCentre = null, currentName = null, currentRoute = null, loadedBounds = null, pendingSpots = [], selectedHour = null;
   function spotIcon(rank) { return L.divIcon({ className: 'spot', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14], html: '<div>' + rank + '</div>' }); }
   var WIND_COLOUR = { good: '#2e7d32', caution: '#ef6c00', poor: '#c62828' };
 
@@ -605,12 +619,15 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       this._ctx = this._canvas.getContext('2d');
       this._particles = [];
       this._reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      map.on('move', this._reset, this);
+      // Pause while the map is dragged or zoomed (a reset every frame looks like static) and start afresh when it settles.
+      map.on('movestart zoomstart', this._pause, this);
+      map.on('moveend zoomend', this._reset, this);
       map.on('resize', this._resize, this);
       this._resize();
     },
     onRemove: function (map) {
-      map.off('move', this._reset, this);
+      map.off('movestart zoomstart', this._pause, this);
+      map.off('moveend zoomend', this._reset, this);
       map.off('resize', this._resize, this);
       this._stop();
       L.DomUtil.remove(this._canvas);
@@ -620,6 +637,10 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       var size = this._map.getSize();
       this._canvas.width = size.x; this._canvas.height = size.y;
       this._reset();
+    },
+    _pause: function () {
+      this._stop();
+      this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
     },
     _reset: function () {
       // Keep the canvas glued to the viewport and start the flow afresh for the new view.
@@ -722,6 +743,40 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       showWeather();
     }).catch(function () { /* radar is optional */ });
   }
+  var DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function dayLabel(date, i) {
+    if (i === 0) return 'Today';
+    if (i === 1) return 'Tomorrow';
+    var d = new Date(date + 'T12:00:00');
+    return DAY_NAMES[d.getDay()] + ' ' + d.getDate();
+  }
+  // Hour cells for the coming days, coloured by rating, and a pill per day with its count of good daylight hours.
+  function weatherTimelineHtml(w) {
+    if (!w || !w.hours || !w.hours.length) return '';
+    var sel = selectedHour === null ? 0 : selectedHour;
+    var selDate = w.hours[sel] ? w.hours[sel].time.slice(0, 10) : w.hours[0].time.slice(0, 10);
+    var days = (w.days || []).map(function (d, i) {
+      return '<button type="button" class="wx-d ' + esc(d.flyability) + (d.date === selDate ? ' sel' : '') + '" data-date="' + esc(d.date) + '"><b>' + esc(dayLabel(d.date, i)) + '</b><small>' + d.good + 'h good</small></button>';
+    }).join('');
+    var cells = '';
+    w.hours.forEach(function (h, i) {
+      if (h.time.slice(0, 10) !== selDate) return;
+      var hh = h.time.slice(11, 13);
+      cells += '<button type="button" class="wx-h ' + esc(h.flyability) + (i === sel ? ' sel' : '') + '" data-i="' + i + '" title="' + esc(hh + ':00 ' + h.flyability + (h.reasons.length ? ', ' + h.reasons.join(', ') : '')) + '"><i>' + esc(hh) + '</i></button>';
+    });
+    return '<div class="wx-days">' + days + '</div><div class="wx-strip">' + cells + '</div>';
+  }
+  weatherBox.addEventListener('click', function (e) {
+    var h = e.target.closest('.wx-h'), d = e.target.closest('.wx-d');
+    if (h) { selectedHour = Number(h.dataset.i); showWeather(); }
+    else if (d && currentWeather && currentWeather.hours) {
+      // Jump to the first good daylight hour of that day, or its first hour.
+      var idx = -1;
+      currentWeather.hours.forEach(function (x, i) { if (idx < 0 && x.time.slice(0, 10) === d.dataset.date && x.flyability === 'good' && Number(x.time.slice(11, 13)) >= 6) idx = i; });
+      if (idx < 0) currentWeather.hours.forEach(function (x, i) { if (idx < 0 && x.time.slice(0, 10) === d.dataset.date) idx = i; });
+      if (idx >= 0) { selectedHour = idx; showWeather(); }
+    }
+  });
   function showWeather() {
     if (map.hasLayer(groups.radar)) ensureRadar();
     showWind();
@@ -731,6 +786,9 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     if (!map.hasLayer(groups.conditions)) { weatherBox.className = ''; return; }
     var w = currentWeather, html = '';
     function num(v, unit) { return v == null ? '<b>–</b>' : '<b>' + Math.round(v) + '<i>' + unit + '</i></b>'; }
+    // A picked hour from the timeline replaces the "now" figures.
+    var picked = w && w.hours && selectedHour !== null ? w.hours[selectedHour] : null;
+    if (picked) w = Object.assign({}, w, picked);
     if (w) {
       var dir = w.windDirectionDeg == null ? '' : '<svg class="dir" viewBox="0 0 10 10" style="transform:rotate(' + ((w.windDirectionDeg + 180) % 360).toFixed(0) + 'deg)"><path d="M5 0.5 L9 6 L5 4.5 L1 6 Z" fill="currentColor"/></svg>';
       html = '<div class="wx-head"><span class="pill ' + esc(w.flyability) + '">' + esc(w.flyability) + '</span><span class="wx-when">' + esc(w.time.slice(11, 16)) + ' · ' + esc(w.summary) + '</span></div>' +
@@ -744,6 +802,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       if (w.reasons.length) foot.push('<span class="why ' + esc(w.flyability) + '">' + esc(w.reasons.join(', ')) + '</span>');
       if (map.hasLayer(groups.radar)) foot.push(map.getZoom() > RADAR.maxZoom ? 'Radar hidden at this zoom' : radarTime ? 'Radar ' + radarTime.toISOString().slice(11, 16) + ' UTC' : 'Radar loading…');
       if (foot.length) html += '<div class="wx-foot">' + foot.join(' · ') + '</div>';
+      html += weatherTimelineHtml(currentWeather);
     } else {
       html = '<div class="wx-foot">' + (loaded ? 'No forecast for this point' : 'Loading conditions…') + (map.hasLayer(groups.radar) && radarTime ? ' · Radar ' + radarTime.toISOString().slice(11, 16) + ' UTC' : '') + '</div>';
     }
@@ -818,17 +877,18 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   // If the pane is resized just after the first render (embedded hosts lay out late), fit the view again.
   var viewBounds = null, viewFittedAt = 0;
   window.addEventListener('resize', function () { if (viewBounds && Date.now() - viewFittedAt < 3000) { map.invalidateSize(); map.fitBounds(viewBounds, { padding: [20, 20] }); } });
-  function render(view) {
+  function render(view, opts) {
+    opts = opts || {};
     infoEl.classList.remove('empty');
     hitTargets = [];
     lineHazards = [];
-    if (SMALL) setLayersSheet(false);
+    if (!opts.silent && SMALL) setLayersSheet(false);
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
     var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, spots: 0 };
     OVERLAYS.forEach(function (o) { if (o.section === 'hazards') counts[o.key] = 0; });
     var b = view.bbox;
-    viewBounds = [[b[1], b[0]], [b[3], b[2]]]; viewFittedAt = Date.now();
-    map.fitBounds(viewBounds, { padding: [20, 20] });
+    loadedBounds = L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
+    if (!opts.silent) { viewBounds = [[b[1], b[0]], [b[3], b[2]]]; viewFittedAt = Date.now(); map.fitBounds(viewBounds, { padding: [20, 20] }); }
     var seenLand = {};
     view.landRestrictions.forEach(function (f) {
       var key = f.properties.kind === 'access_land' ? 'access' : f.properties.kind === 'designation' ? 'designation' : 'land';
@@ -873,13 +933,22 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     if (view.route && view.route.length > 1) {
       L.polyline(view.route.map(function (p) { return [p[1], p[0]]; }), { color: COLOUR.route, weight: 3, dashArray: '8 6' }).addTo(groups.route);
     }
-    centreMarker = L.marker([view.centre.lat, view.centre.lon], { icon: currentPinIcon() }).bindPopup(esc(view.centre.name || 'Your location')).addTo(groups.route);
+    if (opts.silent && currentCentre) {
+      // An area load: the chosen point, its route and the spots stay where they were.
+      if (currentRoute) L.polyline(currentRoute.map(function (p) { return [p[1], p[0]]; }), { color: COLOUR.route, weight: 3, dashArray: '8 6' }).addTo(groups.route);
+      centreMarker = L.marker(currentCentre, { icon: currentPinIcon() }).bindPopup(esc(currentName || 'Your location')).addTo(groups.route);
+    } else {
+      centreMarker = L.marker([view.centre.lat, view.centre.lon], { icon: currentPinIcon() }).bindPopup(esc(view.centre.name || 'Your location')).addTo(groups.route);
+      currentWeather = view.weather || null;
+      selectedHour = null;
+      currentCentre = [view.centre.lat, view.centre.lon];
+      currentName = view.centre.name || null;
+      currentRoute = view.route && view.route.length > 1 ? view.route : null;
+      setStatus(view.centre.name || (view.route ? 'Your route' : 'Your location'));
+    }
     pendingSpots.forEach(function (s) { L.marker([s.lat, s.lon], { icon: spotIcon(s.rank) }).bindPopup('<b>Spot ' + esc(s.rank) + '</b><br>' + esc(s.label)).addTo(groups.spots); });
     counts.spots = pendingSpots.length;
-    currentWeather = view.weather || null;
-    currentCentre = [view.centre.lat, view.centre.lon];
     loaded = true;
-    setStatus(view.centre.name || (view.route ? 'Your route' : 'Your location'));
     placeLineIcons();
     view.zones.forEach(function (f) { counts[zoneGroup(f.properties)]++; });
     setCounts(counts);
@@ -1022,22 +1091,27 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   searchInput.addEventListener('focus', function () { searchInput.select(); });
 
   function load(req) {
-    pendingSpots = Array.isArray(req.spots) ? req.spots.filter(function (s) { return typeof s.lat === 'number' && typeof s.lon === 'number'; }).map(function (s, i) { return { lat: s.lat, lon: s.lon, rank: s.rank || i + 1, label: s.label || 'Spot ' + (i + 1) }; }) : [];
+    if (!req.silent) pendingSpots = Array.isArray(req.spots) ? req.spots.filter(function (s) { return typeof s.lat === 'number' && typeof s.lon === 'number'; }).map(function (s, i) { return { lat: s.lat, lon: s.lon, rank: s.rank || i + 1, label: s.label || 'Spot ' + (i + 1) }; }) : [];
     if (!API_BASE) { setStatus('Map data needs the hosted server'); if (typeof req.lat === 'number') { map.setView([req.lat, req.lon], 13); centreMarker = L.marker([req.lat, req.lon], { icon: currentPinIcon() }).addTo(groups.route); } return; }
     var q = new URLSearchParams();
     if (typeof req.lat === 'number' && typeof req.lon === 'number') { q.set('lat', req.lat); q.set('lon', req.lon); }
     if (req.place) q.set('place', req.place);
     if (req.name) q.set('name', req.name);
-    if (req.radiusM) { q.set('radius', req.radiusM); currentRadius = req.radiusM; }
+    if (req.radiusM) { q.set('radius', req.radiusM); if (!req.silent) currentRadius = req.radiusM; }
+    if (req.silent) q.set('weather', '0');
     if (req.route && req.route.length > 1) q.set('route', req.route.map(function (p) { return p[0] + ',' + p[1]; }).join(';'));
     if (req.waypoints && req.waypoints.length > 1) q.set('waypoints', req.waypoints.map(function (w) { return Array.isArray(w) ? w[0] + ',' + w[1] : w; }).join(';'));
-    setStatus('Loading…');
+    if (!req.silent) setStatus('Loading…');
     var url = API_BASE + '/api/view?' + q.toString();
+    var seq = ++loadSeq;
     var attempt = function (n) {
       return fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .catch(function (e) { if (n > 0 && !/^HTTP/.test(e.message)) return new Promise(function (res) { setTimeout(res, 800); }).then(function () { return attempt(n - 1); }); throw e; });
     };
-    attempt(1).then(render).catch(function (e) {
+    attempt(1).then(function (view) { if (seq !== loadSeq) return; render(view, { silent: !!req.silent }); areaLoading = false; }).catch(function (e) {
+      areaLoading = false;
+      if (seq !== loadSeq) return;
+      if (req.silent) return; // a quiet area load that failed just leaves the previous overlays
       setStatus('Could not load map data (' + e.message + ')');
       infoEl.classList.remove('closed');
       emptyNote.textContent = '';
@@ -1046,6 +1120,22 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       placeEl.appendChild(retry);
     });
   }
+
+  // Pan or zoom away from the loaded area and the overlays for the new view load on their own,
+  // quietly: the chosen point, its weather and the framing stay put. Zoomed out beyond 10 km it waits.
+  var loadSeq = 0, areaLoading = false, areaTimer = null;
+  function loadVisibleArea() {
+    if (!loaded || !API_BASE || !currentCentre || areaLoading) return;
+    var vb = map.getBounds();
+    if (loadedBounds && loadedBounds.contains(vb)) return;
+    var c = map.getCenter();
+    var halfW = map.distance(vb.getNorthWest(), vb.getNorthEast()) / 2, halfH = map.distance(vb.getNorthWest(), vb.getSouthWest()) / 2;
+    var radius = Math.round(Math.max(halfW, halfH) * 1.15);
+    if (radius > 10000) return;
+    areaLoading = true;
+    load({ lat: Math.round(c.lat * 1e5) / 1e5, lon: Math.round(c.lng * 1e5) / 1e5, radiusM: Math.max(300, radius), silent: true });
+  }
+  map.on('moveend zoomend', function () { clearTimeout(areaTimer); areaTimer = setTimeout(loadVisibleArea, 650); });
 
   if (MODE === 'page') {
     var qs = new URLSearchParams(location.search);

@@ -40,6 +40,59 @@ export interface ViewWeather {
   /** Wind alone rated against the advisory thresholds, for the arrow colour. */
   windLevel: Flyability;
   temperatureC: number | null;
+  /** Every forecast hour from now, for the timeline; the same rating rules as the badge. */
+  hours: ViewWeatherHour[];
+  /** One entry per forecast day: how many daylight hours rate good, caution and poor. */
+  days: ViewWeatherDay[];
+}
+
+export interface ViewWeatherHour {
+  time: string;
+  flyability: Flyability;
+  summary: string;
+  reasons: string[];
+  windMs: number | null;
+  gustMs: number | null;
+  wind120Ms: number | null;
+  windFrom: string;
+  windDirectionDeg: number | null;
+  temperatureC: number | null;
+  precipitationProbability: number | null;
+}
+
+export interface ViewWeatherDay {
+  date: string;
+  /** The best rating of any daylight hour (06:00 to 20:00 local). */
+  flyability: Flyability;
+  good: number;
+  caution: number;
+  poor: number;
+}
+
+const DAYLIGHT = { from: 6, to: 20 };
+const RANK: Record<Flyability, number> = { good: 0, caution: 1, poor: 2 };
+
+/** Timeline and day summaries from the hours at or after `fromKey`. */
+export function weatherTimeline(hourly: Array<Parameters<typeof assessHour>[0]>, fromKey: string): { hours: ViewWeatherHour[]; days: ViewWeatherDay[] } {
+  const hours: ViewWeatherHour[] = [];
+  const byDay = new Map<string, ViewWeatherDay>();
+  for (const h of hourly) {
+    if (h.time < fromKey) continue;
+    const a = assessHour(h);
+    hours.push({
+      time: h.time, flyability: a.flyability, summary: describeWeatherCode(h.weatherCode), reasons: a.reasons,
+      windMs: h.windMs, gustMs: h.gustMs, wind120Ms: h.wind120Ms, windFrom: compassPoint(h.windDirectionDeg), windDirectionDeg: h.windDirectionDeg,
+      temperatureC: h.temperatureC, precipitationProbability: h.precipitationProbability,
+    });
+    const date = h.time.slice(0, 10);
+    const hourOfDay = Number(h.time.slice(11, 13));
+    if (hourOfDay < DAYLIGHT.from || hourOfDay >= DAYLIGHT.to) continue;
+    const day = byDay.get(date) ?? { date, flyability: 'poor', good: 0, caution: 0, poor: 0 };
+    day[a.flyability] += 1;
+    if (RANK[a.flyability] < RANK[day.flyability]) day.flyability = a.flyability;
+    byDay.set(date, day);
+  }
+  return { hours, days: [...byDay.values()] };
 }
 
 export function windLevelOf(h: { windMs: number | null; gustMs: number | null; wind120Ms: number | null }): Flyability {
@@ -112,6 +165,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
           windDirectionDeg: hour.windDirectionDeg,
           windLevel: windLevelOf(hour),
           temperatureC: hour.temperatureC,
+          ...weatherTimeline(forecast.hourly, key),
         };
       }
     } catch {
