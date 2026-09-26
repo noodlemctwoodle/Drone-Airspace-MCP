@@ -1,5 +1,9 @@
 import type { HandlerDependencies } from '../handlers/deps.js';
 import { metresToDegrees } from '../pack/geometry.js';
+import { HAZARD_KINDS } from '../pack/schema.js';
+import type { PackRepository } from '../pack/repository.js';
+import type { Geometry } from 'geojson';
+import type { Hazard } from '../types.js';
 import { severityOf, TYPE_LABEL } from '../services/airspace/verdict.js';
 import { isRelevantBelow120m } from '../services/airspace/vertical.js';
 import type { BBox, LineString, Position } from '../types.js';
@@ -72,6 +76,22 @@ export interface ViewWeatherDay {
 const DAYLIGHT = { from: 6, to: 20 };
 const RANK: Record<Flyability, number> = { good: 0, caution: 1, poor: 2 };
 
+/** Long features are fetched with a generous cap so a motorway is never dropped; dense point kinds keep the nearest. */
+const LINE_HAZARD_KINDS = ['railway', 'motorway', 'trunk_road', 'power_line', 'military'] as const;
+const OTHER_HAZARD_KINDS = HAZARD_KINDS.filter((k) => !(LINE_HAZARD_KINDS as readonly string[]).includes(k));
+const LINE_HAZARD_LIMIT = 1500;
+const POINT_HAZARD_LIMIT = 600;
+export async function viewHazards(pack: PackRepository, bbox: BBox, lon: number, lat: number): Promise<Array<Hazard & { geometry: Geometry }>> {
+  const lines = await pack.hazardsInBbox(bbox, LINE_HAZARD_LIMIT, LINE_HAZARD_KINDS);
+  const others = await pack.hazardsInBbox(bbox, 4000, OTHER_HAZARD_KINDS);
+  const nearest = others
+    .map((h) => ({ h, d: (h.lon - lon) ** 2 + ((h.lat - lat) * 1.6) ** 2 }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, POINT_HAZARD_LIMIT)
+    .map((x) => x.h);
+  return [...lines, ...nearest];
+}
+
 /** Timeline and day summaries from the hours at or after `fromKey`. */
 export function weatherTimeline(hourly: Array<Parameters<typeof assessHour>[0]>, fromKey: string): { hours: ViewWeatherHour[]; days: ViewWeatherDay[] } {
   const hours: ViewWeatherHour[] = [];
@@ -133,7 +153,7 @@ export async function buildViewData(deps: HandlerDependencies, req: ViewRequest)
     pack.nearestRightsOfWay(req.lon, req.lat, radiusM, 40),
     pack.landRestrictionsInBbox(bbox, 300),
     pack.nearestParking(req.lon, req.lat, Math.max(radiusM, 2000), 15, false),
-    pack.hazardsInBbox(bbox, 300),
+    viewHazards(pack, bbox, req.lon, req.lat),
     pack.meta(),
   ]);
   let notams: ViewData['notams'] = [];

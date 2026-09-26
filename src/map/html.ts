@@ -451,7 +451,9 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
   // Icons along line hazards (railways, roads, power lines): one every LINE_ICON_GAP screen pixels of
   // visible line, re-laid on every move so they thin out zoomed out and fill in zoomed in.
-  var LINE_ICON_GAP = 180, LINE_ICON_MAX = 400, lineHazards = [], lineIconMarkers = [];
+  var LINE_ICON_GAP = 180, LINE_ICON_MAX = 900, lineHazards = [], lineIconMarkers = [];
+  // Lines and areas draw on one canvas: far cheaper than SVG when a wide view carries a thousand features.
+  var vectorRenderer = L.canvas({ padding: 0.4 });
   function placeLineIcons() {
     lineIconMarkers.forEach(function (m) { m.group.removeLayer(m.marker); });
     lineIconMarkers = [];
@@ -897,19 +899,23 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       L.geoJSON(f, { style: { color: COLOUR[key], weight: 1, fillOpacity: key === 'land' ? 0.18 : 0.1 } }).addTo(groups[key]);
       hitTargets.push({ key: key, geometry: f.geometry, html: '<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '') });
     });
+    // Over a wide view the dense point kinds would bury the map; they are counted in the key but drawn only closer in.
+    var wide = map.distance([b[1], b[0]], [b[1], b[2]]) > 6000;
+    var DENSE = { substation: 1, pylon: 1, minor_power_line: 1, school: 1, kindergarten: 1, cemetery: 1, park: 1, fuel_station: 1, fire_station: 1, bridge: 1, tower: 1, power_generator: 1 };
     (view.hazards || []).forEach(function (f) {
       var kind = f.properties.kind, key = 'hz_' + kind, colour = COLOUR[key] || COLOUR.hz_school;
       if (!groups[key]) return; // a kind this page does not know yet
       counts[key]++;
+      if (wide && DENSE[kind]) return;
       var label = '<b>' + esc(HAZARD_LABEL[kind] || kind) + '</b>' + (f.properties.name ? '<br>' + esc(f.properties.name) : '') + (f.properties.operator ? '<br>' + esc(f.properties.operator) : '');
       if (f.geometry.type === 'Point') L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { icon: hazardIcon(kind) }).bindPopup(label).addTo(groups[key]);
       else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') {
-        L.geoJSON(f, { style: hazardLineStyle(kind, colour) }).addTo(groups[key]);
+        L.geoJSON(f, { renderer: vectorRenderer, style: hazardLineStyle(kind, colour) }).addTo(groups[key]);
         hitTargets.push({ key: key, geometry: f.geometry, html: label });
         (f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates).forEach(function (c) { lineHazards.push({ kind: kind, key: key, coords: c }); });
       }
       else {
-        var poly = L.geoJSON(f, { style: { color: colour, weight: 1.5, opacity: 0.9, fillOpacity: 0.12 } }).addTo(groups[key]);
+        var poly = L.geoJSON(f, { renderer: vectorRenderer, style: { color: colour, weight: 1.5, opacity: 0.9, fillOpacity: 0.12 } }).addTo(groups[key]);
         hitTargets.push({ key: key, geometry: f.geometry, html: label });
         L.marker(poly.getBounds().getCenter(), { icon: hazardIcon(kind), interactive: false }).addTo(groups[key]);
       }
@@ -924,7 +930,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       hitTargets.push({ key: 'notam', circle: { lat: n.lat, lon: n.lon, radiusM: n.radiusKm * 1000 }, html: '<b>NOTAM ' + esc(n.id) + '</b><br>' + esc(n.itemE) });
     });
     view.rightsOfWay.forEach(function (f) {
-      L.geoJSON(f, { style: { color: COLOUR.prow, weight: 3, opacity: 0.9 } }).addTo(groups.prow);
+      L.geoJSON(f, { renderer: vectorRenderer, style: { color: COLOUR.prow, weight: 3, opacity: 0.9 } }).addTo(groups.prow);
       hitTargets.push({ key: 'prow', geometry: f.geometry, html: '<b>Public ' + esc(f.properties.pathType.replace('_', ' ')) + (f.properties.routeNo ? ' ' + esc(f.properties.routeNo) : '') + '</b><br>' + esc(f.properties.authority) + '<br>' + f.properties.distanceM + ' m from the point' });
     });
     view.parking.forEach(function (p) {
@@ -955,7 +961,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
     chipsEl.innerHTML = [
       [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas'], [OVERLAYS.reduce(function (n, o) { return n + (o.section === 'hazards' ? counts[o.key] : 0); }, 0), 'hazard', 'hazards']
-    ].map(function (c) { return '<span class="chip' + (c[0] ? '' : ' zero') + '"><b>' + c[0] + '</b> ' + (c[0] === 1 ? c[1] : c[2]) + (c[3] ? ' ' + c[3] : '') + '</span>'; }).join('');
+    ].map(function (c) { return '<span class="chip' + (c[0] ? '' : ' zero') + '"><b>' + c[0] + '</b> ' + (c[0] === 1 ? c[1] : c[2]) + (c[3] ? ' ' + c[3] : '') + '</span>'; }).join('') + (wide ? '<span class="chip zero">zoom in for every hazard icon</span>' : '');
     dataSources = view.attribution || [];
     updateSources();
     showWeather();

@@ -345,9 +345,9 @@ export class FakePackRepository implements PackRepository {
       .slice(0, n)
       .map(({ geometry: _g, ...rest }) => rest);
   }
-  async hazardsInBbox(bbox: BBox): Promise<Array<Hazard & { geometry: Geometry }>> {
+  async hazardsInBbox(bbox: BBox, _limit?: number, kinds?: readonly string[]): Promise<Array<Hazard & { geometry: Geometry }>> {
     const poly = bboxPolygon(bbox);
-    return this.hazards.filter((h) => booleanIntersects(poly, h.geometry));
+    return this.hazards.filter((h) => booleanIntersects(poly, h.geometry) && (!kinds || kinds.length === 0 || kinds.includes(h.kind)));
   }
   async adminAreaAt(lon: number, lat: number): Promise<AdminArea | null> {
     const here = point([lon, lat]);
