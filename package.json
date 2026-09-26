@@ -1,6 +1,6 @@
 {
   "name": "fpv-airspace",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "MCP server answering where a drone can legally take off and fly in the UK: NATS flight restriction zones, live NOTAMs, public rights of way and landowner rules",
   "type": "module",
   "bin": {
