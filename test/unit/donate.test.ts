@@ -12,7 +12,7 @@ describe('donations', () => {
 
   it('builds an embedded one-off session with the donate button', () => {
     const p = donationSessionParams(cfg, 'once')!;
-    expect(p.get('ui_mode')).toBe('embedded');
+    expect(p.get('ui_mode')).toBe('embedded_page');
     expect(p.get('redirect_on_completion')).toBe('never');
     expect(p.get('mode')).toBe('payment');
     expect(p.get('line_items[0][price]')).toBe('price_once');

@@ -24,7 +24,7 @@ export function donationSessionParams(cfg: DonationConfig, kind: DonationKind, q
   if (!price) return null;
   const q = Math.min(50, Math.max(1, Math.round(quantity)));
   const p = new URLSearchParams();
-  p.set('ui_mode', 'embedded');
+  p.set('ui_mode', 'embedded_page');
   p.set('redirect_on_completion', 'never');
   p.set('mode', kind === 'monthly' ? 'subscription' : 'payment');
   p.set('line_items[0][price]', price);
