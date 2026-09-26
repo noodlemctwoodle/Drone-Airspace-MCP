@@ -228,7 +228,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* Layers panel */
-  .layers { display: none; position: absolute; left: 10px; bottom: 64px; z-index: 1000; width: 256px; max-height: calc(100vh - 90px); overflow: auto; font-size: 13px; }
+  .layers { display: none; position: absolute; left: 10px; bottom: 64px; z-index: 1000; width: 256px; max-height: calc(100vh - 134px); overflow: auto; font-size: 13px; }
   body.layers-open .layers { display: block; }
   .layers h2 { padding: 9px 12px 9px 14px; font-size: 13.5px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
   .layers h2 .chev { width: 14px; height: 14px; transition: transform .15s; color: var(--muted); }
@@ -308,7 +308,9 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     #sources { position: relative; right: auto; bottom: auto; flex: none; }
     #sources ul { right: 0; left: auto; width: calc(100vw - 20px); }
     #layers-fab { position: static; flex: none; order: -1; }
-    #info, #info.closed { position: static; width: auto; max-width: none; overflow: auto; min-height: 0; }
+    #info, #info.closed { position: static; width: auto; max-width: 100%; min-width: 0; overflow: auto; min-height: 0; }
+    .drone-row select { min-width: 0; max-width: 100%; }
+    .wx-days { min-width: 0; }
     #info.closed .place { padding-bottom: 10px; }
     .drone-summary { font-size: 12.5px; }
     .layers { position: static; width: auto; max-height: none; min-height: 0; }
@@ -899,14 +901,10 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       L.geoJSON(f, { style: { color: COLOUR[key], weight: 1, fillOpacity: key === 'land' ? 0.18 : 0.1 } }).addTo(groups[key]);
       hitTargets.push({ key: key, geometry: f.geometry, html: '<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '') });
     });
-    // Over a wide view the dense point kinds would bury the map; they are counted in the key but drawn only closer in.
-    var wide = map.distance([b[1], b[0]], [b[1], b[2]]) > 6000;
-    var DENSE = { substation: 1, pylon: 1, minor_power_line: 1, school: 1, kindergarten: 1, cemetery: 1, park: 1, fuel_station: 1, fire_station: 1, bridge: 1, tower: 1, power_generator: 1 };
     (view.hazards || []).forEach(function (f) {
       var kind = f.properties.kind, key = 'hz_' + kind, colour = COLOUR[key] || COLOUR.hz_school;
       if (!groups[key]) return; // a kind this page does not know yet
       counts[key]++;
-      if (wide && DENSE[kind]) return;
       var label = '<b>' + esc(HAZARD_LABEL[kind] || kind) + '</b>' + (f.properties.name ? '<br>' + esc(f.properties.name) : '') + (f.properties.operator ? '<br>' + esc(f.properties.operator) : '');
       if (f.geometry.type === 'Point') L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { icon: hazardIcon(kind) }).bindPopup(label).addTo(groups[key]);
       else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') {
@@ -961,7 +959,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
     chipsEl.innerHTML = [
       [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas'], [OVERLAYS.reduce(function (n, o) { return n + (o.section === 'hazards' ? counts[o.key] : 0); }, 0), 'hazard', 'hazards']
-    ].map(function (c) { return '<span class="chip' + (c[0] ? '' : ' zero') + '"><b>' + c[0] + '</b> ' + (c[0] === 1 ? c[1] : c[2]) + (c[3] ? ' ' + c[3] : '') + '</span>'; }).join('') + (wide ? '<span class="chip zero">zoom in for every hazard icon</span>' : '');
+    ].map(function (c) { return '<span class="chip' + (c[0] ? '' : ' zero') + '"><b>' + c[0] + '</b> ' + (c[0] === 1 ? c[1] : c[2]) + (c[3] ? ' ' + c[3] : '') + '</span>'; }).join('');
     dataSources = view.attribution || [];
     updateSources();
     showWeather();
@@ -1162,6 +1160,10 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     var route = (qs.get('route') || '').split(';').filter(Boolean).map(function (s) { return s.split(',').map(parseFloat); });
     var wps = (qs.get('waypoints') || '').split(';').filter(Boolean);
     if (qs.get('drone')) selectDrone(qs.get('drone'), true);
+    // ui=layers opens the layers panel, ui=info the location card: handy for screenshots and shared links.
+    var ui = (qs.get('ui') || '').split(',');
+    if (ui.indexOf('layers') >= 0) setLayersSheet(true);
+    if (ui.indexOf('info') >= 0) infoEl.classList.remove('closed');
     var spots = (qs.get('spots') || '').split(';').filter(Boolean).map(function (s, i) { var p = s.split(',').map(parseFloat); return { lat: p[0], lon: p[1], rank: i + 1, label: 'Spot ' + (i + 1) }; });
     if (isFinite(lat) && isFinite(lon)) load({ lat: lat, lon: lon, name: qs.get('name') || undefined, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined, spots: spots });
     else if (qs.get('place')) load({ place: qs.get('place'), radiusM: parseFloat(qs.get('radius')) || undefined });
