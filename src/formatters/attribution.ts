@@ -23,7 +23,7 @@ const PACK_SOURCE_IDS: Record<string, string[]> = {
   hazards: ['osm_hazards'],
   lad: ['ons_lad'],
   access_land: ['ne_crow_access', 'nrw_open_country', 'nrw_common_land'],
-  designations: ['ne_sssi', 'nrw_sssi', 'ne_national_parks', 'nrw_national_parks'],
+  designations: ['ne_sssi', 'nrw_sssi', 'ne_national_parks', 'nrw_national_parks', 'niea_assi', 'niea_aonb', 'niea_nnr'],
   forestry: ['fe_legal_boundary'],
 };
 

@@ -92,7 +92,7 @@ export function deriveBriefingStatus(i: BriefingInput): { status: BriefingStatus
   const access = i.restrictions.filter((r) => r.kind === 'access_land');
   if (access.length > 0) add('note', 'access_land', 'Open access land: the public may walk here off paths; that is not itself permission to take off, so check the landowner rules above.');
   const des = i.restrictions.filter((r) => r.kind === 'designation');
-  if (des.length > 0) add('note', 'designation', `${des.map((r) => r.name).slice(0, 2).join(' and ')}: ${des.some((r) => r.accessClass === 'sssi') ? 'protected wildlife, do not disturb it' : 'follow the park authority\'s drone guidance'}.`);
+  if (des.length > 0) add('note', 'designation', `${des.map((r) => r.name).slice(0, 2).join(' and ')}: ${des.some((r) => r.accessClass === 'sssi' || r.accessClass === 'assi' || r.accessClass === 'nnr') ? 'protected wildlife, do not disturb it' : 'follow the park authority\'s drone guidance'}.`);
   if (i.droneSubcategory === 'A3') add('note', 'a3_separation', 'Your drone flies in A3: keep 150 m from residential, commercial, industrial and recreational areas; the sites listed here are cues, not a full built-up-area layer.');
   if (status === 'go') add('go', 'clear', `No permanent restriction at this point, no NOTAM covering it${i.weather ? `, weather ${i.weather} for the window` : ''}.`);
   return { status, reasons };

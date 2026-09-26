@@ -21,6 +21,7 @@ import {
   CAVEAT_NOTAMS_NOT_INCLUDED,
   CAVEAT_NOT_BRIEFING,
   CAVEAT_NO_PROW_HERE,
+  CAVEAT_NI_PROW,
   CAVEAT_PROW_INTERPRETATION,
   CAVEAT_SCOTLAND_ACCESS,
 } from './caveats.js';
@@ -45,7 +46,8 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     const verdict = buildVerdict(relevant, restrictions);
     const coverage = await deps.rightsOfWay.coverageAt(loc.lon, loc.lat);
     const scotlandPaths = coverage === 'scotland' && (await deps.rightsOfWay.hasCorePaths());
-    const paths = coverage === 'northern_ireland' || (coverage === 'scotland' && !scotlandPaths) ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, radiusM, maxPaths);
+    const niPaths = coverage === 'northern_ireland' && (await deps.rightsOfWay.hasNorthernIrelandPaths());
+    const paths = (coverage === 'northern_ireland' && !niPaths) || (coverage === 'scotland' && !scotlandPaths) ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, radiusM, maxPaths);
     const takeoffBanned = land.rules.some((r) => r.takeoffBanned);
     const parking = await pack.nearestParking(loc.lon, loc.lat, 2000, 3, false);
     const hazardRadiusM = Math.min(radiusM, 1000);
@@ -65,7 +67,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
     for (const a of new Set(paths.map((p) => p.attribution))) attribution.push(a);
 
     const caveats = [
-      scotlandPaths ? CAVEAT_SCOTLAND_ACCESS : coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION,
+      scotlandPaths ? CAVEAT_SCOTLAND_ACCESS : niPaths ? CAVEAT_NI_PROW : coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION,
       CAVEAT_BAN_LAYER_INCOMPLETE,
       CAVEAT_NOTAMS_NOT_INCLUDED,
       CAVEAT_HAZARDS,
@@ -101,7 +103,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
       parking,
       groundHazards: hazards.map(hazardToJson),
       hazardRadiusM,
-      coverage: coverage === 'england_wales' ? 'england_wales' : coverage === 'unknown' ? 'unknown' : scotlandPaths ? 'scotland_core_paths' : 'no_prow_data',
+      coverage: coverage === 'england_wales' ? 'england_wales' : coverage === 'unknown' ? 'unknown' : scotlandPaths ? 'scotland_core_paths' : niPaths ? 'northern_ireland_asserted' : 'no_prow_data',
       searchRadiusM: radiusM,
       drone: droneInfo ? { query: droneArg, label: droneInfo.label, assessment: droneInfo.assessment } : null,
       caveats,
@@ -129,7 +131,7 @@ export function createCheckTakeoffSiteHandler(deps: HandlerDependencies): ToolHa
         parking.length > 0 ? `Nearest parking: ${parkingSentence(parking[0])}` : null,
         hazards.length > 0 && hazards[0].distanceM < 150 ? `Ground hazard close by: ${renderHazard(hazards[0])}` : null,
         droneInfo ? droneInfo.lines[0] : null,
-        scotlandPaths ? 'In Scotland responsible access rights apply to most land, not only the core paths listed' : coverage === 'scotland' || coverage === 'northern_ireland' ? 'There is no rights-of-way data for this area' : 'Rights of way are an interpretation of the council definitive map',
+        scotlandPaths ? 'In Scotland responsible access rights apply to most land, not only the core paths listed' : niPaths ? 'Northern Ireland has no definitive map; only paths published by councils are listed' : coverage === 'scotland' || coverage === 'northern_ireland' ? 'There is no rights-of-way data for this area' : 'Rights of way are an interpretation of the council definitive map',
         'Check NOTAMs separately and remember the landowner rule layer is incomplete',
         attributionSentence(used)
       ),

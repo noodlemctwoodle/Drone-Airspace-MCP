@@ -38,6 +38,10 @@ export const SOURCE_IDS = {
   nrwNationalParks: 'nrw_national_parks',
   forestryEngland: 'fe_legal_boundary',
   corePaths: 'is_core_paths',
+  nieaAssi: 'niea_assi',
+  nieaAonb: 'niea_aonb',
+  nieaNnr: 'niea_nnr',
+  niProw: 'ni_prow',
   lad: 'ons_lad',
 } as const;
 
@@ -85,7 +89,7 @@ export const DDL: string[] = [
   `CREATE TABLE authorities (
     code TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    country TEXT NOT NULL CHECK (country IN ('england','wales','scotland')),
+    country TEXT NOT NULL CHECK (country IN ('england','wales','scotland','northern_ireland')),
     attribution TEXT NOT NULL,
     fetched_at TEXT,
     feature_count INTEGER

@@ -14,6 +14,12 @@ export class RightsOfWayService {
     return meta.sources.some((s) => s.id === 'is_core_paths' && s.featureCount > 0);
   }
 
+  /** True when the pack carries asserted rights of way from any Northern Ireland council. */
+  async hasNorthernIrelandPaths(): Promise<boolean> {
+    const meta = await this.pack.meta();
+    return meta.sources.some((s) => s.id === 'ni_prow' && s.featureCount > 0);
+  }
+
   coverageAt(lon: number, lat: number): Promise<ProwCoverage> {
     return this.pack.prowCoverageAt(lon, lat);
   }

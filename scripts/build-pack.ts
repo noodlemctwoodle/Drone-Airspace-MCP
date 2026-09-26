@@ -34,6 +34,8 @@ import { run as fetchLad } from './fetch-lad.js';
 import { run as fetchAccess } from './fetch-access.js';
 import { run as fetchWales } from './fetch-wales.js';
 import { run as fetchForestry } from './fetch-forestry.js';
+import { run as fetchNi } from './fetch-ni.js';
+import { run as fetchNiProw } from './fetch-ni-prow.js';
 import { run as fetchHazards } from './fetch-hazards.js';
 import { run as fetchCorePaths } from './fetch-corepaths.js';
 import { unlink } from 'node:fs/promises';
@@ -75,10 +77,12 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     { id: 'nats', files: ['zones.ndjson'], run: fetchNats },
     { id: 'rowmaps', files: ['rights_of_way.ndjson'], run: fetchRowmaps },
     { id: 'corepaths', files: ['core_paths.ndjson'], run: fetchCorePaths },
+    { id: 'niprow', files: ['ni_prow.ndjson'], run: fetchNiProw },
     { id: 'nt', files: ['nt.ndjson'], run: fetchNt },
     { id: 'access', files: ['access.ndjson'], run: fetchAccess },
     { id: 'wales', files: ['wales.ndjson'], run: fetchWales },
     { id: 'forestry', files: ['forestry.ndjson'], run: fetchForestry },
+    { id: 'ni', files: ['ni.ndjson'], run: fetchNi },
     { id: 'countries', files: ['coverage.ndjson'], run: fetchCountries },
     { id: 'lad', files: ['admin_areas.ndjson'], run: fetchLad },
     { id: 'byelaws', files: ['byelaws.ndjson'], run: loadByelaws },
@@ -116,9 +120,10 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
 
     const rowReport = reports.find((r) => r.source.id === SOURCE_IDS.rowmaps);
     const coreReport = reports.find((r) => r.source.id === SOURCE_IDS.corePaths);
-    const authorities = [...((rowReport?.extra?.authorities as AuthorityReport[] | undefined) ?? []), ...((coreReport?.extra?.authorities as AuthorityReport[] | undefined) ?? [])];
+    const niProwReport = reports.find((r) => r.source.id === SOURCE_IDS.niProw);
+    const authorities = [...((rowReport?.extra?.authorities as AuthorityReport[] | undefined) ?? []), ...((coreReport?.extra?.authorities as AuthorityReport[] | undefined) ?? []), ...((niProwReport?.extra?.authorities as AuthorityReport[] | undefined) ?? [])];
     for (const a of authorities) insertAuthority(db, { code: a.code, name: a.name, country: a.country, attribution: a.attribution, fetchedAt: a.fetchedAt, featureCount: a.featureCount });
-    const prowFiles = (await Promise.all(['rights_of_way.ndjson', 'core_paths.ndjson'].map(async (f) => ((await exists(path.join(args.normalisedDir, f))) ? path.join(args.normalisedDir, f) : null)))).filter((f): f is string => f !== null);
+    const prowFiles = (await Promise.all(['rights_of_way.ndjson', 'core_paths.ndjson', 'ni_prow.ndjson'].map(async (f) => ((await exists(path.join(args.normalisedDir, f))) ? path.join(args.normalisedDir, f) : null)))).filter((f): f is string => f !== null);
     if (prowFiles.length > 0) {
       const tolerance = args.simplifyProwM > 0 ? args.simplifyProwM / 111_320 : 0;
       async function* paths(): AsyncGenerator<NormalisedPath> {
@@ -138,7 +143,7 @@ export async function buildPack(args: PipelineArgs): Promise<BuildResult> {
     log.info(`rights of way: ${counts.rights_of_way}`);
 
     async function* restrictions(): AsyncGenerator<NormalisedRestriction> {
-      for (const name of ['nt.ndjson', 'byelaws.ndjson', 'access.ndjson', 'wales.ndjson', 'forestry.ndjson']) {
+      for (const name of ['nt.ndjson', 'byelaws.ndjson', 'access.ndjson', 'wales.ndjson', 'forestry.ndjson', 'ni.ndjson']) {
         const f = path.join(args.normalisedDir, name);
         if (!(await exists(f))) continue;
         for await (const r of readNdjson<NormalisedRestriction>(f)) yield r;

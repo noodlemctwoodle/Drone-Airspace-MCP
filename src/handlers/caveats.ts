@@ -4,6 +4,8 @@ export const CAVEAT_PROW_INTERPRETATION =
   'Rights-of-way data is an interpretation of each council\'s Definitive Map, not the Definitive Map itself, and covers England and Wales only.';
 export const CAVEAT_NO_PROW_HERE =
   'No public rights-of-way data here: Scotland has no definitive map (access rights apply under the Land Reform (Scotland) Act 2003, and this pack has no core paths) and Northern Ireland has very few recorded rights of way.';
+export const CAVEAT_NI_PROW =
+  'Northern Ireland: councils assert public rights of way under the Access to the Countryside (Northern Ireland) Order 1983 and there is no definitive map. Only councils that publish their asserted paths appear here (Mid Ulster so far), so absence means unknown, not none.';
 export const CAVEAT_SCOTLAND_ACCESS =
   'Scotland: responsible access rights under the Land Reform (Scotland) Act 2003 apply to most land, not only paths. Core paths come from each council\'s core path plan via the Improvement Service, not a definitive map.';
 export const CAVEAT_BAN_LAYER_INCOMPLETE =

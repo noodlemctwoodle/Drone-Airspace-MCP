@@ -31,6 +31,7 @@ import {
   CAVEAT_NOTAM_SCHEDULE,
   CAVEAT_NOT_BRIEFING,
   CAVEAT_NO_PROW_HERE,
+  CAVEAT_NI_PROW,
   CAVEAT_PROW_INTERPRETATION,
   CAVEAT_SCOTLAND_ACCESS,
   CAVEAT_SPACE_WEATHER,
@@ -82,7 +83,8 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
       pack.hazardsNear(loc.lon, loc.lat, 500, 10),
     ]);
     const scotlandPaths = coverage === 'scotland' && (await deps.rightsOfWay.hasCorePaths());
-    const paths = coverage === 'northern_ireland' || (coverage === 'scotland' && !scotlandPaths) ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, 1000, maxPaths);
+    const niPaths = coverage === 'northern_ireland' && (await deps.rightsOfWay.hasNorthernIrelandPaths());
+    const paths = (coverage === 'northern_ireland' && !niPaths) || (coverage === 'scotland' && !scotlandPaths) ? [] : await deps.rightsOfWay.nearest(loc.lon, loc.lat, 1000, maxPaths);
     const { relevant, above } = splitByRelevance(zones);
     const land = splitLandRestrictions(restrictions);
     const verdict = buildVerdict(relevant, restrictions);
@@ -137,7 +139,7 @@ export function createPreflightBriefingHandler(deps: HandlerDependencies): ToolH
       outages.push(`space_weather: ${spaceR.error}`);
       caveats.push(CAVEAT_SPACE_WEATHER);
     }
-    caveats.push(scotlandPaths ? CAVEAT_SCOTLAND_ACCESS : coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION);
+    caveats.push(scotlandPaths ? CAVEAT_SCOTLAND_ACCESS : niPaths ? CAVEAT_NI_PROW : coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION);
     if (droneInfo) caveats.push(CAVEAT_DRONE_RULES);
 
     const windowTo = window.length > 0 ? window[window.length - 1].hour.time : null;

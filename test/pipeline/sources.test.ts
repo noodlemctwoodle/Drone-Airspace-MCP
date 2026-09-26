@@ -5,6 +5,8 @@ import { fetchAllFeatures, normaliseNtFeature } from '../../pipeline/sources/nt/
 import { loadByelaws } from '../../pipeline/sources/byelaws/loader.js';
 import { parseCountries } from '../../pipeline/sources/countries/ons.js';
 import { makeCountryFilter } from '../../pipeline/sources/osm/country-filter.js';
+import { NI_DESIGNATION_LAYERS, normaliseNiDesignation } from '../../pipeline/sources/ni/designations.js';
+import { normaliseNiProwFeature } from '../../pipeline/sources/ni/prow.js';
 import { parseLads } from '../../pipeline/sources/lad/ons.js';
 import { normaliseCrowFeature, normaliseNationalParkFeature, normaliseSssiFeature } from '../../pipeline/sources/access/natural-england.js';
 import { normaliseNrwAccessFeature, normaliseNrwSssiFeature } from '../../pipeline/sources/access/nrw.js';
@@ -279,6 +281,31 @@ describe('osm hazards', () => {
     expect(sub[0].geometry.type).toBe('Polygon');
     const minor = normaliseHazardFeature({ geometry: { type: 'LineString', coordinates: [[-2.5, 51.4], [-2.49, 51.4]] }, properties: { power: 'minor_line' } });
     expect(minor[0].kind).toBe('minor_power_line');
+  });
+});
+
+describe('northern ireland', () => {
+  it('normalises ASSI, AONB and NNR polygons into advisory designations', () => {
+    const load = (n: string) => JSON.parse(readFileSync(new URL(`../fixtures/ni/${n}-thin.geojson`, import.meta.url), 'utf8')).features[0];
+    const [assi, aonb, nnr] = NI_DESIGNATION_LAYERS;
+    const a = normaliseNiDesignation(load('assi'), assi, '2026-09-26T00:00:00Z')!;
+    expect(a).toMatchObject({ sourceId: 'niea_assi', kind: 'designation', owner: 'Northern Ireland Environment Agency', accessClass: 'assi', takeoffBanned: false, scope: 'site' });
+    expect(a.name).toBeTruthy();
+    expect(a.summary).toContain('offence');
+    const b = normaliseNiDesignation(load('aonb'), aonb, '2026-09-26T00:00:00Z')!;
+    expect(b).toMatchObject({ sourceId: 'niea_aonb', accessClass: 'aonb', name: 'Mourne', entryId: 'AONB2' });
+    const c = normaliseNiDesignation(load('nnr'), nnr, '2026-09-26T00:00:00Z')!;
+    expect(c).toMatchObject({ sourceId: 'niea_nnr', accessClass: 'nnr', name: 'North Strangford Lough', props: { county: 'Down' } });
+    expect(normaliseNiDesignation({ geometry: { type: 'Point', coordinates: [-6, 54.5] }, properties: {} }, assi, '2026-09-26T00:00:00Z')).toBeUndefined();
+  });
+  it('normalises Mid Ulster asserted rights of way as footpaths per part', () => {
+    const fx = JSON.parse(readFileSync(new URL('../fixtures/ni/midulster-prow.json', import.meta.url), 'utf8'));
+    const paths = fx.features.flatMap((f: never) => normaliseNiProwFeature(f, 'N09000010'));
+    expect(paths.length).toBe(14); // two of the three features are multi-part lines, one path per part
+    expect(paths.every((p: { coordinates: unknown[] }) => p.coordinates.length >= 2)).toBe(true);
+    expect(paths[0]).toMatchObject({ authorityCode: 'N09000010', pathType: 'footpath', routeNo: 'ID157', routeName: 'Mullan Road - Cot Lane', parish: 'Cookstown', sourceRef: '1' });
+    expect(paths[0].lengthM).toBeGreaterThan(1000);
+    expect(normaliseNiProwFeature({ ...fx.features[0], properties: { ...fx.features[0].properties, ASSERTED: 'NO' } }, 'N09000010')).toEqual([]);
   });
 });
 

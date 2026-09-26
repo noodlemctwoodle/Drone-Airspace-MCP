@@ -63,6 +63,9 @@ export const SOURCE_LABEL: Record<string, string> = {
   nrw_common_land: 'Registered common land',
   ne_sssi: 'SSSI',
   nrw_sssi: 'SSSI',
+  niea_assi: 'ASSI',
+  niea_aonb: 'AONB',
+  niea_nnr: 'National Nature Reserve',
   ne_national_parks: 'National Park',
   nrw_national_parks: 'National Park',
 };
@@ -79,7 +82,7 @@ export function restrictionLabel(r: LandRestriction): string {
     case 'access_land':
       return 'Open access land';
     case 'designation':
-      return r.accessClass === 'sssi' ? 'SSSI' : 'Designation';
+      return r.accessClass === 'sssi' ? 'SSSI' : r.accessClass === 'assi' ? 'ASSI' : r.accessClass === 'aonb' ? 'AONB' : r.accessClass === 'nnr' ? 'National Nature Reserve' : 'Designation';
     default:
       return r.owner;
   }
@@ -110,7 +113,7 @@ export function accessLine(restrictions: LandRestriction[]): string | null {
 export function advisoryLine(restrictions: LandRestriction[]): string | null {
   const des = restrictions.filter((r) => r.kind === 'designation');
   if (des.length === 0) return null;
-  const parts = des.slice(0, 2).map((r) => (r.accessClass === 'sssi' ? `${r.name} (SSSI): do not disturb protected wildlife` : `${r.name}: follow the park authority's drone guidance`));
+  const parts = des.slice(0, 2).map((r) => (r.accessClass === 'sssi' || r.accessClass === 'assi' || r.accessClass === 'nnr' ? `${r.name} (${r.accessClass === 'sssi' ? 'SSSI' : r.accessClass === 'assi' ? 'ASSI' : 'NNR'}): do not disturb protected wildlife` : `${r.name}: follow the ${r.accessClass === 'aonb' ? 'AONB partnership' : 'park authority'}'s drone guidance`));
   const extra = des.length > 2 ? ` (+${des.length - 2} more)` : '';
   return `Designation: ${parts.join('; ')}${extra}.`;
 }

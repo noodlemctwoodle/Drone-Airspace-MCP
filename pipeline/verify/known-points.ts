@@ -5,7 +5,7 @@ export interface KnownPoint {
   /** Only run when the pack bbox contains the point. */
   expect:
     | { layer: 'zones'; zoneType?: string; icao?: string; designatorPrefix?: string }
-    | { layer: 'rights_of_way'; authorityCode?: string; withinMetres: number; onlyWhenCountry?: 'scotland' }
+    | { layer: 'rights_of_way'; authorityCode?: string; withinMetres: number; onlyWhenCountry?: 'scotland' | 'northern_ireland' }
     | { layer: 'land_restrictions'; owner: string }
     | { layer: 'parking'; withinMetres: number }
     | { layer: 'hazards'; kind?: string; withinMetres: number }
@@ -28,6 +28,8 @@ export const KNOWN_POINTS: KnownPoint[] = [
   { name: 'Haytor is open access land on Dartmoor', lon: -3.756, lat: 50.581, expect: { layer: 'land_restrictions', owner: 'Natural England' } },
   { name: 'Haldon Forest is Forestry England', lon: -3.545, lat: 50.63, expect: { layer: 'land_restrictions', owner: 'Forestry England' } },
   { name: 'Corfe Castle is National Trust', lon: -2.0577, lat: 50.6407, expect: { layer: 'land_restrictions', owner: 'National Trust' } },
+  { name: "Giant's Causeway is an ASSI", lon: -6.5116, lat: 55.2408, expect: { layer: 'land_restrictions', owner: 'Northern Ireland Environment Agency' } },
+  { name: 'Mullan Road path (Mid Ulster)', lon: -6.5287, lat: 54.6623, expect: { layer: 'rights_of_way', authorityCode: 'N09000010', withinMetres: 100, onlyWhenCountry: 'northern_ireland' } },
   // Well beyond any UK danger area (offshore Cornwall zones stop around 7W).
   { name: 'Atlantic negative control', lon: -12.0, lat: 50.5, expect: { layer: 'none' } },
 ];

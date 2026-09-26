@@ -47,6 +47,7 @@ const UPSTREAM_ARCGIS: Array<{ sourceId: string; layerUrl: string; label: string
   { sourceId: 'ne_crow_access', layerUrl: 'https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services/CRoW_Act_2000_Access_Layer/FeatureServer/0', label: 'Natural England access land' },
   { sourceId: 'ne_sssi', layerUrl: 'https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services/SSSI_England/FeatureServer/0', label: 'Natural England SSSI layer' },
   { sourceId: 'fe_legal_boundary', layerUrl: 'https://services2.arcgis.com/mHXjwgl3OARRqqD4/arcgis/rest/services/Forestry_England_Legal_Boundary_2024/FeatureServer/0', label: 'Forestry England boundary' },
+  { sourceId: 'ni_prow', layerUrl: 'https://services1.arcgis.com/IBPnlgK2X1Ngocds/arcgis/rest/services/PROW/FeatureServer/0', label: 'Mid Ulster rights of way' },
   { sourceId: 'ons_lad', layerUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Local_Authority_Districts_May_2026_Boundaries_UK_BSC/FeatureServer/0', label: 'ONS local authority boundaries' },
 ];
 

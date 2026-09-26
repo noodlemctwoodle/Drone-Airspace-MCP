@@ -52,7 +52,7 @@ src/
   pack/                    schema.ts (DDL, SCHEMA_VERSION), driver.ts (node:sqlite), repository.ts (rtree + turf), loader.ts, manifest.ts
   formatters/              report.ts (plain text), units.ts, attribution.ts, hazards.ts (kind labels, map groups, danger vs site kinds)
   transport/               stdio.ts, http.ts (Express, stateless POST /mcp, GET /healthz)
-pipeline/                  build-time only: lib/ (http cache, zip, airac, regions, geometry, ordered xml), sources/{nats,rowmaps,nt,byelaws,countries,osm}, assemble/, verify/
+pipeline/                  build-time only: lib/ (http cache, zip, airac, regions, geometry, ordered xml), sources/{nats,rowmaps,nt,byelaws,countries,osm,access,wales,forestry,corepaths,lad,ni}, assemble/, verify/
                            osm/parking.ts and osm/hazards.ts need `osmium` (brew/apt osmium-tool) and the Geofabrik GB (1.9 GB) and Ireland extracts, cached a week in build/raw/osm; the Ireland one is clipped to Northern Ireland with the ONS boundary from the countries source
 scripts/                   tsx CLIs: fetch-*, build-pack, verify-pack, make-manifest, check-upstream, prune-releases, inspect-pib
 data/byelaws/seed.yaml     community-maintained council byelaw list

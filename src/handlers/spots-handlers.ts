@@ -24,6 +24,7 @@ import {
   CAVEAT_NOTAM_SCHEDULE,
   CAVEAT_NOT_BRIEFING,
   CAVEAT_NO_PROW_HERE,
+  CAVEAT_NI_PROW,
   CAVEAT_PROW_INTERPRETATION,
   CAVEAT_SCOTLAND_ACCESS,
   CAVEAT_SPOTS,
@@ -57,6 +58,7 @@ export function createFindTakeoffSpotsHandler(deps: HandlerDependencies): ToolHa
     const pack = deps.pack.require();
     const coverage = await deps.rightsOfWay.coverageAt(loc.lon, loc.lat);
     const scotlandPaths = coverage === 'scotland' && (await deps.rightsOfWay.hasCorePaths());
+    const niPaths = coverage === 'northern_ireland' && (await deps.rightsOfWay.hasNorthernIrelandPaths());
     const { dLat, dLon } = metresToDegrees(radiusM, loc.lat);
     const bbox: [number, number, number, number] = [loc.lon - dLon, loc.lat - dLat, loc.lon + dLon, loc.lat + dLat];
 
@@ -120,7 +122,7 @@ export function createFindTakeoffSpotsHandler(deps: HandlerDependencies): ToolHa
     const usedPathAuthorities = new Set(paths.filter((p) => spots.some((sp) => sp.candidate.source === 'prow' && sp.candidate.label.includes(p.routeNo ?? '\u0000'))).map((p) => p.attribution));
     for (const a of usedPathAuthorities) attribution.push(a);
 
-    const caveats = [CAVEAT_SPOTS, scotlandPaths ? CAVEAT_SCOTLAND_ACCESS : coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION, CAVEAT_BAN_LAYER_INCOMPLETE, CAVEAT_AIRSPACE_ONLY_BELOW_120M];
+    const caveats = [CAVEAT_SPOTS, scotlandPaths ? CAVEAT_SCOTLAND_ACCESS : niPaths ? CAVEAT_NI_PROW : coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION, CAVEAT_BAN_LAYER_INCOMPLETE, CAVEAT_AIRSPACE_ONLY_BELOW_120M];
     if (!notamR.ok) caveats.push(`NOTAMs could not be fetched (${notamR.error}); spots are scored without them, run check_notams before flying.`);
     else if (notams.some((n) => n.schedule)) caveats.push(CAVEAT_NOTAM_SCHEDULE);
     if (a3 && !hazards.some(isSiteHazard)) caveats.push('No schools, parks or similar sites are mapped here; as an A3 pilot keep 150 m from residential, commercial, industrial and recreational areas yourself.');
@@ -140,7 +142,7 @@ export function createFindTakeoffSpotsHandler(deps: HandlerDependencies): ToolHa
       candidatesConsidered: candidates.length,
       spots: spots.map((s, i) => ({ rank: i + 1, lat: s.candidate.lat, lon: s.candidate.lon, score: s.score, distanceM: s.candidate.distanceFromCentreM, via: { source: s.candidate.source, label: s.candidate.label }, reasons: s.reasons, nearestPathM: s.nearestPathM, nearestParkingM: s.nearestParkingM, notamIds: s.notamIds, zoneNames: s.zoneNames })),
       excluded,
-      coverage: coverage === 'england_wales' ? 'england_wales' : coverage === 'unknown' ? 'unknown' : scotlandPaths ? 'scotland_core_paths' : 'no_prow_data',
+      coverage: coverage === 'england_wales' ? 'england_wales' : coverage === 'unknown' ? 'unknown' : scotlandPaths ? 'scotland_core_paths' : niPaths ? 'northern_ireland_asserted' : 'no_prow_data',
       drone: droneInfo ? { query: droneArg, label: droneInfo.label, assessment: droneInfo.assessment } : null,
       caveats,
       attribution,
