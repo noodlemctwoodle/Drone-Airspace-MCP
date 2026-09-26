@@ -50,6 +50,16 @@
     "type": "git",
     "url": "git+https://github.com/noodlemctwoodle/fpv-airspace.git"
   },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/noodlemctwoodle"
+    },
+    {
+      "type": "individual",
+      "url": "https://donate.stripe.com/3cI28sesu6T0f4n7IP2Nq00"
+    }
+  ],
   "keywords": [
     "mcp",
     "model-context-protocol",
