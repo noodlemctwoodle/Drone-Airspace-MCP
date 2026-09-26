@@ -435,8 +435,10 @@ export class QueryPackRepository implements PackRepository {
     // Nearest first is decided in SQL so only `limit` rows, geometry included, leave the database.
     const order = nearestTo ? ' ORDER BY (h.lon - ?) * (h.lon - ?) + (h.lat - ?) * (h.lat - ?) * 2.6' : '';
     const orderParams = nearestTo ? [nearestTo[0], nearestTo[0], nearestTo[1], nearestTo[1]] : [];
+    // CROSS JOIN pins the join order: with a kind filter SQLite would otherwise walk the kind index and probe
+    // the rtree once per row, which on D1 meant reading a million rows for a 700-candidate box.
     const rows = await this.q.all(
-      `SELECT h.* FROM hazards_rtree r JOIN hazards h ON h.id = r.id
+      `SELECT h.* FROM hazards_rtree r CROSS JOIN hazards h ON h.id = r.id
        WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?${kindFilter}${order} LIMIT ?`,
       [bbox[2], bbox[0], bbox[3], bbox[1], ...(kinds && kinds.length > 0 ? kinds : []), ...orderParams, limit]
     );
