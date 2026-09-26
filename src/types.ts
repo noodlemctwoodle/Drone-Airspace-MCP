@@ -95,9 +95,13 @@ export interface Parking {
 export interface ParkingHit extends Parking {
   distanceM: number;
 }
-export type HazardKind = 'railway' | 'motorway' | 'trunk_road' | 'power_line' | 'helipad' | 'military';
+export type HazardKind =
+  | 'railway' | 'motorway' | 'trunk_road'
+  | 'power_line' | 'minor_power_line' | 'pylon' | 'substation' | 'power_generator'
+  | 'helipad' | 'tower' | 'military'
+  | 'school' | 'kindergarten' | 'hospital' | 'fire_station' | 'fuel_station' | 'park' | 'cemetery';
 
-/** A ground hazard from OpenStreetMap: a line (railway, road, power line), a point (helipad) or a polygon (military land). */
+/** A ground hazard from OpenStreetMap: a line (railway, road, power line), a point (helipad, pylon, tower) or a polygon (military land, school, park). */
 export interface Hazard {
   id: number;
   osmId: string | null;

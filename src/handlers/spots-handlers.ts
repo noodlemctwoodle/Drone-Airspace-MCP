@@ -12,6 +12,7 @@ import { distanceKm } from '../services/airspace/geometry.js';
 import { metresToDegrees } from '../pack/geometry.js';
 import { buildCandidates, type Candidate } from '../services/spots/candidates.js';
 import { scoreCandidate } from '../services/spots/scoring.js';
+import { isSiteHazard } from '../formatters/hazards.js';
 import { landPackIds, splitLandRestrictions } from '../services/land-rules.js';
 import { renderReport, type ReportSection } from '../formatters/report.js';
 import { attributionLines, attributionSentence, type SourceId } from '../formatters/attribution.js';
@@ -83,13 +84,16 @@ export function createFindTakeoffSpotsHandler(deps: HandlerDependencies): ToolHa
           const nearestPathM = paths.length ? Math.round(Math.min(...paths.map((x) => pointToLineDistance(p, lineString(x.geometry.coordinates), { units: 'meters' })))) : null;
           const nearestParkingM = parking.length ? Math.round(Math.min(...parking.map((x) => distanceKm([c.lon, c.lat], [x.lon, x.lat]) * 1000))) : null;
           let nearestHazard: HazardHit | null = null;
+          let nearestSite: HazardHit | null = null;
           for (const h of hazards) {
             const d = Math.round(distanceKm([c.lon, c.lat], [h.lon, h.lat]) * 1000);
-            if (!nearestHazard || d < nearestHazard.distanceM) nearestHazard = { ...h, distanceM: d };
+            if (isSiteHazard(h)) {
+              if (!nearestSite || d < nearestSite.distanceM) nearestSite = { ...h, distanceM: d };
+            } else if (!nearestHazard || d < nearestHazard.distanceM) nearestHazard = { ...h, distanceM: d };
           }
           const covering = notams.filter((n) => n.centre && n.radiusKm !== null && distanceKm([c.lon, c.lat], n.centre) <= n.radiusKm);
           const onAccessLand = accessLand.some((a) => booleanPointInPolygon(p, a.geometry));
-          const s = scoreCandidate({ zones: relevant, restrictions, notamCovering: covering, nearestPathM, nearestParkingM, nearestHazard, onAccessLand, distanceFromCentreM: c.distanceFromCentreM, radiusM, a3 });
+          const s = scoreCandidate({ zones: relevant, restrictions, notamCovering: covering, nearestPathM, nearestParkingM, nearestHazard, nearestSite, onAccessLand, distanceFromCentreM: c.distanceFromCentreM, radiusM, a3 });
           return { candidate: c, ...s, nearestPathM, nearestParkingM, notamIds: covering.map((n) => n.id), zoneNames: relevant.map((z) => z.name) };
         })
       );
@@ -119,7 +123,7 @@ export function createFindTakeoffSpotsHandler(deps: HandlerDependencies): ToolHa
     const caveats = [CAVEAT_SPOTS, scotlandPaths ? CAVEAT_SCOTLAND_ACCESS : coverage === 'scotland' || coverage === 'northern_ireland' ? CAVEAT_NO_PROW_HERE : CAVEAT_PROW_INTERPRETATION, CAVEAT_BAN_LAYER_INCOMPLETE, CAVEAT_AIRSPACE_ONLY_BELOW_120M];
     if (!notamR.ok) caveats.push(`NOTAMs could not be fetched (${notamR.error}); spots are scored without them, run check_notams before flying.`);
     else if (notams.some((n) => n.schedule)) caveats.push(CAVEAT_NOTAM_SCHEDULE);
-    if (a3 && hazards.length === 0) caveats.push('No built-up-area data here; as an A3 pilot keep 150 m from residential, commercial, industrial and recreational areas yourself.');
+    if (a3 && !hazards.some(isSiteHazard)) caveats.push('No schools, parks or similar sites are mapped here; as an A3 pilot keep 150 m from residential, commercial, industrial and recreational areas yourself.');
     caveats.push(CAVEAT_NOT_BRIEFING);
 
     const name = loc.name.split(',').slice(0, 2).join(',');

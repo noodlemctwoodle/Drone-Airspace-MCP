@@ -62,6 +62,7 @@ export async function buildMiniPack(dir: string): Promise<string> {
     { osmId: 'w10', kind: 'railway', name: 'Test Line', operator: 'Network Rail', ref: null, geometry: { type: 'LineString', coordinates: [[-2.29, 50.6265], [-2.264, 50.6265]] } },
     { osmId: 'n11', kind: 'helipad', name: 'Test helipad', operator: null, ref: null, geometry: { type: 'Point', coordinates: [-2.25, 50.63] } },
     { osmId: 'w12', kind: 'military', name: 'Lulworth Ranges', operator: 'MOD', ref: null, geometry: { type: 'Polygon', coordinates: [[[-2.25, 50.62], [-2.2, 50.62], [-2.2, 50.65], [-2.25, 50.65], [-2.25, 50.62]]] } },
+    { osmId: 'w13', kind: 'school', name: 'Test Primary School', operator: null, ref: null, geometry: { type: 'Polygon', coordinates: [[[-2.15, 50.65], [-2.148, 50.65], [-2.148, 50.652], [-2.15, 50.652], [-2.15, 50.65]]] } },
   ]);
   const nAdmin = await insertAdminAreas(db, lads);
   const nGaz = buildGazetteer(db);

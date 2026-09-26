@@ -50,7 +50,7 @@ src/
     weather/               open-meteo.ts (client, 15 min cache per 5 km cell), assessment.ts (advisory flyability thresholds)
     drones/                catalogue.ts (curated consumer models: weight, C-class, UK class), rules.ts (CAA open category rules as dated data)
   pack/                    schema.ts (DDL, SCHEMA_VERSION), driver.ts (node:sqlite), repository.ts (rtree + turf), loader.ts, manifest.ts
-  formatters/              report.ts (plain text), units.ts, attribution.ts
+  formatters/              report.ts (plain text), units.ts, attribution.ts, hazards.ts (kind labels, map groups, danger vs site kinds)
   transport/               stdio.ts, http.ts (Express, stateless POST /mcp, GET /healthz)
 pipeline/                  build-time only: lib/ (http cache, zip, airac, regions, geometry, ordered xml), sources/{nats,rowmaps,nt,byelaws,countries,osm}, assemble/, verify/
                            osm/parking.ts needs `osmium` (brew/apt osmium-tool) and the 1.9 GB Geofabrik GB extract, cached a week in build/raw/osm

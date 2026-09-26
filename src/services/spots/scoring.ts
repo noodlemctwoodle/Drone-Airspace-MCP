@@ -1,6 +1,7 @@
 import type { HazardHit, LandRestriction, NotamHit, Zone } from '../../types.js';
 import { TYPE_LABEL } from '../airspace/verdict.js';
 import { truncate } from '../../formatters/units.js';
+import { HAZARD_LABEL, SITE_KINDS } from '../../formatters/hazards.js';
 
 /**
  * Integer scoring of a candidate spot on the data held here. Hard exclusions
@@ -13,7 +14,10 @@ export interface CandidateFacts {
   notamCovering: NotamHit[];
   nearestPathM: number | null;
   nearestParkingM: number | null;
+  /** Nearest physical hazard (power, transport, aviation, military, fuel). */
   nearestHazard: HazardHit | null;
+  /** Nearest place people gather (school, hospital, park, ...), the A3 separation cue. */
+  nearestSite: HazardHit | null;
   onAccessLand: boolean;
   distanceFromCentreM: number;
   radiusM: number;
@@ -27,7 +31,6 @@ export interface CandidateScore {
 }
 
 const EXCLUDE_ZONE_TYPES = new Set<string>(['prohibited', 'restricted', 'prison', 'frz']);
-export const BUILT_UP_KINDS = new Set<string>(['residential', 'built_up', 'industrial', 'commercial', 'retail']);
 const RULE_KINDS = new Set<LandRestriction['kind']>(['landowner', 'byelaw', 'pspo', 'policy']);
 
 function zoneTitle(z: Zone): string {
@@ -55,9 +58,14 @@ export function scoreCandidate(f: CandidateFacts): CandidateScore {
   const soft = rules.find((r) => !r.takeoffBanned);
   if (soft) apply(-20, `landowner rule applies, check with ${soft.owner}`);
   if (f.nearestHazard) {
-    if (f.nearestHazard.distanceM < 100) apply(-30, `${f.nearestHazard.kind.replace('_', ' ')} ${f.nearestHazard.distanceM} m away`);
-    else if (f.nearestHazard.distanceM <= 200) apply(-15, `${f.nearestHazard.kind.replace('_', ' ')} ${f.nearestHazard.distanceM} m away`);
-    if (f.a3 && BUILT_UP_KINDS.has(f.nearestHazard.kind) && f.nearestHazard.distanceM <= 150) apply(-30, 'A3: built-up area within 150 m');
+    const label = HAZARD_LABEL[f.nearestHazard.kind] ?? f.nearestHazard.kind;
+    if (f.nearestHazard.distanceM < 100) apply(-30, `${label} ${f.nearestHazard.distanceM} m away`);
+    else if (f.nearestHazard.distanceM <= 200) apply(-15, `${label} ${f.nearestHazard.distanceM} m away`);
+  }
+  if (f.nearestSite && SITE_KINDS.has(f.nearestSite.kind) && f.nearestSite.distanceM <= 150) {
+    const label = HAZARD_LABEL[f.nearestSite.kind] ?? f.nearestSite.kind;
+    if (f.a3) apply(-30, `A3: ${label} within 150 m`);
+    else apply(-10, `${label} ${f.nearestSite.distanceM} m away, people may gather`);
   }
   if (f.nearestPathM !== null) {
     if (f.nearestPathM <= 25) apply(25, 'on a public right of way');

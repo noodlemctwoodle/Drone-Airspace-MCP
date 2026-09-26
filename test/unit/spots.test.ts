@@ -4,7 +4,7 @@ import { scoreCandidate, type CandidateFacts } from '../../src/services/spots/sc
 import { FIXTURE_ACCESS, FIXTURE_PARKING, FIXTURE_PROW, FIXTURE_RESTRICTIONS, FIXTURE_ZONES } from '../helpers/fake-pack-repository.js';
 import type { RightOfWayHit } from '../../src/types.js';
 
-const base: CandidateFacts = { zones: [], restrictions: [], notamCovering: [], nearestPathM: null, nearestParkingM: null, nearestHazard: null, onAccessLand: false, distanceFromCentreM: 0, radiusM: 3000, a3: false };
+const base: CandidateFacts = { zones: [], restrictions: [], notamCovering: [], nearestPathM: null, nearestParkingM: null, nearestHazard: null, nearestSite: null, onAccessLand: false, distanceFromCentreM: 0, radiusM: 3000, a3: false };
 const line = { id: 1, osmId: null, kind: 'power_line' as const, name: null, operator: null, ref: null, lon: -2, lat: 50 };
 
 describe('spot scoring', () => {
@@ -26,7 +26,11 @@ describe('spot scoring', () => {
     expect(bad.reasons[0]).toContain('NOTAM H1/26');
     expect(scoreCandidate({ ...base, nearestHazard: { ...line, distanceM: 150 } }).score).toBe(85);
     expect(scoreCandidate({ ...base, nearestHazard: { ...line, distanceM: 300 } }).score).toBe(100);
-    expect(scoreCandidate({ ...base, a3: true, nearestHazard: { ...line, kind: 'residential' as never, distanceM: 100 } }).reasons).toContain('A3: built-up area within 150 m');
+    const school = { ...line, kind: 'school' as const, distanceM: 100 };
+    expect(scoreCandidate({ ...base, a3: true, nearestSite: school }).reasons).toContain('A3: school within 150 m');
+    expect(scoreCandidate({ ...base, a3: true, nearestSite: school }).score).toBe(70);
+    expect(scoreCandidate({ ...base, nearestSite: school })).toMatchObject({ score: 90, reasons: ['school 100 m away, people may gather'] });
+    expect(scoreCandidate({ ...base, nearestSite: { ...school, distanceM: 300 } }).score).toBe(100);
   });
 });
 

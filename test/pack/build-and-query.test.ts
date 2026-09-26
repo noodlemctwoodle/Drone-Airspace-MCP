@@ -24,7 +24,7 @@ describe('mini pack build and repository queries', () => {
     expect(v.counts.rights_of_way).toBe(8);
     expect(v.counts.land_restrictions).toBeGreaterThanOrEqual(4); // multipolygons are split into parts
     expect(v.counts.coverage).toBeGreaterThanOrEqual(4);
-    expect(v.counts.hazards).toBe(3);
+    expect(v.counts.hazards).toBe(4);
     expect(v.counts.admin_areas).toBe(2);
     expect(Object.keys(v.tableBytes)).toContain('zones');
   });
@@ -58,6 +58,7 @@ describe('mini pack build and repository queries', () => {
     expect((await repo.hazardsNear(-2.277, 50.6212, 100, 12)).length).toBe(0);
     expect((await repo.hazardsInBbox([-2.3, 50.6, -2.2, 50.7])).map((h) => h.geometry.type).sort()).toEqual(['LineString', 'Point', 'Polygon']);
     expect(await repo.hazardsNear(-2.22, 50.63, 10, 5)).toMatchObject([{ kind: 'military', distanceM: 0 }]);
+    expect(await repo.hazardsNear(-2.149, 50.651, 10, 5)).toMatchObject([{ kind: 'school', name: 'Test Primary School', distanceM: 0 }]);
     expect(await repo.adminAreaAt(-2.277, 50.6212)).toMatchObject({ code: 'E06000059', name: 'Dorset', country: 'england' });
     expect(await repo.adminAreaAt(-4, 56.5)).toBeNull();
     expect(await repo.adminAreaAt(-2.277, 50.4995)).toMatchObject({ code: 'E06000059' }); // 55 m outside the square, as a clifftop is outside the coastline

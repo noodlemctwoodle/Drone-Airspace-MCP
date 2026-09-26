@@ -410,9 +410,17 @@ export class QueryPackRepository implements PackRepository {
       hits.push({ ...this.hazardFromRow(row), distanceM: Math.round(d) });
     }
     hits.sort((a, b) => a.distanceM - b.distanceM);
+    // Polygons are stored in parts and OSM often maps a site as both a node and an
+    // area, so the same named feature can come back more than once: keep the nearest.
     const perKind = new Map<string, number>();
+    const seen = new Set<string>();
     const out: HazardHit[] = [];
     for (const h of hits) {
+      const key = h.name || h.ref ? `${h.kind}|${h.name ?? ''}|${h.ref ?? ''}|${h.operator ?? ''}` : null;
+      if (key) {
+        if (seen.has(key)) continue;
+        seen.add(key);
+      }
       const k = perKind.get(h.kind) ?? 0;
       if (k >= 3) continue;
       perKind.set(h.kind, k + 1);

@@ -58,8 +58,8 @@ export const SECTIONS = [
 
 /**
  * Toggleable overlays. `shape` picks the swatch: area (filled square), line,
- * parking (P sign), pin (route dash and location pin), badge (text panel),
- * flow (streamlines), radar. A `locked` overlay is always drawn and cannot be
+ * parking (P sign), icon (a ground hazard marker), pin (route dash and location
+ * pin), badge (text panel), flow (streamlines), radar. A `locked` overlay is always drawn and cannot be
  * switched off: prohibited and restricted airspace and aerodrome FRZs must never
  * be hidden.
  */
@@ -75,7 +75,10 @@ export const OVERLAYS = [
   { key: 'access', label: 'Open access land', colour: '#7cb342', section: 'ground', shape: 'area' },
   { key: 'designation', label: 'Nature designations', colour: '#9e9d24', section: 'ground', shape: 'area' },
   { key: 'parking', label: 'Parking / layby', colour: '#1a56c4', section: 'ground', shape: 'parking' },
-  { key: 'hazards', label: 'Ground hazards', colour: '#8d6e63', section: 'ground', shape: 'line' },
+  { key: 'power', label: 'Power lines and pylons', colour: '#e65100', section: 'ground', shape: 'icon', icon: 'pylon' },
+  { key: 'transport', label: 'Railways and major roads', colour: '#5d4037', section: 'ground', shape: 'icon', icon: 'railway' },
+  { key: 'aviation', label: 'Helipads and military', colour: '#6a1b9a', section: 'ground', shape: 'icon', icon: 'helipad' },
+  { key: 'sites', label: 'Schools and parks', colour: '#c6a700', section: 'ground', shape: 'icon', icon: 'school' },
   { key: 'route', label: 'Route and location', colour: '#2a81cb', section: 'ground', shape: 'pin' },
   { key: 'spots', label: 'Take-off spots', colour: '#2a81cb', section: 'ground', shape: 'spot' },
   { key: 'conditions', label: 'Conditions now', colour: '#4fc3f7', section: 'weather', shape: 'badge' },
@@ -196,6 +199,10 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .pin { width: 26px; height: 36px; }
   .pin svg { width: 26px; height: 36px; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
   .sw-dot { width: 12px; height: 12px; margin: 1px 4px; border-radius: 50%; background: var(--c); border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+  .sw-icon { display: flex; align-items: center; justify-content: center; height: 16px; }
+  .sw-icon svg { width: 17px; height: 17px; }
+  .hz { width: 22px; height: 22px; }
+  .hz svg { width: 22px; height: 22px; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
   .sw-parking { box-sizing: border-box; width: 18px; height: 18px; margin: 0 1px; border-radius: 4px; background: var(--c); color: #fff; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; font: 700 11px/1 -apple-system, system-ui, sans-serif; }
   .sw-parking::after { content: 'P'; }
   .p-sign { width: 24px; height: 24px; }
@@ -298,6 +305,48 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
 
   // Layers panel: base map switch plus a checkbox per overlay, grouped by section.
+  // Ground hazards: a white tile with a glyph per kind, in the colour of its group (like a road sign).
+  var HAZARD_GROUP = { power_line: 'power', minor_power_line: 'power', pylon: 'power', substation: 'power', power_generator: 'power',
+    railway: 'transport', motorway: 'transport', trunk_road: 'transport', helipad: 'aviation', tower: 'aviation', military: 'aviation',
+    school: 'sites', kindergarten: 'sites', hospital: 'sites', fire_station: 'sites', fuel_station: 'sites', park: 'sites', cemetery: 'sites' };
+  var HAZARD_LABEL = { railway: 'Railway', motorway: 'Motorway', trunk_road: 'Trunk road', power_line: 'Power line', minor_power_line: 'Minor power line', pylon: 'Pylon', substation: 'Substation', power_generator: 'Power generator',
+    helipad: 'Helipad', tower: 'Mast or tower', military: 'Military land', school: 'School', kindergarten: 'Nursery', hospital: 'Hospital', fire_station: 'Fire station', fuel_station: 'Fuel station', park: 'Park', cemetery: 'Cemetery' };
+  var GLYPH = {
+    pylon: ['M8 21L12 3l4 18M9.3 15h5.4M10.4 9.5h3.2M5 7.5h14', 0],
+    substation: ['M13 2L5 13h6l-1 9 9-12h-6z', 1],
+    power_generator: ['M12 21V10m0 0V3m0 7l6 3.5M12 10l-6 3.5', 0],
+    power_line: ['M4 6h16M4 18h16M12 6v12', 0],
+    minor_power_line: ['M4 12h16', 0],
+    railway: ['M7 4h10v12H7zM8 8h8M9 16l-2 4m8-4l2 4M10 12.5h.5M13.5 12.5h.5', 0],
+    motorway: ['M8 3l-4 18M16 3l4 18M12 3v4m0 4v4m0 4v2', 0],
+    trunk_road: ['M8 3l-4 18M16 3l4 18M12 3v4m0 4v4m0 4v2', 0],
+    helipad: ['M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 7v10m7-10v10m-7-5h7', 0],
+    tower: ['M12 21V4m-5 3a7 7 0 0 1 10 0M9 10a4 4 0 0 1 6 0', 0],
+    military: ['M12 2l8 3v6c0 5-4 9-8 11-4-2-8-6-8-11V5z', 0],
+    school: ['M3 9l9-4 9 4-9 4zM7 11.5V17c0 2 10 2 10 0v-5.5', 0],
+    kindergarten: ['M12 4a3 3 0 1 0 .1 0M6 21v-5a6 6 0 0 1 12 0v5', 0],
+    hospital: ['M9 3h6v6h6v6h-6v6H9v-6H3V9h6z', 1],
+    fire_station: ['M12 2c0 5-5 7-5 12a5 5 0 0 0 10 0c0-3-2-4-3-6 0 3-2 3-2-6z', 1],
+    fuel_station: ['M5 21V4a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v17M5 21h9M7 6h5v4H7zM14 10h2v7a1.5 1.5 0 0 0 3 0V9l-2-2', 0],
+    park: ['M12 22v-7M12 2L6 12h3l-4 5h14l-4-5h3z', 0],
+    cemetery: ['M7 21V8a5 5 0 0 1 10 0v13zM12 10v6M9.5 12.5h5', 0]
+  };
+  function hazardSvg(kind, colour) {
+    var g = GLYPH[kind] || GLYPH.military;
+    return '<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="4" fill="#fff" stroke="' + colour + '" stroke-width="2"/>' +
+      '<path d="' + g[0] + '" ' + (g[1] ? 'fill="#333" stroke="none"' : 'fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"') + '/></svg>';
+  }
+  var hazardIcons = {};
+  function hazardIcon(kind) {
+    if (!hazardIcons[kind]) hazardIcons[kind] = L.divIcon({ className: 'hz', iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12], html: hazardSvg(kind, COLOUR[HAZARD_GROUP[kind] || 'sites']) });
+    return hazardIcons[kind];
+  }
+  function hazardLineStyle(kind, colour) {
+    if (kind === 'minor_power_line') return { color: colour, weight: 1.5, opacity: 0.8, dashArray: '3 5' };
+    if (kind === 'power_line') return { color: colour, weight: 2, opacity: 0.9, dashArray: '6 4' };
+    if (kind === 'railway') return { color: colour, weight: 3, opacity: 0.85, dashArray: '8 5' };
+    return { color: colour, weight: 3, opacity: 0.7 };
+  }
   var LayersPanel = L.Control.extend({
     onAdd: function () {
       var el = L.DomUtil.create('div', 'layers card' + (recall('layersOpen', window.innerWidth > 600) ? '' : ' closed'));
@@ -337,6 +386,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
           }
           var sw = L.DomUtil.create('span', 'sw sw-' + o.shape, row); sw.style.setProperty('--c', o.colour);
           if (o.shape === 'pin') { sw.innerHTML = pinSvg(o.colour); pinSwatch = sw; }
+          if (o.shape === 'icon') sw.innerHTML = hazardSvg(o.icon, o.colour);
           var lbl = L.DomUtil.create('span', 'lbl', row); lbl.textContent = o.label;
           L.DomUtil.create('span', 'count', row);
           if (inp) inp.onchange = function () { setOverlay(o.key, inp.checked); row.classList.toggle('off', !inp.checked); };
@@ -488,6 +538,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   function fetchWind() {
     if (!API_BASE || !map.hasLayer(groups.wind)) return;
     var b = map.getBounds().pad(0.3); // fetch beyond the view so small pans stay covered
+    if (!(b.getEast() > b.getWest()) || !(b.getNorth() > b.getSouth())) return; // not laid out yet
     var seq = ++windSeq;
     fetch(API_BASE + '/api/wind?bbox=' + [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map(function (v) { return v.toFixed(4); }).join(',') + '&z=' + map.getZoom())
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -613,11 +664,15 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     return 'other';
   }
 
+  // If the pane is resized just after the first render (embedded hosts lay out late), fit the view again.
+  var viewBounds = null, viewFittedAt = 0;
+  window.addEventListener('resize', function () { if (viewBounds && Date.now() - viewFittedAt < 3000) { map.invalidateSize(); map.fitBounds(viewBounds, { padding: [20, 20] }); } });
   function render(view) {
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
-    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, hazards: (view.hazards || []).length, spots: 0 };
+    var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, power: 0, transport: 0, aviation: 0, sites: 0, spots: 0 };
     var b = view.bbox;
-    map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [20, 20] });
+    viewBounds = [[b[1], b[0]], [b[3], b[2]]]; viewFittedAt = Date.now();
+    map.fitBounds(viewBounds, { padding: [20, 20] });
     var seenLand = {};
     view.landRestrictions.forEach(function (f) {
       var key = f.properties.kind === 'access_land' ? 'access' : f.properties.kind === 'designation' ? 'designation' : 'land';
@@ -625,11 +680,16 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       if (!seenLand[entryKey]) { seenLand[entryKey] = 1; counts[key]++; }
       L.geoJSON(f, { style: { color: COLOUR[key], weight: 1, fillOpacity: key === 'land' ? 0.18 : 0.1 } }).bindPopup('<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '')).addTo(groups[key]);
     });
-    var HAZARD_LABEL = { railway: 'Railway', motorway: 'Motorway', trunk_road: 'Trunk road', power_line: 'Power line', helipad: 'Helipad', military: 'Military land' };
     (view.hazards || []).forEach(function (f) {
-      var label = '<b>' + esc(HAZARD_LABEL[f.properties.kind] || f.properties.kind) + '</b>' + (f.properties.name ? '<br>' + esc(f.properties.name) : '') + (f.properties.operator ? '<br>' + esc(f.properties.operator) : '');
-      if (f.geometry.type === 'Point') L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { radius: 6, color: '#fff', fillColor: COLOUR.hazards, fillOpacity: 0.95, weight: 1.5 }).bindPopup(label).addTo(groups.hazards);
-      else L.geoJSON(f, { style: { color: COLOUR.hazards, weight: f.geometry.type === 'Polygon' ? 1 : 2.5, opacity: 0.85, fillOpacity: 0.12, dashArray: f.properties.kind === 'power_line' ? '4 4' : null } }).bindPopup(label).addTo(groups.hazards);
+      var kind = f.properties.kind, key = HAZARD_GROUP[kind] || 'sites', colour = COLOUR[key];
+      counts[key]++;
+      var label = '<b>' + esc(HAZARD_LABEL[kind] || kind) + '</b>' + (f.properties.name ? '<br>' + esc(f.properties.name) : '') + (f.properties.operator ? '<br>' + esc(f.properties.operator) : '');
+      if (f.geometry.type === 'Point') L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { icon: hazardIcon(kind) }).bindPopup(label).addTo(groups[key]);
+      else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') L.geoJSON(f, { style: hazardLineStyle(kind, colour) }).bindPopup(label).addTo(groups[key]);
+      else {
+        var poly = L.geoJSON(f, { style: { color: colour, weight: 1.5, opacity: 0.9, fillOpacity: 0.12 } }).bindPopup(label).addTo(groups[key]);
+        L.marker(poly.getBounds().getCenter(), { icon: hazardIcon(kind), interactive: false }).addTo(groups[key]);
+      }
     });
     view.zones.forEach(function (f) {
       var key = zoneGroup(f.properties);
@@ -659,7 +719,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     setCounts(counts);
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
     chipsEl.innerHTML = [
-      [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas'], [counts.hazards, 'hazard', 'hazards']
+      [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas'], [counts.power + counts.transport + counts.aviation + counts.sites, 'hazard', 'hazards']
     ].map(function (c) { return '<span class="chip' + (c[0] ? '' : ' zero') + '"><b>' + c[0] + '</b> ' + (c[0] === 1 ? c[1] : c[2]) + (c[3] ? ' ' + c[3] : '') + '</span>'; }).join('');
     dataSources = view.attribution || [];
     updateSources();

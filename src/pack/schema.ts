@@ -3,14 +3,19 @@
  * Bump SCHEMA_VERSION on any incompatible change; the loader refuses packs whose
  * `PRAGMA user_version` does not match.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 export const APPLICATION_ID = 0x44524e41; // 'DRNA'
 
 export const ZONE_TYPES = ['frz', 'prohibited', 'restricted', 'danger', 'other', 'prison'] as const;
 export const PATH_TYPES = ['footpath', 'bridleway', 'restricted_byway', 'boat', 'core_path'] as const;
 export const RESTRICTION_KINDS = ['landowner', 'byelaw', 'pspo', 'policy', 'access_land', 'designation'] as const;
 export const RESTRICTION_SCOPES = ['site', 'authority'] as const;
-export const HAZARD_KINDS = ['railway', 'motorway', 'trunk_road', 'power_line', 'helipad', 'military'] as const;
+export const HAZARD_KINDS = [
+  'railway', 'motorway', 'trunk_road',
+  'power_line', 'minor_power_line', 'pylon', 'substation', 'power_generator',
+  'helipad', 'tower', 'military',
+  'school', 'kindergarten', 'hospital', 'fire_station', 'fuel_station', 'park', 'cemetery',
+] as const;
 export const ADMIN_KINDS = ['lad'] as const;
 export const COUNTRIES = ['england', 'wales', 'scotland', 'northern_ireland'] as const;
 export const PARKING_KINDS = ['car_park', 'layby', 'rest_area', 'street_side'] as const;

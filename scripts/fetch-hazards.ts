@@ -1,8 +1,10 @@
 #!/usr/bin/env tsx
 /**
  * Ground hazards from OpenStreetMap: railways, motorways and trunk roads, power
- * lines, helipads and military land. Shares the cached Geofabrik extract with
- * the parking source and needs `osmium`.
+ * lines and pylons, substations and generators, helipads, masts, military land,
+ * and the places people gather (schools, nurseries, hospitals, fire and fuel
+ * stations, parks, cemeteries). Shares the cached Geofabrik extract with the
+ * parking source and needs `osmium`.
  */
 import { execFileSync } from 'node:child_process';
 import { createReadStream } from 'node:fs';
@@ -25,7 +27,7 @@ function hazardBbox(g: NormalisedHazard['geometry']): BBox {
   return bboxOfGeometry(g);
 }
 
-export const HAZARDS_ATTRIBUTION = 'Ground hazards (railways, motorways and trunk roads, power lines, helipads, military land): © OpenStreetMap contributors, Open Database Licence (ODbL), via the Geofabrik Great Britain extract.';
+export const HAZARDS_ATTRIBUTION = 'Ground hazards (railways, major roads, power lines, pylons, substations, generators, helipads, masts, military land, schools, hospitals, fire and fuel stations, parks, cemeteries): © OpenStreetMap contributors, Open Database Licence (ODbL), via the Geofabrik Great Britain extract.';
 
 export async function run(args: PipelineArgs): Promise<SourceReport> {
   const log = createBuildLog('hazards');
@@ -73,7 +75,7 @@ export async function run(args: PipelineArgs): Promise<SourceReport> {
       effectiveTo: null,
       version: fetchedAt.slice(0, 10),
       featureCount: kept,
-      notes: 'Advisory only; incomplete where OSM is incomplete (low-voltage power lines especially).',
+      notes: 'Advisory only; incomplete where OSM is incomplete (low-voltage lines and small substations especially).',
     },
     warnings: [...log.warnings],
     extra: { counts },

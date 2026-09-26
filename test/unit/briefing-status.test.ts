@@ -37,6 +37,11 @@ describe('briefing status', () => {
     const line = { id: 1, osmId: null, kind: 'power_line' as const, name: null, operator: null, ref: null, lon: -2, lat: 50 };
     expect(codes({ hazards: [{ ...line, distanceM: 120 }] })).toContain('hazard_near');
     expect(codes({ hazards: [{ ...line, distanceM: 400 }] })).not.toContain('hazard_near');
+    const school = { ...line, kind: 'school' as const, name: 'Test Primary School', distanceM: 90 };
+    expect(codes({ hazards: [school] })).not.toContain('hazard_near');
+    expect(codes({ hazards: [school] })).toContain('site_near');
+    expect(deriveBriefingStatus({ ...base, hazards: [school] }).status).toBe('go');
+    expect(deriveBriefingStatus({ ...base, hazards: [school], droneSubcategory: 'A3' }).reasons.find((r) => r.code === 'site_near')?.text).toContain('A3 flights must keep 150 m');
   });
   it('adds notes that never change the status', () => {
     const r = deriveBriefingStatus({ ...base, weather: 'caution', kp: 'active', restrictions: [{ ...FIXTURE_RESTRICTIONS[0], takeoffBanned: false }], notams: { covering: [], nearby: [{ id: 'A' } as never], unlocated: 2 }, pathsWithin1km: 0, droneSubcategory: 'A3' });

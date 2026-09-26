@@ -30,8 +30,8 @@ const FLOORS: Record<string, Record<string, number>> = {
   default: { zones: 1, rights_of_way: 0, land_restrictions: 0, gazetteer: 1, coverage: 0, parking: 0, hazards: 0, admin_areas: 0 },
 };
 
-const SIZE_WARN = 400 * 1024 * 1024;
-const SIZE_FAIL = 600 * 1024 * 1024;
+const SIZE_WARN = 500 * 1024 * 1024;
+const SIZE_FAIL = 800 * 1024 * 1024;
 
 export async function verifyPack(file: string, opts: VerifyOptions): Promise<VerifyResult> {
   const failures: string[] = [];

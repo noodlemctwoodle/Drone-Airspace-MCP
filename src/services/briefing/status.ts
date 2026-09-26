@@ -3,7 +3,7 @@ import type { Flyability } from '../weather/assessment.js';
 import type { GeomagneticLevel } from '../weather/space-weather.js';
 import { restrictionLabel, TYPE_LABEL } from '../airspace/verdict.js';
 import { truncate } from '../../formatters/units.js';
-import { HAZARD_LABEL } from '../../formatters/hazards.js';
+import { HAZARD_LABEL, isDangerHazard, isSiteHazard } from '../../formatters/hazards.js';
 
 /**
  * Deterministic go / caution / no-go for a pre-flight briefing. Rules run in a
@@ -77,8 +77,10 @@ export function deriveBriefingStatus(i: BriefingInput): { status: BriefingStatus
   if (i.weather === 'poor') add('caution', 'weather_poor', 'Weather in the window is rated poor for a small drone.');
   if (i.weather === null) add('caution', 'weather_unavailable', 'Weather forecast unavailable for the window; check conditions yourself.');
   if (i.kp === 'storm') add('caution', 'geomagnetic_storm', 'Geomagnetic storm in progress: GPS position and compass heading may be unreliable.');
-  const nearHazard = i.hazards.find((h) => h.distanceM <= 200);
+  const nearHazard = i.hazards.find((h) => isDangerHazard(h) && h.distanceM <= 200);
   if (nearHazard) add('caution', 'hazard_near', `${HAZARD_LABEL[nearHazard.kind] ?? nearHazard.kind}${nearHazard.name ? ` (${nearHazard.name})` : ''} ${nearHazard.distanceM} m away.`);
+  const nearSite = i.hazards.find((h) => isSiteHazard(h) && h.distanceM <= 150);
+  if (nearSite) add('note', 'site_near', `${HAZARD_LABEL[nearSite.kind] ?? nearSite.kind}${nearSite.name ? ` (${nearSite.name})` : ''} ${nearSite.distanceM} m away: people may gather there${i.droneSubcategory === 'A3' ? ', and A3 flights must keep 150 m from it' : ''}.`);
   if (i.weather === 'caution') add('note', 'weather_marginal', 'Weather in the window is marginal in places; see the hourly ratings.');
   if (i.kp === 'active') add('note', 'geomagnetic_active', 'Raised geomagnetic activity: GPS accuracy may be reduced.');
   const rules = i.restrictions.filter((r) => r.kind !== 'access_land' && r.kind !== 'designation');
@@ -91,7 +93,7 @@ export function deriveBriefingStatus(i: BriefingInput): { status: BriefingStatus
   if (access.length > 0) add('note', 'access_land', 'Open access land: the public may walk here off paths; that is not itself permission to take off, so check the landowner rules above.');
   const des = i.restrictions.filter((r) => r.kind === 'designation');
   if (des.length > 0) add('note', 'designation', `${des.map((r) => r.name).slice(0, 2).join(' and ')}: ${des.some((r) => r.accessClass === 'sssi') ? 'protected wildlife, do not disturb it' : 'follow the park authority\'s drone guidance'}.`);
-  if (i.droneSubcategory === 'A3') add('note', 'a3_separation', 'Your drone flies in A3: keep 150 m from residential, commercial, industrial and recreational areas; this server has no built-up-area layer to check that for you.');
+  if (i.droneSubcategory === 'A3') add('note', 'a3_separation', 'Your drone flies in A3: keep 150 m from residential, commercial, industrial and recreational areas; the sites listed here are cues, not a full built-up-area layer.');
   if (status === 'go') add('go', 'clear', `No permanent restriction at this point, no NOTAM covering it${i.weather ? `, weather ${i.weather} for the window` : ''}.`);
   return { status, reasons };
 }
