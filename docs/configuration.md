@@ -21,7 +21,8 @@ Back to the [README](../README.md).
 | `GEOCODE_CACHE_TTL_SECONDS` | `2592000` | 30 days |
 | `HTTP_TIMEOUT_MS` | `8000` | Live calls |
 | `FPV_AIRSPACE_CACHE_DIR` | `~/.cache/fpv-airspace` | Pack and caches (`DRONE_AIRSPACE_CACHE_DIR` and an existing `~/.cache/uk-drone-airspace-mcp` are still honoured) |
-| `SUPPORT_URL` | unset | Donation link shown in the map credits and the worker's landing JSON; empty hides it. GitHub Sponsors or a Stripe Payment Link |
+| `SUPPORT_URL` | unset | One-off donation link shown in the map credits and the worker's landing JSON; empty hides it |
+| `SUPPORT_MONTHLY_URL` | unset | Recurring donation link shown beside it |
 | `PACK_MANIFEST_URL` | latest GitHub release manifest | Point at a mirror or `file://` |
 | `PACK_PATH` | unset | Use a local pack and skip downloads |
 | `PACK_UPDATE_CHECK` | `true` | Background check for a newer pack |

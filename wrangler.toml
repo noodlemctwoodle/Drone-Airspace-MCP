@@ -18,6 +18,7 @@ NOTAM_CACHE_TTL_SECONDS = "1800"
 PUBLIC_URL = "https://fpv-airspace.fetchlabs.co.uk"
 # Donation link shown in the map credits: GitHub Sponsors, or a Stripe Payment Link once created. Empty hides it.
 SUPPORT_URL = "https://donate.stripe.com/3cI28sesu6T0f4n7IP2Nq00"
+SUPPORT_MONTHLY_URL = "https://donate.stripe.com/8x2bJ23NQcdke0j3sz2Nq01"
 # OS_NAMES_API_KEY is a secret: `wrangler secret put OS_NAMES_API_KEY`
 # Optional overrides with defaults in src/core/config.ts: OPEN_METEO_URL, OPEN_METEO_ELEVATION_URL,
 # NOAA_KP_URL, WEATHER_CACHE_TTL_SECONDS, ELEVATION_CACHE_TTL_SECONDS, SPACE_WEATHER_CACHE_TTL_SECONDS

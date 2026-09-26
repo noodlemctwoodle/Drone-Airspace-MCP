@@ -105,11 +105,12 @@ const BASE_OVERLAYS: Overlay[] = [
 ];
 export const OVERLAYS: readonly Overlay[] = [...BASE_OVERLAYS, ...HAZARD_OVERLAYS];
 
-export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null; supportUrl?: string | null }): string {
+export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null; supportUrl?: string | null; supportMonthlyUrl?: string | null }): string {
   const iconSvgBase64 = Buffer.from(ICON_SVG).toString('base64');
   const iconLinks = opts.apiBase ? `<link rel="apple-touch-icon" href="${opts.apiBase}/icon-180.png">\n<link rel="manifest" href="${opts.apiBase}/manifest.webmanifest">` : '';
   const apiBase = JSON.stringify(opts.apiBase ?? '');
   const supportUrl = JSON.stringify(opts.supportUrl && /^https:\/\//.test(opts.supportUrl) ? opts.supportUrl : '');
+  const supportMonthlyUrl = JSON.stringify(opts.supportMonthlyUrl && /^https:\/\//.test(opts.supportMonthlyUrl) ? opts.supportMonthlyUrl : '');
   const mode = JSON.stringify(opts.mode);
   const basemaps = JSON.stringify(BASEMAPS);
   const radar = JSON.stringify(RADAR);
@@ -365,6 +366,7 @@ ${iconLinks}
 (function () {
   var API_BASE = ${apiBase};
   var SUPPORT_URL = ${supportUrl};
+  var SUPPORT_MONTHLY_URL = ${supportMonthlyUrl};
   var MODE = ${mode};
   var BASEMAPS = ${basemaps};
   var RADAR = ${radar};
@@ -407,7 +409,10 @@ ${iconLinks}
     if (map.hasLayer(groups.radar)) items.push(RADAR.attribution);
     items.push('Built with Leaflet');
     sourcesList.innerHTML = items.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') +
-      (SUPPORT_URL ? '<li class="support">Free to use, funded by donations. <a href="' + esc(SUPPORT_URL) + '" target="_blank" rel="noopener">Support this project</a></li>' : '');
+      (SUPPORT_URL || SUPPORT_MONTHLY_URL ? '<li class="support">Free to use, funded by donations. ' +
+        (SUPPORT_URL ? '<a href="' + esc(SUPPORT_URL) + '" target="_blank" rel="noopener">One-off donation</a>' : '') +
+        (SUPPORT_URL && SUPPORT_MONTHLY_URL ? ' · ' : '') +
+        (SUPPORT_MONTHLY_URL ? '<a href="' + esc(SUPPORT_MONTHLY_URL) + '" target="_blank" rel="noopener">Monthly</a>' : '') + '</li>' : '');
   }
 
   // One layer group per overlay so each can be switched off; hidden ones are remembered.

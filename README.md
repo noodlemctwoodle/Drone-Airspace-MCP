@@ -10,7 +10,7 @@ Informational only. It is not a substitute for a NATS pre-flight briefing, the C
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/noodlemctwoodle)
 
-FPV Airspace is free and stays free: the data licences it relies on are for non-commercial use, so nothing is ever paywalled. If it saves you a wasted trip, a [one-off donation](https://donate.stripe.com/3cI28sesu6T0f4n7IP2Nq00) or [sponsoring on GitHub](https://github.com/sponsors/noodlemctwoodle) helps cover the hosting and the weather API.
+FPV Airspace is free and stays free: the data licences it relies on are for non-commercial use, so nothing is ever paywalled. If it saves you a wasted trip, a [one-off donation](https://donate.stripe.com/3cI28sesu6T0f4n7IP2Nq00), a [monthly donation](https://donate.stripe.com/8x2bJ23NQcdke0j3sz2Nq01) or [sponsoring on GitHub](https://github.com/sponsors/noodlemctwoodle) helps cover the hosting and the weather API.
 
 ## What it answers
 

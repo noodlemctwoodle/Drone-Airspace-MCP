@@ -67,6 +67,7 @@ const envSchema = z.object({
   GITHUB_TOKEN: z.string().optional(),
   PUBLIC_URL: z.string().optional().transform((v) => (v && /^https?:\/\//.test(v) ? v.replace(/\/+$/, '') : undefined)),
   SUPPORT_URL: z.string().optional().transform((v) => (v && /^https:\/\//.test(v) ? v : undefined)),
+  SUPPORT_MONTHLY_URL: z.string().optional().transform((v) => (v && /^https:\/\//.test(v) ? v : undefined)),
 });
 
 export interface Config {
@@ -97,6 +98,7 @@ export interface Config {
   /** Base URL of a hosted deployment; enables map links and the map app. */
   publicUrl: string | undefined;
   supportUrl?: string;
+  supportMonthlyUrl?: string;
 }
 
 export interface CliArgs {
@@ -179,5 +181,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cli: Partial<Cl
     githubToken: e.GITHUB_TOKEN && e.GITHUB_TOKEN.trim() !== '' ? e.GITHUB_TOKEN : undefined,
     publicUrl: e.PUBLIC_URL,
     supportUrl: e.SUPPORT_URL,
+    supportMonthlyUrl: e.SUPPORT_MONTHLY_URL,
   });
 }

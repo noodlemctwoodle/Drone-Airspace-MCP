@@ -126,7 +126,7 @@ export async function bootstrap(argv: string[]): Promise<void> {
           () => ({ version: VERSION, pack: packManager.status(), notamCacheAgeSeconds: deps.notams.status().ageSeconds }),
           '0.0.0.0',
           {
-            mapHtml: (origin) => mapHtml({ mode: 'page', apiBase: config.publicUrl ?? origin, supportUrl: config.supportUrl ?? null }),
+            mapHtml: (origin) => mapHtml({ mode: 'page', apiBase: config.publicUrl ?? origin, supportUrl: config.supportUrl ?? null, supportMonthlyUrl: config.supportMonthlyUrl ?? null }),
             viewData: async (params) => {
               const req = await resolveViewQuery(params, deps);
               return req ? buildViewData(deps, req) : undefined;
