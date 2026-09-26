@@ -184,13 +184,15 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .wx-foot .why.poor { color: var(--poor); }
 
   /* Sources: collapsed credit line that expands to the full attribution */
-  #sources { position: absolute; right: 10px; bottom: 10px; z-index: 1000; max-width: min(380px, calc(100vw - 20px)); font-size: 11.5px; }
-  #sources button { all: unset; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 11px; color: var(--muted); white-space: nowrap; }
-  #sources button .chev { width: 11px; height: 11px; transition: transform .15s; }
-  #sources.open button .chev { transform: rotate(180deg); }
-  #sources ul { display: none; list-style: none; margin: 0; padding: 0 12px 8px; color: var(--ink); }
+  #sources { position: absolute; right: 10px; bottom: 10px; z-index: 1001; width: 44px; height: 44px; font-size: 11.5px; }
+  #sources button { all: unset; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer; color: var(--ink); }
+  #sources button svg { width: 24px; height: 24px; }
+  #sources.open button { color: #fff; background: var(--accent); border-radius: 12px; }
+  #sources ul { display: none; position: absolute; right: 0; bottom: 54px; width: min(380px, calc(100vw - 20px)); list-style: none; margin: 0; padding: 4px 12px 8px; color: var(--ink); background: var(--panel); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   #sources.open ul { display: block; }
   #sources li { padding: 5px 0; border-top: 1px solid var(--line); line-height: 1.35; }
+  #sources li:first-child { border-top: 0; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* Layers panel */
   .layers { display: none; position: absolute; left: 10px; bottom: 64px; z-index: 1000; width: 256px; max-height: calc(100vh - 90px); overflow: auto; font-size: 13px; }
@@ -267,7 +269,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     #search .results { max-height: 40vh; }
     #bottom { display: flex; flex-direction: column; gap: 8px; position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; max-height: calc(100vh - 80px); }
     #bottom .fabrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
-    #sources { position: static; max-width: calc(100vw - 80px); }
+    #sources { position: relative; flex: none; }
+    #sources ul { right: auto; left: 0; width: calc(100vw - 20px); }
     #layers-fab { position: static; flex: none; }
     #info, #info.closed { position: static; width: auto; max-width: none; overflow: auto; min-height: 0; }
     #info.closed .place { padding-bottom: 10px; }
@@ -291,7 +294,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 <div id="bottom">
 <div class="fabrow">
 <div id="sources" class="card">
-  <button type="button" id="sources-btn"><span id="sources-label">Sources</span><svg class="chev" viewBox="0 0 16 16"><path d="M3 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  <button type="button" id="sources-btn" aria-label="Map credits and data sources"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="10" cy="6.4" r="1.1" fill="currentColor"/><path d="M8.6 9h1.9v5.2M8.6 14.2h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span id="sources-label" class="sr-only">Sources</span></button>
   <ul id="sources-list"></ul>
 </div>
 <button type="button" id="layers-fab" class="card" aria-label="Layers"><svg viewBox="0 0 20 20"><path d="M10 3l7 4-7 4-7-4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3 11l7 4 7-4M3 14.5l7 4 7-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" opacity=".65"/></svg></button>
@@ -322,7 +325,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   var sourcesEl = document.getElementById('sources'), sourcesLabel = document.getElementById('sources-label'), sourcesList = document.getElementById('sources-list');
   var loaded = false, dataSources = [];
   function setStatus(text) { placeEl.textContent = text; }
-  document.getElementById('sources-btn').onclick = function () { sourcesEl.classList.toggle('open'); };
+  document.getElementById('sources-btn').onclick = function () { var open = !sourcesEl.classList.contains('open'); sourcesEl.classList.toggle('open', open); if (open) setLayersSheet(false); };
   var infoEl = document.getElementById('info'), infoPill = document.getElementById('info-pill');
   var SMALL = window.innerWidth <= 720;
   if (!recall('infoOpen', !SMALL)) infoEl.classList.add('closed');
@@ -350,6 +353,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   function updateSources() {
     var sat = map.hasLayer(satellite);
     sourcesLabel.textContent = sat ? '© Esri' : '© OpenStreetMap';
+    document.getElementById('sources-btn').title = (sat ? 'Imagery © Esri' : 'Map © OpenStreetMap contributors') + '; tap for all sources';
     var items = [sat ? BASEMAPS.satellite.attribution : 'Map tiles ' + BASEMAPS.map.attribution].concat(dataSources);
     if (map.hasLayer(groups.radar)) items.push(RADAR.attribution);
     items.push('Built with Leaflet');
@@ -462,6 +466,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
   function setLayersSheet(open) {
     document.body.classList.toggle('layers-open', open);
+    if (open) sourcesEl.classList.remove('open');
     if (open && SMALL) infoEl.classList.add('closed');
     if (!SMALL) remember('layersOpen', open);
   }
