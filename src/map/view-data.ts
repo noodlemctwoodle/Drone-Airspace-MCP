@@ -82,13 +82,10 @@ const OTHER_HAZARD_KINDS = HAZARD_KINDS.filter((k) => !(LINE_HAZARD_KINDS as rea
 const LINE_HAZARD_LIMIT = 1500;
 const POINT_HAZARD_LIMIT = 600;
 export async function viewHazards(pack: PackRepository, bbox: BBox, lon: number, lat: number): Promise<Array<Hazard & { geometry: Geometry }>> {
-  const lines = await pack.hazardsInBbox(bbox, LINE_HAZARD_LIMIT, LINE_HAZARD_KINDS);
-  const others = await pack.hazardsInBbox(bbox, 4000, OTHER_HAZARD_KINDS);
-  const nearest = others
-    .map((h) => ({ h, d: (h.lon - lon) ** 2 + ((h.lat - lat) * 1.6) ** 2 }))
-    .sort((a, b) => a.d - b.d)
-    .slice(0, POINT_HAZARD_LIMIT)
-    .map((x) => x.h);
+  const [lines, nearest] = await Promise.all([
+    pack.hazardsInBbox(bbox, LINE_HAZARD_LIMIT, LINE_HAZARD_KINDS),
+    pack.hazardsInBbox(bbox, POINT_HAZARD_LIMIT, OTHER_HAZARD_KINDS, [lon, lat]),
+  ]);
   return [...lines, ...nearest];
 }
 

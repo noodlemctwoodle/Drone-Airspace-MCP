@@ -1113,14 +1113,17 @@ ${iconLinks}
     if (req.waypoints && req.waypoints.length > 1) q.set('waypoints', req.waypoints.map(function (w) { return Array.isArray(w) ? w[0] + ',' + w[1] : w; }).join(';'));
     if (!req.silent) setStatus('Loading…');
     var url = API_BASE + '/api/view?' + q.toString();
-    var seq = ++loadSeq;
+    // Tap and search loads supersede each other; quiet area loads have their own sequence and never cancel them.
+    var seq = req.silent ? ++areaSeq : ++loadSeq;
+    if (!req.silent) mainLoading = true;
+    var current = function () { return req.silent ? seq === areaSeq : seq === loadSeq; };
     var attempt = function (n) {
       return fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .catch(function (e) { if (n > 0 && !/^HTTP/.test(e.message)) return new Promise(function (res) { setTimeout(res, 800); }).then(function () { return attempt(n - 1); }); throw e; });
     };
-    attempt(1).then(function (view) { if (seq === loadSeq) render(view, { silent: !!req.silent }); if (req.silent) areaLoadDone(); }).catch(function (e) {
-      if (req.silent) areaLoadDone();
-      if (seq !== loadSeq) return;
+    attempt(1).then(function (view) { if (current()) render(view, { silent: !!req.silent }); if (req.silent) areaLoadDone(); else mainLoadDone(); }).catch(function (e) {
+      if (req.silent) areaLoadDone(); else mainLoadDone();
+      if (!current()) return;
       if (req.silent) return; // a quiet area load that failed just leaves the previous overlays
       setStatus('Could not load map data (' + e.message + ')');
       infoEl.classList.remove('closed');
@@ -1133,7 +1136,7 @@ ${iconLinks}
 
   // Pan or zoom away from the loaded area and the overlays for the new view load on their own,
   // quietly: the chosen point, its weather and the framing stay put. Zoomed out beyond 10 km it waits.
-  var loadSeq = 0, areaLoading = false, areaDirty = false, areaTimer = null;
+  var loadSeq = 0, areaSeq = 0, mainLoading = false, areaLoading = false, areaDirty = false, areaTimer = null;
   function setAreaHint(text) {
     var el = document.getElementById('area-hint');
     if (!text) { if (el) el.remove(); return; }
@@ -1142,7 +1145,7 @@ ${iconLinks}
   }
   function loadVisibleArea() {
     if (!loaded || !API_BASE || !currentCentre) return;
-    if (areaLoading) { areaDirty = true; return; } // a load is in flight: run again when it lands
+    if (areaLoading || mainLoading) { areaDirty = true; return; } // a load is in flight: run again when it lands
     var vb = map.getBounds();
     if (loadedBounds && loadedBounds.contains(vb)) return;
     var c = map.getCenter();
@@ -1152,6 +1155,10 @@ ${iconLinks}
     setAreaHint('loading this area…');
     areaLoading = true;
     load({ lat: Math.round(c.lat * 1e5) / 1e5, lon: Math.round(c.lng * 1e5) / 1e5, radiusM: Math.max(300, radius), silent: true });
+  }
+  function mainLoadDone() {
+    mainLoading = false;
+    if (areaDirty) { areaDirty = false; setTimeout(loadVisibleArea, 50); }
   }
   function areaLoadDone() {
     areaLoading = false;

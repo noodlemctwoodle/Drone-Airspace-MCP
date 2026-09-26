@@ -60,7 +60,7 @@ export interface PackRepository {
   /** Ground hazards near a point, nearest first, at most three per kind. */
   hazardsNear(lon: number, lat: number, limitMetres?: number, n?: number): Promise<HazardHit[]>;
   /** Hazards whose bbox touches the box, with geometry, for the map. */
-  hazardsInBbox(bbox: BBox, limit?: number, kinds?: readonly string[]): Promise<Array<Hazard & { geometry: Geometry }>>;
+  hazardsInBbox(bbox: BBox, limit?: number, kinds?: readonly string[], nearestTo?: [number, number]): Promise<Array<Hazard & { geometry: Geometry }>>;
   /** The local authority containing a point, if the pack knows it. */
   adminAreaAt(lon: number, lat: number): Promise<AdminArea | null>;
   /** Car parks, laybys and rest areas within `limitMetres`, nearest first. Private ones are excluded unless asked for. */
@@ -430,12 +430,15 @@ export class QueryPackRepository implements PackRepository {
     return out;
   }
 
-  async hazardsInBbox(bbox: BBox, limit = 300, kinds?: readonly string[]): Promise<Array<Hazard & { geometry: Geometry }>> {
+  async hazardsInBbox(bbox: BBox, limit = 300, kinds?: readonly string[], nearestTo?: [number, number]): Promise<Array<Hazard & { geometry: Geometry }>> {
     const kindFilter = kinds && kinds.length > 0 ? ` AND h.kind IN (${kinds.map(() => '?').join(',')})` : '';
+    // Nearest first is decided in SQL so only `limit` rows, geometry included, leave the database.
+    const order = nearestTo ? ' ORDER BY (h.lon - ?) * (h.lon - ?) + (h.lat - ?) * (h.lat - ?) * 2.6' : '';
+    const orderParams = nearestTo ? [nearestTo[0], nearestTo[0], nearestTo[1], nearestTo[1]] : [];
     const rows = await this.q.all(
       `SELECT h.* FROM hazards_rtree r JOIN hazards h ON h.id = r.id
-       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?${kindFilter} LIMIT ?`,
-      [bbox[2], bbox[0], bbox[3], bbox[1], ...(kinds && kinds.length > 0 ? kinds : []), limit]
+       WHERE r.min_lon <= ? AND r.max_lon >= ? AND r.min_lat <= ? AND r.max_lat >= ?${kindFilter}${order} LIMIT ?`,
+      [bbox[2], bbox[0], bbox[3], bbox[1], ...(kinds && kinds.length > 0 ? kinds : []), ...orderParams, limit]
     );
     const out: Array<Hazard & { geometry: Geometry }> = [];
     for (const row of rows) {

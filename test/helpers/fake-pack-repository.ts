@@ -345,7 +345,7 @@ export class FakePackRepository implements PackRepository {
       .slice(0, n)
       .map(({ geometry: _g, ...rest }) => rest);
   }
-  async hazardsInBbox(bbox: BBox, _limit?: number, kinds?: readonly string[]): Promise<Array<Hazard & { geometry: Geometry }>> {
+  async hazardsInBbox(bbox: BBox, _limit?: number, kinds?: readonly string[], _nearestTo?: [number, number]): Promise<Array<Hazard & { geometry: Geometry }>> {
     const poly = bboxPolygon(bbox);
     return this.hazards.filter((h) => booleanIntersects(poly, h.geometry) && (!kinds || kinds.length === 0 || kinds.includes(h.kind)));
   }
