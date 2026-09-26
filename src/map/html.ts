@@ -237,8 +237,8 @@ ${iconLinks}
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   #donate { position: absolute; left: 64px; bottom: 10px; z-index: 1001; height: 44px; background: #e0245e; box-shadow: var(--shadow); }
   #donate[hidden] { display: none; }
-  #donate button { all: unset; display: flex; align-items: center; gap: 7px; height: 44px; padding: 0 16px 0 13px; cursor: pointer; color: #fff; font-weight: 700; font-size: 14px; letter-spacing: .01em; }
-  #donate button svg { width: 20px; height: 20px; }
+  #donate button { all: unset; display: flex; align-items: center; gap: 5px; height: 44px; padding: 0 11px 0 9px; cursor: pointer; color: #fff; font-weight: 700; font-size: 13.5px; }
+  #donate button svg { width: 17px; height: 17px; }
   #donate.open { background: #b71c46; }
   #donate .pop { display: none; position: absolute; left: 0; bottom: 54px; box-sizing: border-box; width: min(300px, calc(100vw - 20px)); padding: 12px 14px; background: var(--panel); color: var(--ink); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 13px; }
   #donate.open .pop { display: block; }
