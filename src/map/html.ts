@@ -188,7 +188,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   #sources button { all: unset; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer; color: var(--ink); }
   #sources button svg { width: 24px; height: 24px; }
   #sources.open button { color: #fff; background: var(--accent); border-radius: 12px; }
-  #sources ul { display: none; position: absolute; right: 0; bottom: 54px; width: min(380px, calc(100vw - 20px)); list-style: none; margin: 0; padding: 4px 12px 8px; color: var(--ink); background: var(--panel); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  #sources ul { display: none; position: absolute; right: 0; bottom: 54px; box-sizing: border-box; width: min(380px, calc(100vw - 20px)); list-style: none; margin: 0; padding: 4px 12px 8px; color: var(--ink); background: var(--panel); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   #sources.open ul { display: block; }
   #sources li { padding: 5px 0; border-top: 1px solid var(--line); line-height: 1.35; }
   #sources li:first-child { border-top: 0; }
