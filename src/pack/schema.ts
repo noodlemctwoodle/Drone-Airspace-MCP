@@ -11,7 +11,7 @@ export const PATH_TYPES = ['footpath', 'bridleway', 'restricted_byway', 'boat', 
 export const RESTRICTION_KINDS = ['landowner', 'byelaw', 'pspo', 'policy', 'access_land', 'designation'] as const;
 export const RESTRICTION_SCOPES = ['site', 'authority'] as const;
 export const HAZARD_KINDS = [
-  'railway', 'motorway', 'trunk_road',
+  'railway', 'motorway', 'trunk_road', 'bridge',
   'power_line', 'minor_power_line', 'pylon', 'substation', 'power_generator',
   'helipad', 'tower', 'military',
   'school', 'kindergarten', 'hospital', 'fire_station', 'fuel_station', 'park', 'cemetery',

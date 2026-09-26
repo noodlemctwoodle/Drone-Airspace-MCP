@@ -24,6 +24,7 @@ export const HAZARD_FILTERS = [
   'n/power=tower',
   'nwr/power=substation,plant,generator',
   'nwr/man_made=tower,mast,communications_tower',
+  'wr/man_made=bridge',
   'nwr/aeroway=helipad',
   'nwr/emergency=landing_site',
   'wr/landuse=military',
@@ -37,7 +38,7 @@ const MIN_LINE_M = 30;
 /** Kinds stored as lines. */
 const LINE_KINDS = new Set<HazardKind>(['railway', 'motorway', 'trunk_road', 'power_line', 'minor_power_line']);
 /** Kinds always collapsed to a point, even when mapped as an area: a marker says all a pilot needs. */
-const POINT_KINDS = new Set<HazardKind>(['pylon', 'power_generator', 'helipad', 'tower']);
+const POINT_KINDS = new Set<HazardKind>(['pylon', 'power_generator', 'helipad', 'tower', 'bridge']);
 
 /**
  * Classify an OSM feature exported by `osmium export` (tags as properties).
@@ -62,6 +63,7 @@ export function classifyHazard(tags: Record<string, unknown>): HazardKind | unde
     case 'generator': return t('generator:source') === 'solar' ? undefined : 'power_generator';
   }
   if (t('aeroway') === 'helipad' || t('emergency') === 'landing_site') return 'helipad';
+  if (t('man_made') === 'bridge') return 'bridge';
   if (['tower', 'mast', 'communications_tower'].includes(t('man_made'))) {
     if (t('man_made') === 'tower' && ['bell_tower', 'observation', 'watchtower', 'minaret', 'clock'].includes(t('tower:type'))) return undefined;
     return 'tower';

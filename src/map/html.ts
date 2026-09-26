@@ -381,9 +381,9 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   // Layers panel: base map switch plus a checkbox per overlay, grouped by section.
   // Ground hazards: a white tile with a glyph per kind, in the colour of its group (like a road sign).
   var HAZARD_GROUP = { power_line: 'power', minor_power_line: 'power', pylon: 'power', substation: 'power', power_generator: 'power',
-    railway: 'transport', motorway: 'transport', trunk_road: 'transport', helipad: 'aviation', tower: 'aviation', military: 'aviation',
+    railway: 'transport', motorway: 'transport', trunk_road: 'transport', bridge: 'transport', helipad: 'aviation', tower: 'aviation', military: 'aviation',
     school: 'sites', kindergarten: 'sites', hospital: 'sites', fire_station: 'sites', fuel_station: 'sites', park: 'sites', cemetery: 'sites' };
-  var HAZARD_LABEL = { railway: 'Railway', motorway: 'Motorway', trunk_road: 'Trunk road', power_line: 'Power line', minor_power_line: 'Minor power line', pylon: 'Pylon', substation: 'Substation', power_generator: 'Power generator',
+  var HAZARD_LABEL = { railway: 'Railway', motorway: 'Motorway', trunk_road: 'Trunk road', bridge: 'Bridge', power_line: 'Power line', minor_power_line: 'Minor power line', pylon: 'Pylon', substation: 'Substation', power_generator: 'Power generator',
     helipad: 'Helipad', tower: 'Mast or tower', military: 'Military land', school: 'School', kindergarten: 'Nursery', hospital: 'Hospital', fire_station: 'Fire station', fuel_station: 'Fuel station', park: 'Park', cemetery: 'Cemetery' };
   var GLYPH = {
     pylon: ['M8 21L12 3l4 18M9.3 15h5.4M10.4 9.5h3.2M5 7.5h14', 0],
@@ -394,6 +394,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     railway: ['M7 4h10v12H7zM8 8h8M9 16l-2 4m8-4l2 4M10 12.5h.5M13.5 12.5h.5', 0],
     motorway: ['M8 3l-4 18M16 3l4 18M12 3v4m0 4v4m0 4v2', 0],
     trunk_road: ['M8 3l-4 18M16 3l4 18M12 3v4m0 4v4m0 4v2', 0],
+    bridge: ['M2 18h20M4 18v-5a8 8 0 0 1 16 0v5M9 18v-4a3 3 0 0 1 6 0v4', 0],
     helipad: ['M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 7v10m7-10v10m-7-5h7', 0],
     tower: ['M12 21V4m-5 3a7 7 0 0 1 10 0M9 10a4 4 0 0 1 6 0', 0],
     military: ['M12 2l8 3v6c0 5-4 9-8 11-4-2-8-6-8-11V5z', 0],

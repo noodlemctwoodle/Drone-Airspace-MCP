@@ -28,7 +28,7 @@ function hazardBbox(g: NormalisedHazard['geometry']): BBox {
   return bboxOfGeometry(g);
 }
 
-export const HAZARDS_ATTRIBUTION = 'Ground hazards (railways, major roads, power lines, pylons, substations, generators, helipads, masts, military land, schools, hospitals, fire and fuel stations, parks, cemeteries): © OpenStreetMap contributors, Open Database Licence (ODbL), via the Geofabrik Great Britain and Ireland extracts.';
+export const HAZARDS_ATTRIBUTION = 'Ground hazards (railways, major roads, bridges, power lines, pylons, substations, generators, helipads, masts, military land, schools, hospitals, fire and fuel stations, parks, cemeteries): © OpenStreetMap contributors, Open Database Licence (ODbL), via the Geofabrik Great Britain and Ireland extracts.';
 
 export async function run(args: PipelineArgs): Promise<SourceReport> {
   const log = createBuildLog('hazards');

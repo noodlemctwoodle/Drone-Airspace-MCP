@@ -5,6 +5,7 @@ export const HAZARD_LABEL: Record<HazardKind, string> = {
   railway: 'railway',
   motorway: 'motorway',
   trunk_road: 'trunk road',
+  bridge: 'bridge',
   power_line: 'power line',
   minor_power_line: 'minor power line',
   pylon: 'pylon',
@@ -26,7 +27,7 @@ export const HAZARD_LABEL: Record<HazardKind, string> = {
 export type HazardGroup = 'power' | 'transport' | 'aviation' | 'sites';
 export const HAZARD_GROUP: Record<HazardKind, HazardGroup> = {
   power_line: 'power', minor_power_line: 'power', pylon: 'power', substation: 'power', power_generator: 'power',
-  railway: 'transport', motorway: 'transport', trunk_road: 'transport',
+  railway: 'transport', motorway: 'transport', trunk_road: 'transport', bridge: 'transport',
   helipad: 'aviation', tower: 'aviation', military: 'aviation',
   school: 'sites', kindergarten: 'sites', hospital: 'sites', fire_station: 'sites', fuel_station: 'sites', park: 'sites', cemetery: 'sites',
 };
@@ -36,7 +37,7 @@ export const HAZARD_GROUP: Record<HazardKind, HazardGroup> = {
  * briefing treats one within 200 m as a caution and the spot finder marks a
  * candidate down for it.
  */
-export const DANGER_KINDS = new Set<HazardKind>(['railway', 'motorway', 'trunk_road', 'power_line', 'minor_power_line', 'pylon', 'substation', 'power_generator', 'helipad', 'tower', 'military', 'fuel_station']);
+export const DANGER_KINDS = new Set<HazardKind>(['railway', 'motorway', 'trunk_road', 'bridge', 'power_line', 'minor_power_line', 'pylon', 'substation', 'power_generator', 'helipad', 'tower', 'military', 'fuel_station']);
 /**
  * Places where people gather: the Drone Code's A3 separation (150 m from
  * residential, commercial, industrial and recreational areas) and the general

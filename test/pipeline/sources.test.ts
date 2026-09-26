@@ -228,6 +228,7 @@ describe('osm hazards', () => {
     expect(classifyHazard({ power: 'generator', 'generator:source': 'wind' })).toBe('power_generator');
     expect(classifyHazard({ power: 'generator', 'generator:source': 'solar' })).toBeUndefined();
     expect(classifyHazard({ man_made: 'mast' })).toBe('tower');
+    expect(classifyHazard({ man_made: 'bridge' })).toBe('bridge');
     expect(classifyHazard({ man_made: 'tower', 'tower:type': 'bell_tower' })).toBeUndefined();
     expect(classifyHazard({ amenity: 'school' })).toBe('school');
     expect(classifyHazard({ amenity: 'college' })).toBe('school');
@@ -271,6 +272,8 @@ describe('osm hazards', () => {
     expect(pylon[0]).toMatchObject({ kind: 'pylon', ref: 'ZZ123', geometry: { type: 'Point', coordinates: [-2.512346, 51.4] } });
     const mastArea = normaliseHazardFeature({ geometry: { type: 'Polygon', coordinates: square }, properties: { man_made: 'mast' } });
     expect(mastArea[0].geometry.type).toBe('Point');
+    const bridge = normaliseHazardFeature({ geometry: { type: 'Polygon', coordinates: square }, properties: { man_made: 'bridge', name: 'Severn Bridge' } });
+    expect(bridge[0]).toMatchObject({ kind: 'bridge', name: 'Severn Bridge', geometry: { type: 'Point' } });
     const sub = normaliseHazardFeature({ geometry: { type: 'Polygon', coordinates: square }, properties: { power: 'substation', operator: 'National Grid' } });
     expect(sub[0]).toMatchObject({ kind: 'substation', operator: 'National Grid' });
     expect(sub[0].geometry.type).toBe('Polygon');

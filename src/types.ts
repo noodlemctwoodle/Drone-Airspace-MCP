@@ -96,7 +96,7 @@ export interface ParkingHit extends Parking {
   distanceM: number;
 }
 export type HazardKind =
-  | 'railway' | 'motorway' | 'trunk_road'
+  | 'railway' | 'motorway' | 'trunk_road' | 'bridge'
   | 'power_line' | 'minor_power_line' | 'pylon' | 'substation' | 'power_generator'
   | 'helipad' | 'tower' | 'military'
   | 'school' | 'kindergarten' | 'hospital' | 'fire_station' | 'fuel_station' | 'park' | 'cemetery';
