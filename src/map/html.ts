@@ -235,12 +235,12 @@ ${iconLinks}
   #sources li:first-child { border-top: 0; }
   #sources li.support a { color: var(--accent); font-weight: 600; text-decoration: none; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  #donate { position: absolute; right: 64px; bottom: 10px; z-index: 1001; width: 44px; height: 44px; }
+  #donate { position: absolute; left: 64px; bottom: 10px; z-index: 1001; height: 44px; background: #e0245e; box-shadow: var(--shadow); }
   #donate[hidden] { display: none; }
-  #donate button { all: unset; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer; color: #e0245e; }
-  #donate button svg { width: 24px; height: 24px; }
-  #donate.open button { color: #fff; background: #e0245e; border-radius: 12px; }
-  #donate .pop { display: none; position: absolute; right: 0; bottom: 54px; box-sizing: border-box; width: min(300px, calc(100vw - 20px)); padding: 12px 14px; background: var(--panel); color: var(--ink); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 13px; }
+  #donate button { all: unset; display: flex; align-items: center; gap: 7px; height: 44px; padding: 0 16px 0 13px; cursor: pointer; color: #fff; font-weight: 700; font-size: 14px; letter-spacing: .01em; }
+  #donate button svg { width: 20px; height: 20px; }
+  #donate.open { background: #b71c46; }
+  #donate .pop { display: none; position: absolute; left: 0; bottom: 54px; box-sizing: border-box; width: min(300px, calc(100vw - 20px)); padding: 12px 14px; background: var(--panel); color: var(--ink); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 13px; }
   #donate.open .pop { display: block; }
   #donate .pop b { display: block; font-size: 14px; margin-bottom: 4px; }
   #donate .pop p { margin: 0 0 10px; color: var(--muted); line-height: 1.4; }
@@ -329,10 +329,10 @@ ${iconLinks}
     #bottom { display: flex; flex-direction: column; gap: 8px; position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; max-height: calc(100vh - 80px); }
     #bottom .fabrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
     #sources { position: relative; right: auto; bottom: auto; flex: none; margin-left: auto; }
-    #donate { position: relative; right: auto; bottom: auto; flex: none; margin-left: 8px; }
-    #donate .pop { right: 0; }
+    #donate { position: relative; left: auto; bottom: auto; flex: none; order: -1; margin-left: 8px; }
+    #donate .pop { left: 0; }
     #sources ul { right: 0; left: auto; width: calc(100vw - 20px); }
-    #layers-fab { position: static; flex: none; order: -1; }
+    #layers-fab { position: static; flex: none; order: -2; }
     #info, #info.closed { position: static; width: auto; max-width: 100%; min-width: 0; overflow: auto; min-height: 0; }
     .drone-row select { min-width: 0; max-width: 100%; }
     .wx-days { min-width: 0; }
@@ -361,7 +361,7 @@ ${iconLinks}
   <ul id="sources-list"></ul>
 </div>
 <div id="donate" class="card" hidden>
-  <button type="button" id="donate-btn" aria-label="Support this project" title="Support this project"><svg viewBox="0 0 20 20"><path d="M10 17s-6.5-4.1-6.5-8.6A3.6 3.6 0 0 1 10 6.4a3.6 3.6 0 0 1 6.5 2c0 4.5-6.5 8.6-6.5 8.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
+  <button type="button" id="donate-btn" title="Support this project"><svg viewBox="0 0 20 20"><path d="M10 17s-6.5-4.1-6.5-8.6A3.6 3.6 0 0 1 10 6.4a3.6 3.6 0 0 1 6.5 2c0 4.5-6.5 8.6-6.5 8.6z" fill="currentColor"/></svg><span>Donate</span></button>
   <div class="pop">
     <b>Support FPV Airspace</b>
     <p>Free to use and free of adverts. Donations cover the hosting and the weather data. Nothing is unlocked.</p>
