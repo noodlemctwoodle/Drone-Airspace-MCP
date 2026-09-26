@@ -1114,8 +1114,8 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       return fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .catch(function (e) { if (n > 0 && !/^HTTP/.test(e.message)) return new Promise(function (res) { setTimeout(res, 800); }).then(function () { return attempt(n - 1); }); throw e; });
     };
-    attempt(1).then(function (view) { if (seq !== loadSeq) return; render(view, { silent: !!req.silent }); areaLoading = false; }).catch(function (e) {
-      areaLoading = false;
+    attempt(1).then(function (view) { if (seq === loadSeq) render(view, { silent: !!req.silent }); if (req.silent) areaLoadDone(); }).catch(function (e) {
+      if (req.silent) areaLoadDone();
       if (seq !== loadSeq) return;
       if (req.silent) return; // a quiet area load that failed just leaves the previous overlays
       setStatus('Could not load map data (' + e.message + ')');
@@ -1129,17 +1129,30 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 
   // Pan or zoom away from the loaded area and the overlays for the new view load on their own,
   // quietly: the chosen point, its weather and the framing stay put. Zoomed out beyond 10 km it waits.
-  var loadSeq = 0, areaLoading = false, areaTimer = null;
+  var loadSeq = 0, areaLoading = false, areaDirty = false, areaTimer = null;
+  function setAreaHint(text) {
+    var el = document.getElementById('area-hint');
+    if (!text) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('span'); el.id = 'area-hint'; el.className = 'chip zero'; chipsEl.appendChild(el); }
+    el.textContent = text;
+  }
   function loadVisibleArea() {
-    if (!loaded || !API_BASE || !currentCentre || areaLoading) return;
+    if (!loaded || !API_BASE || !currentCentre) return;
+    if (areaLoading) { areaDirty = true; return; } // a load is in flight: run again when it lands
     var vb = map.getBounds();
     if (loadedBounds && loadedBounds.contains(vb)) return;
     var c = map.getCenter();
     var halfW = map.distance(vb.getNorthWest(), vb.getNorthEast()) / 2, halfH = map.distance(vb.getNorthWest(), vb.getSouthWest()) / 2;
     var radius = Math.round(Math.max(halfW, halfH) * 1.15);
-    if (radius > 10000) return;
+    if (radius > 10000) { setAreaHint('zoom in to load this area'); return; }
+    setAreaHint('loading this area…');
     areaLoading = true;
     load({ lat: Math.round(c.lat * 1e5) / 1e5, lon: Math.round(c.lng * 1e5) / 1e5, radiusM: Math.max(300, radius), silent: true });
+  }
+  function areaLoadDone() {
+    areaLoading = false;
+    setAreaHint('');
+    if (areaDirty) { areaDirty = false; setTimeout(loadVisibleArea, 50); }
   }
   map.on('moveend zoomend', function () { clearTimeout(areaTimer); areaTimer = setTimeout(loadVisibleArea, 650); });
 
