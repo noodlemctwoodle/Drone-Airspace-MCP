@@ -235,6 +235,18 @@ ${iconLinks}
   #sources li:first-child { border-top: 0; }
   #sources li.support a { color: var(--accent); font-weight: 600; text-decoration: none; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #donate { position: absolute; right: 64px; bottom: 10px; z-index: 1001; width: 44px; height: 44px; }
+  #donate[hidden] { display: none; }
+  #donate button { all: unset; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer; color: #e0245e; }
+  #donate button svg { width: 24px; height: 24px; }
+  #donate.open button { color: #fff; background: #e0245e; border-radius: 12px; }
+  #donate .pop { display: none; position: absolute; right: 0; bottom: 54px; box-sizing: border-box; width: min(300px, calc(100vw - 20px)); padding: 12px 14px; background: var(--panel); color: var(--ink); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 13px; }
+  #donate.open .pop { display: block; }
+  #donate .pop b { display: block; font-size: 14px; margin-bottom: 4px; }
+  #donate .pop p { margin: 0 0 10px; color: var(--muted); line-height: 1.4; }
+  #donate .row { display: flex; gap: 8px; }
+  #donate .row a { flex: 1; text-align: center; padding: 8px 10px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; text-decoration: none; font-size: 13px; }
+  #donate .row a.alt { background: rgba(128,140,152,.16); color: var(--ink); }
 
   /* Layers panel */
   .layers { display: none; position: absolute; left: 10px; bottom: 64px; z-index: 1000; width: 256px; max-height: calc(100vh - 134px); overflow: auto; font-size: 13px; }
@@ -316,7 +328,9 @@ ${iconLinks}
     #search input { font-size: 16px; }
     #bottom { display: flex; flex-direction: column; gap: 8px; position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; max-height: calc(100vh - 80px); }
     #bottom .fabrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
-    #sources { position: relative; right: auto; bottom: auto; flex: none; }
+    #sources { position: relative; right: auto; bottom: auto; flex: none; margin-left: auto; }
+    #donate { position: relative; right: auto; bottom: auto; flex: none; margin-left: 8px; }
+    #donate .pop { right: 0; }
     #sources ul { right: 0; left: auto; width: calc(100vw - 20px); }
     #layers-fab { position: static; flex: none; order: -1; }
     #info, #info.closed { position: static; width: auto; max-width: 100%; min-width: 0; overflow: auto; min-height: 0; }
@@ -345,6 +359,14 @@ ${iconLinks}
 <div id="sources" class="card">
   <button type="button" id="sources-btn" aria-label="Map credits and data sources"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="10" cy="6.4" r="1.1" fill="currentColor"/><path d="M8.6 9h1.9v5.2M8.6 14.2h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span id="sources-label" class="sr-only">Sources</span></button>
   <ul id="sources-list"></ul>
+</div>
+<div id="donate" class="card" hidden>
+  <button type="button" id="donate-btn" aria-label="Support this project" title="Support this project"><svg viewBox="0 0 20 20"><path d="M10 17s-6.5-4.1-6.5-8.6A3.6 3.6 0 0 1 10 6.4a3.6 3.6 0 0 1 6.5 2c0 4.5-6.5 8.6-6.5 8.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
+  <div class="pop">
+    <b>Support FPV Airspace</b>
+    <p>Free to use and free of adverts. Donations cover the hosting and the weather data. Nothing is unlocked.</p>
+    <div class="row" id="donate-links"></div>
+  </div>
 </div>
 <button type="button" id="layers-fab" class="card" aria-label="Layers"><svg viewBox="0 0 20 20"><path d="M10 3l7 4-7 4-7-4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3 11l7 4 7-4M3 14.5l7 4 7-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" opacity=".65"/></svg></button>
 </div>
@@ -376,7 +398,16 @@ ${iconLinks}
   var sourcesEl = document.getElementById('sources'), sourcesLabel = document.getElementById('sources-label'), sourcesList = document.getElementById('sources-list');
   var loaded = false, dataSources = [];
   function setStatus(text) { placeEl.textContent = text; }
-  document.getElementById('sources-btn').onclick = function () { var open = !sourcesEl.classList.contains('open'); sourcesEl.classList.toggle('open', open); if (open) setLayersSheet(false); };
+  var donateEl = document.getElementById('donate');
+  if (SUPPORT_URL || SUPPORT_MONTHLY_URL) {
+    donateEl.hidden = false;
+    document.getElementById('donate-links').innerHTML =
+      (SUPPORT_URL ? '<a href="' + esc(SUPPORT_URL) + '" target="_blank" rel="noopener">One-off</a>' : '') +
+      (SUPPORT_MONTHLY_URL ? '<a class="alt" href="' + esc(SUPPORT_MONTHLY_URL) + '" target="_blank" rel="noopener">Monthly</a>' : '');
+    document.getElementById('donate-btn').onclick = function () { var open = !donateEl.classList.contains('open'); donateEl.classList.toggle('open', open); if (open) { sourcesEl.classList.remove('open'); setLayersSheet(false); } };
+    document.addEventListener('click', function (e) { if (!donateEl.contains(e.target)) donateEl.classList.remove('open'); });
+  }
+  document.getElementById('sources-btn').onclick = function () { var open = !sourcesEl.classList.contains('open'); sourcesEl.classList.toggle('open', open); if (open) { setLayersSheet(false); donateEl.classList.remove('open'); } };
   var infoEl = document.getElementById('info'), infoPill = document.getElementById('info-pill');
   var SMALL = window.innerWidth <= 720;
   if (!recall('infoOpen', !SMALL)) infoEl.classList.add('closed');
@@ -572,7 +603,7 @@ ${iconLinks}
   }
   function setLayersSheet(open) {
     document.body.classList.toggle('layers-open', open);
-    if (open) sourcesEl.classList.remove('open');
+    if (open) { sourcesEl.classList.remove('open'); donateEl.classList.remove('open'); }
     if (open && SMALL) infoEl.classList.add('closed');
     if (!SMALL) remember('layersOpen', open);
   }
