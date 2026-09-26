@@ -269,7 +269,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     #search .results { max-height: 40vh; }
     #bottom { display: flex; flex-direction: column; gap: 8px; position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; max-height: calc(100vh - 80px); }
     #bottom .fabrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
-    #sources { position: relative; flex: none; }
+    #sources { position: relative; right: auto; bottom: auto; flex: none; }
     #sources ul { right: auto; left: 0; width: calc(100vw - 20px); }
     #layers-fab { position: static; flex: none; }
     #info, #info.closed { position: static; width: auto; max-width: none; overflow: auto; min-height: 0; }
