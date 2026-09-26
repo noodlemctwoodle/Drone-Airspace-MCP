@@ -115,6 +115,22 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .card { background: var(--panel); color: var(--ink); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   h2, h3 { margin: 0; font-weight: 600; }
 
+  /* Search box: beside the zoom control, results drop down beneath it */
+  #search { position: absolute; top: 10px; left: 56px; z-index: 1001; width: 320px; max-width: calc(100vw - 66px); margin: 0; }
+  #search .bar { display: flex; align-items: center; gap: 8px; padding: 5px 5px 5px 12px; }
+  #search .ico { flex: none; width: 15px; height: 15px; color: var(--muted); }
+  #search input { flex: 1; min-width: 0; font: inherit; font-size: 13.5px; color: var(--ink); background: transparent; border: 0; outline: 0; padding: 4px 0; }
+  #search input::placeholder { color: var(--muted); }
+  #search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+  #search button { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #search button svg { width: 14px; height: 14px; }
+  #search .results { border-top: 1px solid var(--line); max-height: 240px; overflow: auto; }
+  #search .results:empty { display: none; }
+  #search .results div { padding: 8px 12px; font-size: 13px; line-height: 1.3; cursor: pointer; }
+  #search .results div:hover { background: rgba(128,140,152,.16); }
+  #search .results .msg { color: var(--muted); cursor: default; }
+  #search .results .msg:hover { background: none; }
+
   /* Info card: place, counts, conditions */
   #info { position: absolute; top: 10px; right: 10px; z-index: 1000; width: 292px; max-width: calc(100vw - 20px); }
   #info .place { display: flex; align-items: center; gap: 8px; padding: 10px 12px 4px 14px; font-size: 14px; font-weight: 600; line-height: 1.3; cursor: pointer; user-select: none; }
@@ -228,10 +244,19 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .leaflet-tooltip-top::before { border-top-color: var(--panel); }
   .wind-canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
   .leaflet-zoom-anim .wind-canvas { visibility: hidden; }
+  @media (max-width: 720px) { #search { width: calc(100vw - 66px); } #info { top: 58px; } }
 </style>
 </head>
 <body>
 <div id="map"></div>
+<form id="search" class="card" autocomplete="off">
+  <div class="bar">
+    <svg class="ico" viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 10l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <input id="search-input" type="search" placeholder="Search a place, postcode or lat, lon" aria-label="Search for a place" enterkeyhint="search">
+    <button type="submit" aria-label="Search"><svg viewBox="0 0 16 16"><path d="M3 8h9M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <div class="results" id="search-results"></div>
+</form>
 <div id="info" class="card">
   <div class="place" id="info-head"><span id="place">Loading…</span><span class="pill mini" id="info-pill"></span><svg class="chev" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
   <div class="chips" id="chips"></div>
@@ -726,13 +751,57 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     showWeather();
   }
 
+  // Search: a place name, postcode or "lat, lon" goes to /api/geocode; ambiguity is a list to pick from, never a guess.
+  var currentRadius = 1500;
+  var searchForm = document.getElementById('search'), searchInput = document.getElementById('search-input'), searchResults = document.getElementById('search-results');
+  function showResults(items) {
+    searchResults.innerHTML = '';
+    items.forEach(function (it) {
+      var d = document.createElement('div');
+      d.textContent = it.name;
+      if (it.msg) d.className = 'msg'; else d.onclick = function () { goTo(it); };
+      searchResults.appendChild(d);
+    });
+  }
+  function goTo(loc) {
+    searchResults.innerHTML = '';
+    searchInput.value = loc.name;
+    searchInput.blur();
+    load({ lat: loc.lat, lon: loc.lon, name: loc.name, radiusM: currentRadius });
+    if (MODE === 'page' && window.history && history.replaceState) {
+      var u = new URL(location.href);
+      ['place', 'route', 'waypoints', 'spots'].forEach(function (k) { u.searchParams.delete(k); });
+      u.searchParams.set('lat', loc.lat.toFixed(5)); u.searchParams.set('lon', loc.lon.toFixed(5)); u.searchParams.set('radius', currentRadius); u.searchParams.set('name', loc.name);
+      history.replaceState(null, '', u.toString());
+    }
+  }
+  searchForm.onsubmit = function (e) {
+    e.preventDefault();
+    var q = searchInput.value.trim();
+    if (!q) return;
+    if (!API_BASE) { showResults([{ name: 'Search needs the hosted server', msg: 1 }]); return; }
+    showResults([{ name: 'Searching…', msg: 1 }]);
+    fetch(API_BASE + '/api/geocode?q=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.status === 'resolved') goTo(res.location);
+        else if (res.status === 'ambiguous') showResults(res.candidates);
+        else showResults([{ name: res.reason || res.error || 'No match in the UK for "' + q + '"', msg: 1 }]);
+      })
+      .catch(function () { showResults([{ name: 'Search failed, try again', msg: 1 }]); });
+  };
+  document.addEventListener('click', function (e) { if (!searchForm.contains(e.target)) searchResults.innerHTML = ''; });
+  searchInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') { searchResults.innerHTML = ''; searchInput.blur(); } });
+  searchInput.addEventListener('focus', function () { searchInput.select(); });
+
   function load(req) {
     pendingSpots = Array.isArray(req.spots) ? req.spots.filter(function (s) { return typeof s.lat === 'number' && typeof s.lon === 'number'; }).map(function (s, i) { return { lat: s.lat, lon: s.lon, rank: s.rank || i + 1, label: s.label || 'Spot ' + (i + 1) }; }) : [];
     if (!API_BASE) { setStatus('Map data needs the hosted server'); if (typeof req.lat === 'number') { map.setView([req.lat, req.lon], 13); centreMarker = L.marker([req.lat, req.lon], { icon: currentPinIcon() }).addTo(groups.route); } return; }
     var q = new URLSearchParams();
     if (typeof req.lat === 'number' && typeof req.lon === 'number') { q.set('lat', req.lat); q.set('lon', req.lon); }
     if (req.place) q.set('place', req.place);
-    if (req.radiusM) q.set('radius', req.radiusM);
+    if (req.name) q.set('name', req.name);
+    if (req.radiusM) { q.set('radius', req.radiusM); currentRadius = req.radiusM; }
     if (req.route && req.route.length > 1) q.set('route', req.route.map(function (p) { return p[0] + ',' + p[1]; }).join(';'));
     if (req.waypoints && req.waypoints.length > 1) q.set('waypoints', req.waypoints.map(function (w) { return Array.isArray(w) ? w[0] + ',' + w[1] : w; }).join(';'));
     setStatus('Loading…');
@@ -746,7 +815,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     var wps = (qs.get('waypoints') || '').split(';').filter(Boolean);
     if (qs.get('drone')) selectDrone(qs.get('drone'), true);
     var spots = (qs.get('spots') || '').split(';').filter(Boolean).map(function (s, i) { var p = s.split(',').map(parseFloat); return { lat: p[0], lon: p[1], rank: i + 1, label: 'Spot ' + (i + 1) }; });
-    if (isFinite(lat) && isFinite(lon)) load({ lat: lat, lon: lon, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined, spots: spots });
+    if (isFinite(lat) && isFinite(lon)) load({ lat: lat, lon: lon, name: qs.get('name') || undefined, radiusM: parseFloat(qs.get('radius')) || undefined, route: route.length > 1 ? route : undefined, spots: spots });
     else if (qs.get('place')) load({ place: qs.get('place'), radiusM: parseFloat(qs.get('radius')) || undefined });
     else if (wps.length > 1) load({ waypoints: wps });
     else setStatus('Add ?lat=&lon= or ?place= to the URL');

@@ -63,8 +63,9 @@ function openPart(label: string): void {
 let currentLabel = 'schema';
 const write = (s: string) => {
   if (partsDir && (!out || partBytes + s.length > PART_BYTES)) openPart(currentLabel);
+  if (!out) throw new Error('no output stream open');
   partBytes += s.length + 1;
-  out!.write(`${s}\n`);
+  out.write(`${s}\n`);
 };
 
 // Drop everything (virtual tables first, then base tables), then recreate from the shared DDL.
@@ -121,5 +122,6 @@ for (const t of SPATIAL_TABLES) {
 currentLabel = 'indexes-fts';
 if (partsDir) openPart(currentLabel);
 write(`INSERT INTO gazetteer_fts(gazetteer_fts) VALUES('rebuild');`);
-out!.end(() => console.error(`[export-d1] wrote ${partsDir ? `${partIndex} parts in ${partsDir}` : values.out} (${total} rows)`));
+if (!out) throw new Error('no output stream open');
+out.end(() => console.error(`[export-d1] wrote ${partsDir ? `${partIndex} parts in ${partsDir}` : values.out} (${total} rows)`));
 db.close();

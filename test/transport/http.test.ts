@@ -17,6 +17,21 @@ describe('streamable http transport', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true, version: 'test' });
   });
+  it('serves the map search endpoint when wired', async () => {
+    const wired = new StreamableHttpTransport(() => createServer(deps), createLogger('silent'), 0, () => ({ version: 'test', pack: deps.pack.status(), notamCacheAgeSeconds: null }), '127.0.0.1', {
+      geocode: async (params) => (params.get('q') ? { status: 'resolved', location: { name: params.get('q'), lat: 51, lon: -2 } } : undefined),
+    });
+    await wired.start();
+    try {
+      const ok = await fetch(`http://127.0.0.1:${wired.port}/api/geocode?q=Bristol`);
+      expect(ok.status).toBe(200);
+      expect(ok.headers.get('access-control-allow-origin')).toBe('*');
+      expect(await ok.json()).toMatchObject({ status: 'resolved', location: { name: 'Bristol' } });
+      expect((await fetch(`http://127.0.0.1:${wired.port}/api/geocode`)).status).toBe(400);
+    } finally {
+      await wired.stop();
+    }
+  });
   it('rejects GET /mcp', async () => {
     const res = await fetch(`http://127.0.0.1:${transport.port}/mcp`);
     expect(res.status).toBe(405);

@@ -10,6 +10,7 @@ export interface ExtraRoutes {
   viewData?: (params: URLSearchParams) => Promise<unknown>;
   windData?: (params: URLSearchParams) => Promise<unknown>;
   droneIndex?: () => unknown;
+  geocode?: (params: URLSearchParams) => Promise<unknown>;
 }
 
 export interface HealthInfo {
@@ -68,6 +69,20 @@ export class StreamableHttpTransport implements MCPTransport {
         try {
           const data = await wind(new URLSearchParams(req.query as Record<string, string>));
           if (data === undefined) res.status(400).json({ error: 'bbox=w,s,e,n and z query parameters are required' });
+          else res.json(data);
+        } catch (error) {
+          res.status(503).json({ error: (error as Error).message });
+        }
+      });
+    }
+
+    if (this.extra.geocode) {
+      const geocode = this.extra.geocode;
+      app.get('/api/geocode', async (req, res) => {
+        res.set('access-control-allow-origin', '*');
+        try {
+          const data = await geocode(new URLSearchParams(req.query as Record<string, string>));
+          if (data === undefined) res.status(400).json({ error: 'q query parameter is required' });
           else res.json(data);
         } catch (error) {
           res.status(503).json({ error: (error as Error).message });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDroneIndex, buildViewData, buildWindField, mapUrl, parseViewQuery, parseWindQuery, resolveViewQuery, WIND_MAX_POINTS, windLattice, windLevelOf } from '../../src/map/view-data.js';
+import { buildDroneIndex, buildViewData, buildWindField, geocodeQuery, mapUrl, parseViewQuery, parseWindQuery, resolveViewQuery, WIND_MAX_POINTS, windLattice, windLevelOf } from '../../src/map/view-data.js';
 import { fakeFetch } from '../helpers/fake-fetch.js';
 import { readFileSync } from 'node:fs';
 import { BASEMAPS, MAP_CSP, OVERLAYS, RADAR, SECTIONS, mapHtml } from '../../src/map/html.js';
@@ -119,6 +119,29 @@ describe('map view', () => {
     expect(byWaypoints!.route).toEqual([[-2.5879, 51.4545], [-2.72, 51.383]]);
     expect(await resolveViewQuery(new URLSearchParams('foo=bar'), deps)).toBeUndefined();
   });
+  it('answers the map search box without guessing', async () => {
+    const bristol = JSON.parse(readFileSync(new URL('../fixtures/geocode/nominatim-bristol.json', import.meta.url), 'utf8'));
+    const newport = JSON.parse(readFileSync(new URL('../fixtures/geocode/nominatim-newport.json', import.meta.url), 'utf8'));
+    const ff = fakeFetch([{ match: 'q=Bristol', body: bristol }, { match: 'q=Newport', body: newport }, { match: 'q=Nowhereville', body: [] }]);
+    const { deps } = buildTestDeps({ fetchImpl: ff.fetch });
+    expect(await geocodeQuery(new URLSearchParams(''), deps)).toBeUndefined();
+    expect(await geocodeQuery(new URLSearchParams('q=%20'), deps)).toBeUndefined();
+    const resolved = await geocodeQuery(new URLSearchParams('q=Bristol'), deps);
+    expect(resolved).toMatchObject({ status: 'resolved', location: { lat: 51.4545, lon: -2.5879 } });
+    expect(Object.keys((resolved as { location: object }).location).sort()).toEqual(['lat', 'lon', 'name']);
+    const ambiguous = await geocodeQuery(new URLSearchParams('q=Newport'), deps);
+    expect(ambiguous!.status).toBe('ambiguous');
+    expect((ambiguous as { candidates: unknown[] }).candidates.length).toBeGreaterThan(1);
+    expect(await geocodeQuery(new URLSearchParams('q=Nowhereville'), deps)).toEqual({ status: 'not_found' });
+    expect(await geocodeQuery(new URLSearchParams('q=51.611, -2.524'), deps)).toMatchObject({ status: 'resolved', location: { lat: 51.611, lon: -2.524 } });
+    expect(await geocodeQuery(new URLSearchParams('q=48.8, 2.3'), deps)).toMatchObject({ status: 'not_found', reason: expect.stringContaining('outside the UK') });
+    expect(ff.calls.some((c) => c.url.includes('51.611'))).toBe(false); // coordinates never hit a geocoder
+  });
+  it('carries a search name through the view query', async () => {
+    expect(parseViewQuery(new URLSearchParams('lat=51.6&lon=-2.5&name=Thornbury'))!.name).toBe('Thornbury');
+    expect((await resolveViewQuery(new URLSearchParams('lat=51.6&lon=-2.5&name=Thornbury'), buildTestDeps().deps))!.name).toBe('Thornbury');
+    expect(parseViewQuery(new URLSearchParams('lat=51.6&lon=-2.5'))!.name).toBeUndefined();
+  });
   it('renders both html modes with the api base baked in', () => {
     const page = mapHtml({ mode: 'page', apiBase: 'https://x.test' });
     expect(page).toContain('var API_BASE = "https://x.test"');
@@ -155,6 +178,8 @@ describe('map view', () => {
     // Prohibited and restricted airspace and aerodrome FRZs can never be switched off.
     expect(OVERLAYS.filter((o) => 'locked' in o && o.locked).map((o) => o.key)).toEqual(['prohibited', 'frz', 'prison']);
     expect(html).toContain('o.locked || hidden.indexOf(o.key) < 0');
+    expect(html).toContain('id="search-input"');
+    expect(html).toContain("/api/geocode?q=");
     expect(html).toContain('hiddenOverlays');
     expect(html).toContain('WindCanvas');
     expect(html).toContain('prefers-reduced-motion');

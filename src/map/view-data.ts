@@ -4,6 +4,8 @@ import { severityOf, TYPE_LABEL } from '../services/airspace/verdict.js';
 import { isRelevantBelow120m } from '../services/airspace/vertical.js';
 import type { BBox, LineString, Position } from '../types.js';
 import { resolveLocation } from '../services/location-resolver.js';
+import { UserFacingError } from '../core/errors.js';
+import type { LocationResolution } from '../types.js';
 import { assessHour, compassPoint, describeWeatherCode, LIMITS, localHourKey, type Flyability } from '../services/weather/assessment.js';
 import { OPEN_METEO_ATTRIBUTION } from '../services/weather/open-meteo.js';
 import { assessDroneRules, DRONE_CATALOGUE } from '../services/drones/index.js';
@@ -159,7 +161,7 @@ export async function resolveViewQuery(params: URLSearchParams, deps: HandlerDep
   const direct = parseViewQuery(params);
   const waypointsRaw = params.get('waypoints');
   let route: Position[] | undefined = direct?.route;
-  let name: string | undefined;
+  let name: string | undefined = direct?.name;
   if (waypointsRaw) {
     const pts: Position[] = [];
     for (const wp of waypointsRaw.split(';').map((s) => s.trim()).filter(Boolean)) {
@@ -206,7 +208,34 @@ export function parseViewQuery(params: URLSearchParams): ViewRequest | undefined
       .map((p) => [p[0], p[1]] as Position);
     if (route.length < 2) route = undefined;
   }
-  return { lat, lon, radiusM: Number.isFinite(radius) ? radius : undefined, route, includeNotams: params.get('notams') !== '0', includeWeather: params.get('weather') !== '0' };
+  const name = params.get('name')?.trim().slice(0, 120) || undefined;
+  return { lat, lon, name, radiusM: Number.isFinite(radius) ? radius : undefined, route, includeNotams: params.get('notams') !== '0', includeWeather: params.get('weather') !== '0' };
+}
+
+/** What the map's search box gets back from `/api/geocode?q=`: never a guess, ambiguity is a list to pick from. */
+export type GeocodeResponse =
+  | { status: 'resolved'; location: { name: string; lat: number; lon: number } }
+  | { status: 'ambiguous'; candidates: Array<{ name: string; lat: number; lon: number }> }
+  | { status: 'not_found'; reason?: string };
+
+const COORD_PAIR = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/;
+
+/** Resolve the search box query; `undefined` when `q` is missing or blank. */
+export async function geocodeQuery(params: URLSearchParams, deps: HandlerDependencies): Promise<GeocodeResponse | undefined> {
+  const q = params.get('q')?.trim().slice(0, 200);
+  if (!q) return undefined;
+  const pair = COORD_PAIR.exec(q);
+  let r: LocationResolution;
+  try {
+    r = pair ? await resolveLocation({ lat: Number(pair[1]), lon: Number(pair[2]) }, deps.geocoder) : await resolveLocation({ place: q }, deps.geocoder);
+  } catch (error) {
+    if (error instanceof UserFacingError) return { status: 'not_found', reason: error.message };
+    throw error;
+  }
+  const slim = (c: { name: string; lat: number; lon: number }) => ({ name: c.name, lat: c.lat, lon: c.lon });
+  if (r.status === 'resolved') return { status: 'resolved', location: slim(r.location) };
+  if (r.status === 'ambiguous') return { status: 'ambiguous', candidates: r.candidates.slice(0, 6).map(slim) };
+  return { status: 'not_found' };
 }
 
 export function mapUrl(base: string | undefined, req: { lat: number; lon: number; radiusM?: number; route?: Position[]; drone?: string; spots?: Array<{ lat: number; lon: number }> }): string | null {
