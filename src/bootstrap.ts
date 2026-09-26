@@ -24,6 +24,7 @@ import type { MCPTransport } from './transport/index.js';
 import { StdioTransport } from './transport/stdio.js';
 import { NAME, USER_AGENT, VERSION } from './version.js';
 import { buildDroneIndex, buildViewData, buildWindField, geocodeQuery, mapHtml, parseWindQuery, resolveViewQuery } from './map/index.js';
+import { createDonationSession, donationEnabled } from './map/donate.js';
 import type { PackRepository } from './pack/repository.js';
 
 const HELP = `${NAME} ${VERSION}
@@ -126,7 +127,7 @@ export async function bootstrap(argv: string[]): Promise<void> {
           () => ({ version: VERSION, pack: packManager.status(), notamCacheAgeSeconds: deps.notams.status().ageSeconds }),
           '0.0.0.0',
           {
-            mapHtml: (origin) => mapHtml({ mode: 'page', apiBase: config.publicUrl ?? origin, supportUrl: config.supportUrl ?? null, supportMonthlyUrl: config.supportMonthlyUrl ?? null }),
+            mapHtml: (origin) => mapHtml({ mode: 'page', apiBase: config.publicUrl ?? origin, supportUrl: config.supportUrl ?? null, supportMonthlyUrl: config.supportMonthlyUrl ?? null, stripePublishableKey: donationEnabled(config.stripe) ? config.stripe.publishableKey ?? null : null }),
             viewData: async (params) => {
               const req = await resolveViewQuery(params, deps);
               return req ? buildViewData(deps, req) : undefined;
@@ -137,6 +138,7 @@ export async function bootstrap(argv: string[]): Promise<void> {
             },
             droneIndex: () => buildDroneIndex(deps.now()),
             geocode: (params) => geocodeQuery(params, deps),
+            donate: donationEnabled(config.stripe) ? (kind, quantity) => createDonationSession(config.stripe, kind, quantity) : undefined,
           }
         )
       : new StdioTransport(() => createServer(deps), logger);

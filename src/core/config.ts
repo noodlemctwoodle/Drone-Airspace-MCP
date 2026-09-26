@@ -68,6 +68,10 @@ const envSchema = z.object({
   PUBLIC_URL: z.string().optional().transform((v) => (v && /^https?:\/\//.test(v) ? v.replace(/\/+$/, '') : undefined)),
   SUPPORT_URL: z.string().optional().transform((v) => (v && /^https:\/\//.test(v) ? v : undefined)),
   SUPPORT_MONTHLY_URL: z.string().optional().transform((v) => (v && /^https:\/\//.test(v) ? v : undefined)),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  STRIPE_PRICE_ONCE: z.string().optional(),
+  STRIPE_PRICE_MONTHLY: z.string().optional(),
 });
 
 export interface Config {
@@ -99,6 +103,7 @@ export interface Config {
   publicUrl: string | undefined;
   supportUrl?: string;
   supportMonthlyUrl?: string;
+  stripe: { secretKey?: string; publishableKey?: string; priceOnce?: string; priceMonthly?: string };
 }
 
 export interface CliArgs {
@@ -182,5 +187,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cli: Partial<Cl
     publicUrl: e.PUBLIC_URL,
     supportUrl: e.SUPPORT_URL,
     supportMonthlyUrl: e.SUPPORT_MONTHLY_URL,
+    stripe: { secretKey: e.STRIPE_SECRET_KEY || undefined, publishableKey: e.STRIPE_PUBLISHABLE_KEY || undefined, priceOnce: e.STRIPE_PRICE_ONCE || undefined, priceMonthly: e.STRIPE_PRICE_MONTHLY || undefined },
   });
 }

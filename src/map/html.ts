@@ -105,12 +105,13 @@ const BASE_OVERLAYS: Overlay[] = [
 ];
 export const OVERLAYS: readonly Overlay[] = [...BASE_OVERLAYS, ...HAZARD_OVERLAYS];
 
-export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null; supportUrl?: string | null; supportMonthlyUrl?: string | null }): string {
+export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null; supportUrl?: string | null; supportMonthlyUrl?: string | null; stripePublishableKey?: string | null }): string {
   const iconSvgBase64 = Buffer.from(ICON_SVG).toString('base64');
   const iconLinks = opts.apiBase ? `<link rel="apple-touch-icon" href="${opts.apiBase}/icon-180.png">\n<link rel="manifest" href="${opts.apiBase}/manifest.webmanifest">` : '';
   const apiBase = JSON.stringify(opts.apiBase ?? '');
   const supportUrl = JSON.stringify(opts.supportUrl && /^https:\/\//.test(opts.supportUrl) ? opts.supportUrl : '');
   const supportMonthlyUrl = JSON.stringify(opts.supportMonthlyUrl && /^https:\/\//.test(opts.supportMonthlyUrl) ? opts.supportMonthlyUrl : '');
+  const stripePk = JSON.stringify(opts.mode === 'page' && opts.stripePublishableKey && /^pk_(live|test)_/.test(opts.stripePublishableKey) ? opts.stripePublishableKey : '');
   const mode = JSON.stringify(opts.mode);
   const basemaps = JSON.stringify(BASEMAPS);
   const radar = JSON.stringify(RADAR);
@@ -247,6 +248,14 @@ ${iconLinks}
   #donate .row { display: flex; gap: 8px; }
   #donate .row a { flex: 1; text-align: center; padding: 8px 10px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; text-decoration: none; font-size: 13px; }
   #donate .row a.alt { background: rgba(128,140,152,.16); color: var(--ink); }
+  #checkout-modal { position: absolute; inset: 0; z-index: 2000; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 12px; }
+  #checkout-modal[hidden] { display: none; }
+  #checkout-modal .sheet { width: min(520px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; background: #fff; color: #16202a; }
+  #checkout-modal .head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid rgba(16,24,32,.09); font-size: 15px; }
+  #checkout-modal .head button { all: unset; cursor: pointer; font-size: 22px; line-height: 1; padding: 0 4px; color: #5f6b77; }
+  #checkout { flex: 1; overflow: auto; min-height: 320px; }
+  #checkout-modal .note { padding: 10px 14px; font-size: 13px; color: #5f6b77; }
+  #checkout-modal .note:empty { display: none; }
 
   /* Layers panel */
   .layers { display: none; position: absolute; left: 10px; bottom: 64px; z-index: 1000; width: 256px; max-height: calc(100vh - 134px); overflow: auto; font-size: 13px; }
@@ -354,6 +363,13 @@ ${iconLinks}
   </div>
   <div class="results" id="search-results"></div>
 </form>
+<div id="checkout-modal" hidden>
+  <div class="sheet card">
+    <div class="head"><b id="checkout-title">Support FPV Airspace</b><button type="button" id="checkout-close" aria-label="Close">×</button></div>
+    <div id="checkout"></div>
+    <div id="checkout-note" class="note"></div>
+  </div>
+</div>
 <div id="bottom">
 <div class="fabrow">
 <div id="sources" class="card">
@@ -389,6 +405,7 @@ ${iconLinks}
   var API_BASE = ${apiBase};
   var SUPPORT_URL = ${supportUrl};
   var SUPPORT_MONTHLY_URL = ${supportMonthlyUrl};
+  var STRIPE_PK = ${stripePk};
   var MODE = ${mode};
   var BASEMAPS = ${basemaps};
   var RADAR = ${radar};
@@ -402,8 +419,51 @@ ${iconLinks}
   if (SUPPORT_URL || SUPPORT_MONTHLY_URL) {
     donateEl.hidden = false;
     document.getElementById('donate-links').innerHTML =
-      (SUPPORT_URL ? '<a href="' + esc(SUPPORT_URL) + '" target="_blank" rel="noopener">One-off</a>' : '') +
-      (SUPPORT_MONTHLY_URL ? '<a class="alt" href="' + esc(SUPPORT_MONTHLY_URL) + '" target="_blank" rel="noopener">Monthly</a>' : '');
+      (SUPPORT_URL ? '<a href="' + esc(SUPPORT_URL) + '" data-kind="once" target="_blank" rel="noopener">One-off</a>' : '') +
+      (SUPPORT_MONTHLY_URL ? '<a class="alt" href="' + esc(SUPPORT_MONTHLY_URL) + '" data-kind="monthly" target="_blank" rel="noopener">Monthly</a>' : '');
+    // Embedded checkout keeps the donor on the map; the links stay as the fallback when Stripe.js or the session fails.
+    var modal = document.getElementById('checkout-modal'), checkoutEl = document.getElementById('checkout'), checkoutNote = document.getElementById('checkout-note');
+    var embedded = null, stripeJs = null;
+    function loadStripe() {
+      if (stripeJs) return stripeJs;
+      stripeJs = new Promise(function (resolve, reject) {
+        if (window.Stripe) return resolve(window.Stripe);
+        var sc = document.createElement('script'); sc.src = 'https://js.stripe.com/v3/'; sc.async = true;
+        sc.onload = function () { resolve(window.Stripe); }; sc.onerror = function () { reject(new Error('Stripe.js failed to load')); };
+        document.head.appendChild(sc);
+      });
+      return stripeJs;
+    }
+    function closeCheckout() { modal.hidden = true; if (embedded) { try { embedded.destroy(); } catch (err) { /* already gone */ } embedded = null; } checkoutEl.innerHTML = ''; checkoutNote.textContent = ''; }
+    document.getElementById('checkout-close').onclick = closeCheckout;
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeCheckout(); });
+    function openCheckout(kind) {
+      donateEl.classList.remove('open');
+      modal.hidden = false;
+      document.getElementById('checkout-title').textContent = kind === 'monthly' ? 'Monthly donation' : 'One-off donation';
+      checkoutNote.textContent = 'Loading secure checkout…';
+      Promise.all([loadStripe(), fetch(API_BASE + '/api/donate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: kind }) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status); return j; }); })])
+        .then(function (res) {
+          var Stripe = res[0], session = res[1];
+          checkoutNote.textContent = '';
+          return Stripe(STRIPE_PK).initEmbeddedCheckout({ clientSecret: session.clientSecret, onComplete: function () { checkoutEl.innerHTML = ''; checkoutNote.textContent = 'Thank you. Your support keeps the map free for everyone.'; } })
+            .then(function (c) { embedded = c; c.mount('#checkout'); });
+        })
+        .catch(function (err) {
+          // Fall back to the hosted page so the donor is never stuck.
+          var link = kind === 'monthly' ? SUPPORT_MONTHLY_URL : SUPPORT_URL;
+          checkoutNote.textContent = 'Checkout could not be embedded here (' + err.message + '). Opening it in a new tab.';
+          if (link) { if (openExternal) openExternal(link); else window.open(link, '_blank', 'noopener'); }
+        });
+    }
+    if (STRIPE_PK && API_BASE) {
+      document.getElementById('donate-links').addEventListener('click', function (e) {
+        var a = e.target.closest('a[data-kind]');
+        if (!a) return;
+        e.preventDefault();
+        openCheckout(a.dataset.kind);
+      });
+    }
     document.getElementById('donate-btn').onclick = function () { var open = !donateEl.classList.contains('open'); donateEl.classList.toggle('open', open); if (open) { sourcesEl.classList.remove('open'); setLayersSheet(false); } };
     document.addEventListener('click', function (e) { if (!donateEl.contains(e.target)) donateEl.classList.remove('open'); });
   }

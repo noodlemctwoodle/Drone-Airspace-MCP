@@ -12,6 +12,7 @@ export interface ExtraRoutes {
   windData?: (params: URLSearchParams) => Promise<unknown>;
   droneIndex?: () => unknown;
   geocode?: (params: URLSearchParams) => Promise<unknown>;
+  donate?: (kind: 'once' | 'monthly', quantity?: number) => Promise<{ clientSecret: string } | { error: string; status: number }>;
 }
 
 export interface HealthInfo {
@@ -91,6 +92,17 @@ export class StreamableHttpTransport implements MCPTransport {
         } catch (error) {
           res.status(503).json({ error: (error as Error).message });
         }
+      });
+    }
+
+    if (this.extra.donate) {
+      const donate = this.extra.donate;
+      app.post('/api/donate', express.json(), async (req, res) => {
+        res.set('access-control-allow-origin', '*');
+        const body = (req.body ?? {}) as { kind?: string; quantity?: number };
+        const r = await donate(body.kind === 'monthly' ? 'monthly' : 'once', typeof body.quantity === 'number' ? body.quantity : undefined);
+        if ('error' in r) res.status(r.status).json({ error: r.error });
+        else res.set('cache-control', 'no-store').json(r);
       });
     }
 

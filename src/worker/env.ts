@@ -23,6 +23,11 @@ export interface WorkerEnv {
   SUPPORT_URL?: string;
   /** Optional recurring-donation link, shown beside SUPPORT_URL. */
   SUPPORT_MONTHLY_URL?: string;
+  /** Embedded checkout: the account's secret key (a worker secret), the publishable key and the two price ids. */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_PUBLISHABLE_KEY?: string;
+  STRIPE_PRICE_ONCE?: string;
+  STRIPE_PRICE_MONTHLY?: string;
   OPEN_METEO_URL?: string;
   WEATHER_CACHE_TTL_SECONDS?: string;
   OPEN_METEO_ELEVATION_URL?: string;

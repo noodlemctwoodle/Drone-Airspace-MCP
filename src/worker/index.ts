@@ -23,6 +23,7 @@ import type { WorkerEnv } from './env.js';
 import { KvCacheStore } from './kv-cache.js';
 import { buildDroneIndex, buildViewData, buildWindField, geocodeQuery, mapHtml, parseWindQuery, resolveViewQuery } from '../map/index.js';
 import { ICON_PNG_180, ICON_SVG, WEB_MANIFEST } from '../map/icon.js';
+import { createDonationSession, donationEnabled } from '../map/donate.js';
 
 // One Nominatim bucket per isolate; the platform may run several isolates, so
 // prefer an OS Names key on the Worker for heavy use.
@@ -63,6 +64,10 @@ function buildDeps(env: WorkerEnv) {
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, OPTIONS', 'access-control-allow-headers': 'content-type' };
 
+function donationConfig(env: WorkerEnv) {
+  return { secretKey: env.STRIPE_SECRET_KEY, priceOnce: env.STRIPE_PRICE_ONCE, priceMonthly: env.STRIPE_PRICE_MONTHLY };
+}
+
 function landing(env: WorkerEnv): Response {
   const url = env.PUBLIC_URL ?? '';
   const body = {
@@ -89,7 +94,7 @@ export default {
       return landing(env);
     }
     if (url.pathname === '/map' && request.method === 'GET') {
-      return new Response(mapHtml({ mode: 'page', apiBase: env.PUBLIC_URL ?? url.origin, supportUrl: env.SUPPORT_URL ?? null, supportMonthlyUrl: env.SUPPORT_MONTHLY_URL ?? null }), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
+      return new Response(mapHtml({ mode: 'page', apiBase: env.PUBLIC_URL ?? url.origin, supportUrl: env.SUPPORT_URL ?? null, supportMonthlyUrl: env.SUPPORT_MONTHLY_URL ?? null, stripePublishableKey: donationEnabled(donationConfig(env)) ? env.STRIPE_PUBLISHABLE_KEY ?? null : null }), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
     }
     if (url.pathname === '/api/view') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -102,6 +107,15 @@ export default {
       } catch (error) {
         return new Response(JSON.stringify({ error: (error as Error).message }), { status: 503, headers: { ...JSON_HEADERS, ...CORS } });
       }
+    }
+    if (url.pathname === '/api/donate') {
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+      if (request.method !== 'POST') return new Response(JSON.stringify({ error: 'POST only' }), { status: 405, headers: { ...JSON_HEADERS, ...CORS } });
+      const body = (await request.json().catch(() => ({}))) as { kind?: string; quantity?: number };
+      const kind = body.kind === 'monthly' ? 'monthly' : 'once';
+      const r = await createDonationSession(donationConfig(env), kind, typeof body.quantity === 'number' ? body.quantity : undefined);
+      if ('error' in r) return new Response(JSON.stringify({ error: r.error }), { status: r.status, headers: { ...JSON_HEADERS, ...CORS } });
+      return new Response(JSON.stringify(r), { headers: { ...JSON_HEADERS, ...CORS, 'cache-control': 'no-store' } });
     }
     if (url.pathname === '/api/geocode') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
