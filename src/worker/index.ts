@@ -22,6 +22,7 @@ import { D1PackAccess } from './d1-pack.js';
 import type { WorkerEnv } from './env.js';
 import { KvCacheStore } from './kv-cache.js';
 import { buildDroneIndex, buildViewData, buildWindField, geocodeQuery, mapHtml, parseWindQuery, resolveViewQuery } from '../map/index.js';
+import { ICON_PNG_180, ICON_SVG, WEB_MANIFEST } from '../map/icon.js';
 
 // One Nominatim bucket per isolate; the platform may run several isolates, so
 // prefer an OS Names key on the Worker for heavy use.
@@ -72,6 +73,7 @@ function landing(env: WorkerEnv): Response {
     transport: 'streamable-http',
     repository: REPO_URL,
     add_to_claude: 'Settings > Connectors > Add custom connector, paste the mcp_endpoint URL.',
+    icon: `${url}/icon.svg`,
   };
   return new Response(JSON.stringify(body, null, 2), { headers: JSON_HEADERS });
 }
@@ -110,6 +112,9 @@ export default {
         return new Response(JSON.stringify({ error: (error as Error).message }), { status: 503, headers: { ...JSON_HEADERS, ...CORS } });
       }
     }
+    if (url.pathname === '/icon.svg') return new Response(ICON_SVG, { headers: { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=604800' } });
+    if (url.pathname === '/icon-180.png') return new Response(ICON_PNG_180, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=604800' } });
+    if (url.pathname === '/manifest.webmanifest') return new Response(WEB_MANIFEST(env.PUBLIC_URL ?? url.origin), { headers: { 'content-type': 'application/manifest+json', 'cache-control': 'public, max-age=86400' } });
     if (url.pathname === '/api/drones') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
       return new Response(JSON.stringify(buildDroneIndex(new Date())), { headers: { ...JSON_HEADERS, ...CORS, 'cache-control': 'public, max-age=86400' } });

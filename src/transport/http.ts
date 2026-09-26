@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Logger } from '../core/logger.js';
 import type { MCPTransport } from './index.js';
+import { ICON_PNG_180, ICON_SVG, WEB_MANIFEST } from '../map/icon.js';
 
 export interface ExtraRoutes {
   mapHtml?: (origin: string) => string;
@@ -43,6 +44,9 @@ export class StreamableHttpTransport implements MCPTransport {
     });
     if (this.extra.mapHtml) {
       const html = this.extra.mapHtml;
+      app.get('/icon.svg', (_req, res) => { res.type('image/svg+xml').set('cache-control', 'public, max-age=604800').send(ICON_SVG); });
+      app.get('/icon-180.png', (_req, res) => { res.type('image/png').set('cache-control', 'public, max-age=604800').send(Buffer.from(ICON_PNG_180)); });
+      app.get('/manifest.webmanifest', (req, res) => { res.type('application/manifest+json').send(WEB_MANIFEST(`${req.protocol}://${req.get('host')}`)); });
       app.get('/map', (req, res) => {
         res.type('html').send(html(`${req.protocol}://${req.get('host')}`));
       });

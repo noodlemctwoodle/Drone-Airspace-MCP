@@ -103,5 +103,6 @@
     "https://www.ordnancesurvey.co.uk/legal/privacy-policy",
     "https://postcodes.io/about",
     "https://www.nats.aero/privacy-policy/"
-  ]
+  ],
+  "icon": "assets/icon.png"
 }

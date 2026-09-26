@@ -1,4 +1,4 @@
-# FPV Airspace
+# <img src="assets/icon.svg" width="40" alt="" valign="middle"> FPV Airspace
 
 An MCP server and map that answer the question existing airspace tools do not: **can I legally take off and fly a drone here, in the UK?**
 

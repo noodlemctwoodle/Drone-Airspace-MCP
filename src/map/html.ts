@@ -1,3 +1,4 @@
+import { ICON_SVG } from './icon.js';
 /**
  * Leaflet map used both as a standalone page (`/map?lat=&lon=`) and as the MCP
  * App view (`ui://fpv-airspace/map`). Same HTML; the app variant receives
@@ -105,6 +106,8 @@ const BASE_OVERLAYS: Overlay[] = [
 export const OVERLAYS: readonly Overlay[] = [...BASE_OVERLAYS, ...HAZARD_OVERLAYS];
 
 export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }): string {
+  const iconSvgBase64 = Buffer.from(ICON_SVG).toString('base64');
+  const iconLinks = opts.apiBase ? `<link rel="apple-touch-icon" href="${opts.apiBase}/icon-180.png">\n<link rel="manifest" href="${opts.apiBase}/manifest.webmanifest">` : '';
   const apiBase = JSON.stringify(opts.apiBase ?? '');
   const mode = JSON.stringify(opts.mode);
   const basemaps = JSON.stringify(BASEMAPS);
@@ -117,6 +120,9 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FPV Airspace map</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,${iconSvgBase64}">
+${iconLinks}
+<meta name="theme-color" content="#0f172a">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
