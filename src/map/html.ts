@@ -154,6 +154,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   #info .empty button { font: inherit; font-size: 13.5px; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 9px; padding: 9px 14px; cursor: pointer; width: 100%; }
   #info .empty small { display: block; margin-top: 8px; font-size: 12px; color: var(--poor); }
   #info .empty small:empty { display: none; }
+  #place .retry { font: inherit; font-size: 12px; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 7px; padding: 4px 9px; margin-left: 8px; cursor: pointer; }
   .chip { font-size: 11.5px; line-height: 1; padding: 5px 8px; border-radius: 999px; background: rgba(128,140,152,.16); color: var(--ink); white-space: nowrap; }
   .chip b { font-weight: 600; }
   .chip.zero { color: var(--muted); }
@@ -256,6 +257,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .leaflet-tooltip-top::before { border-top-color: var(--panel); }
   .wind-canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
   .leaflet-zoom-anim .wind-canvas { visibility: hidden; }
+  .leaflet-popup-content hr.sep { border: 0; border-top: 1px solid var(--line); margin: 7px 0; }
   #bottom { display: contents; }
   #layers-fab { position: absolute; left: 10px; bottom: 10px; z-index: 1001; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; padding: 0; color: var(--ink); cursor: pointer; }
   #layers-fab svg { width: 24px; height: 24px; }
@@ -267,6 +269,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     .leaflet-control-zoom { display: none; }
     #search { left: 10px; right: 10px; width: auto; max-width: none; }
     #search .results { max-height: 40vh; }
+    #search input { font-size: 16px; }
     #bottom { display: flex; flex-direction: column; gap: 8px; position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; max-height: calc(100vh - 80px); }
     #bottom .fabrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
     #sources { position: relative; right: auto; bottom: auto; flex: none; }
@@ -749,6 +752,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   window.addEventListener('resize', function () { if (viewBounds && Date.now() - viewFittedAt < 3000) { map.invalidateSize(); map.fitBounds(viewBounds, { padding: [20, 20] }); } });
   function render(view) {
     infoEl.classList.remove('empty');
+    hitTargets = [];
     if (SMALL) setLayersSheet(false);
     OVERLAYS.forEach(function (o) { if (o.section !== 'weather') groups[o.key].clearLayers(); });
     var counts = { prohibited: 0, frz: 0, prison: 0, danger: 0, other: 0, notam: view.notams.length, prow: view.rightsOfWay.length, land: 0, access: 0, designation: 0, parking: view.parking.length, power: 0, transport: 0, aviation: 0, sites: 0, spots: 0 };
@@ -760,29 +764,33 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
       var key = f.properties.kind === 'access_land' ? 'access' : f.properties.kind === 'designation' ? 'designation' : 'land';
       var entryKey = key + ':' + (f.properties.entryId || f.properties.name);
       if (!seenLand[entryKey]) { seenLand[entryKey] = 1; counts[key]++; }
-      L.geoJSON(f, { style: { color: COLOUR[key], weight: 1, fillOpacity: key === 'land' ? 0.18 : 0.1 } }).bindPopup('<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '')).addTo(groups[key]);
+      L.geoJSON(f, { style: { color: COLOUR[key], weight: 1, fillOpacity: key === 'land' ? 0.18 : 0.1 } }).addTo(groups[key]);
+      hitTargets.push({ key: key, geometry: f.geometry, html: '<b>' + esc(f.properties.name) + '</b><br>' + esc(f.properties.owner) + (f.properties.takeoffBanned ? '<br>Take-off not permitted' : key === 'access' ? '<br>Open access land: not a take-off permission' : key === 'designation' ? '<br>Advisory designation' : '') });
     });
     (view.hazards || []).forEach(function (f) {
       var kind = f.properties.kind, key = HAZARD_GROUP[kind] || 'sites', colour = COLOUR[key];
       counts[key]++;
       var label = '<b>' + esc(HAZARD_LABEL[kind] || kind) + '</b>' + (f.properties.name ? '<br>' + esc(f.properties.name) : '') + (f.properties.operator ? '<br>' + esc(f.properties.operator) : '');
       if (f.geometry.type === 'Point') L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { icon: hazardIcon(kind) }).bindPopup(label).addTo(groups[key]);
-      else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') L.geoJSON(f, { style: hazardLineStyle(kind, colour) }).bindPopup(label).addTo(groups[key]);
+      else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') { L.geoJSON(f, { style: hazardLineStyle(kind, colour) }).addTo(groups[key]); hitTargets.push({ key: key, geometry: f.geometry, html: label }); }
       else {
-        var poly = L.geoJSON(f, { style: { color: colour, weight: 1.5, opacity: 0.9, fillOpacity: 0.12 } }).bindPopup(label).addTo(groups[key]);
+        var poly = L.geoJSON(f, { style: { color: colour, weight: 1.5, opacity: 0.9, fillOpacity: 0.12 } }).addTo(groups[key]);
+        hitTargets.push({ key: key, geometry: f.geometry, html: label });
         L.marker(poly.getBounds().getCenter(), { icon: hazardIcon(kind), interactive: false }).addTo(groups[key]);
       }
     });
     view.zones.forEach(function (f) {
       var key = zoneGroup(f.properties);
-      L.geoJSON(f, { style: { color: COLOUR[key], weight: 2, fillOpacity: f.properties.relevant ? 0.22 : 0.06, dashArray: f.properties.relevant ? null : '6 6' } })
-        .bindPopup('<b>' + esc(f.properties.designator || '') + ' ' + esc(f.properties.name) + '</b><br>' + esc(f.properties.label) + '<br>' + esc(f.properties.limits) + (f.properties.relevant ? '' : '<br><i>Above 400 ft only</i>')).addTo(groups[key]);
+      L.geoJSON(f, { style: { color: COLOUR[key], weight: 2, fillOpacity: f.properties.relevant ? 0.22 : 0.06, dashArray: f.properties.relevant ? null : '6 6' } }).addTo(groups[key]);
+      hitTargets.push({ key: key, geometry: f.geometry, html: '<b>' + esc(f.properties.designator || '') + ' ' + esc(f.properties.name) + '</b><br>' + esc(f.properties.label) + '<br>' + esc(f.properties.limits) + (f.properties.relevant ? '' : '<br><i>Above 400 ft only</i>') });
     });
     view.notams.forEach(function (n) {
-      L.circle([n.lat, n.lon], { radius: n.radiusKm * 1000, color: COLOUR.notam, weight: 1.5, fillOpacity: 0.12 }).bindPopup('<b>NOTAM ' + esc(n.id) + '</b><br>' + esc(n.itemE)).addTo(groups.notam);
+      L.circle([n.lat, n.lon], { radius: n.radiusKm * 1000, color: COLOUR.notam, weight: 1.5, fillOpacity: 0.12 }).addTo(groups.notam);
+      hitTargets.push({ key: 'notam', circle: { lat: n.lat, lon: n.lon, radiusM: n.radiusKm * 1000 }, html: '<b>NOTAM ' + esc(n.id) + '</b><br>' + esc(n.itemE) });
     });
     view.rightsOfWay.forEach(function (f) {
-      L.geoJSON(f, { style: { color: COLOUR.prow, weight: 3, opacity: 0.9 } }).bindPopup('<b>Public ' + esc(f.properties.pathType.replace('_', ' ')) + (f.properties.routeNo ? ' ' + esc(f.properties.routeNo) : '') + '</b><br>' + esc(f.properties.authority) + '<br>' + f.properties.distanceM + ' m from the point').addTo(groups.prow);
+      L.geoJSON(f, { style: { color: COLOUR.prow, weight: 3, opacity: 0.9 } }).addTo(groups.prow);
+      hitTargets.push({ key: 'prow', geometry: f.geometry, html: '<b>Public ' + esc(f.properties.pathType.replace('_', ' ')) + (f.properties.routeNo ? ' ' + esc(f.properties.routeNo) : '') + '</b><br>' + esc(f.properties.authority) + '<br>' + f.properties.distanceM + ' m from the point' });
     });
     view.parking.forEach(function (p) {
       L.marker([p.lat, p.lon], { icon: parkingIcon, keyboard: false }).bindPopup('<b>' + esc(p.name || (p.kind === 'layby' ? 'Layby' : 'Car park')) + '</b><br>' + p.distanceM + ' m away' + (p.fee === 'yes' ? '<br>Pay to park' : p.fee === 'no' ? '<br>Free' : '')).addTo(groups.parking);
@@ -797,7 +805,6 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     currentCentre = [view.centre.lat, view.centre.lon];
     loaded = true;
     setStatus(view.centre.name || (view.route ? 'Your route' : 'Your location'));
-    if (pendingPopup) { L.popup().setLatLng(pendingPopup.latlng).setContent(pendingPopup.content).openOn(map); pendingPopup = null; }
     view.zones.forEach(function (f) { counts[zoneGroup(f.properties)]++; });
     setCounts(counts);
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
@@ -870,26 +877,66 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   }
   locateBtn.onclick = locateMe;
   document.getElementById('locate-btn-2').onclick = locateMe;
-  // Tap or click the map to check that point. Markers, popups and controls keep their taps;
-  // a tap on a zone or line loads the point too, and that shape's popup is shown again afterwards,
-  // since zones often cover the whole view. A short delay lets a double tap zoom instead of loading.
-  // Listened for on the container, because a shape with a popup stops Leaflet's own map click.
-  var tapTimer = null, pendingPopup = null;
+  // Tap or click the map to check that point; markers, popups and controls keep their taps.
+  // Zones and lines have no popups of their own (they often cover the whole view): a long press,
+  // or a right click on a desktop, lists everything under the point instead. A short delay lets a
+  // double tap zoom rather than load, and a long press never loads.
+  var tapTimer = null, longPressed = false, hitTargets = [];
   map.getContainer().addEventListener('click', function (ev) {
     var t = ev.target;
     if (t && t.closest && t.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-control')) return;
-    if (!API_BASE || (map.dragging && map.dragging.moved && map.dragging.moved())) return;
+    if (!API_BASE || longPressed || (map.dragging && map.dragging.moved && map.dragging.moved())) return;
     clearTimeout(tapTimer);
     var ll = map.mouseEventToLatLng(ev);
     var lat = Math.round(ll.lat * 1e5) / 1e5, lon = Math.round(ll.lng * 1e5) / 1e5;
     tapTimer = setTimeout(function () {
       if (lat < 49 || lat > 62 || lon < -14 || lon > 5) { showResults([{ name: 'Outside the UK', msg: 1 }]); return; }
-      var open = map._popup && map._popup.isOpen && map._popup.isOpen() ? map._popup : null;
-      pendingPopup = open ? { latlng: open.getLatLng(), content: open.getContent() } : null;
       goTo({ lat: lat, lon: lon, name: lat.toFixed(4) + ', ' + lon.toFixed(4) });
     }, 280);
   });
   map.getContainer().addEventListener('dblclick', function () { clearTimeout(tapTimer); });
+  function inRing(ring, x, y) {
+    var inside = false;
+    for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      var xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function inPolygon(coords, x, y) { // outer ring minus holes
+    if (!inRing(coords[0], x, y)) return false;
+    for (var k = 1; k < coords.length; k++) if (inRing(coords[k], x, y)) return false;
+    return true;
+  }
+  function nearLine(coords, pt, tolPx) {
+    for (var i = 1; i < coords.length; i++) {
+      var a = map.latLngToLayerPoint([coords[i - 1][1], coords[i - 1][0]]), b = map.latLngToLayerPoint([coords[i][1], coords[i][0]]);
+      if (L.LineUtil.pointToSegmentDistance(pt, a, b) <= tolPx) return true;
+    }
+    return false;
+  }
+  function hits(latlng) {
+    var x = latlng.lng, y = latlng.lat, pt = map.latLngToLayerPoint(latlng), out = [];
+    hitTargets.forEach(function (t) {
+      if (!map.hasLayer(groups[t.key])) return;
+      var g = t.geometry, hit = false;
+      if (t.circle) hit = map.distance(latlng, [t.circle.lat, t.circle.lon]) <= t.circle.radiusM;
+      else if (g.type === 'Polygon') hit = inPolygon(g.coordinates, x, y);
+      else if (g.type === 'MultiPolygon') hit = g.coordinates.some(function (p) { return inPolygon(p, x, y); });
+      else if (g.type === 'LineString') hit = nearLine(g.coordinates, pt, 14);
+      else if (g.type === 'MultiLineString') hit = g.coordinates.some(function (c) { return nearLine(c, pt, 14); });
+      if (hit) out.push(t.html);
+    });
+    return out;
+  }
+  map.on('contextmenu', function (e) {
+    clearTimeout(tapTimer);
+    longPressed = true;
+    setTimeout(function () { longPressed = false; }, 600);
+    var found = hits(e.latlng);
+    var content = found.length ? found.join('<hr class="sep">') : '<i>Nothing drawn under this point</i>';
+    L.popup({ maxWidth: 300, className: 'hits' }).setLatLng(e.latlng).setContent(content).openOn(map);
+  });
   function startEmpty() {
     infoEl.classList.add('empty');
     infoEl.classList.remove('closed');
@@ -909,7 +956,19 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     if (req.route && req.route.length > 1) q.set('route', req.route.map(function (p) { return p[0] + ',' + p[1]; }).join(';'));
     if (req.waypoints && req.waypoints.length > 1) q.set('waypoints', req.waypoints.map(function (w) { return Array.isArray(w) ? w[0] + ',' + w[1] : w; }).join(';'));
     setStatus('Loading…');
-    fetch(API_BASE + '/api/view?' + q.toString()).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(render).catch(function (e) { setStatus('Could not load map data: ' + e.message); });
+    var url = API_BASE + '/api/view?' + q.toString();
+    var attempt = function (n) {
+      return fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .catch(function (e) { if (n > 0 && !/^HTTP/.test(e.message)) return new Promise(function (res) { setTimeout(res, 800); }).then(function () { return attempt(n - 1); }); throw e; });
+    };
+    attempt(1).then(render).catch(function (e) {
+      setStatus('Could not load map data (' + e.message + ')');
+      infoEl.classList.remove('closed');
+      emptyNote.textContent = '';
+      var retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry'; retry.className = 'retry';
+      retry.onclick = function () { retry.remove(); load(req); };
+      placeEl.appendChild(retry);
+    });
   }
 
   if (MODE === 'page') {
