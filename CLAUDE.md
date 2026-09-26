@@ -64,7 +64,7 @@ Flow: tool -> `resolveOrRespond` (geocode) -> `pack.require()` -> engine/service
 
 Three runtimes share everything above `pack/` and `core/`:
 - **npx / .mcpb**: node:sqlite pack downloaded from GitHub Releases (`pack/loader.ts`).
-- **Cloudflare Worker**: the same pack loaded into D1 by `scripts/export-d1.ts` (rtree and FTS5 rebuilt after import; rows split so no statement exceeds D1's 100 KB limit), KV for caches. `npm run worker:dev` runs it locally against `.wrangler/state`; `wrangler d1 execute uk-drone-airspace --local --file build/d1.sql` loads a pack for local dev.
+- **Cloudflare Worker**: the same pack loaded into D1 by `scripts/d1-load.sh` (`export-d1.ts --parts` writes 80 MB files, schema first and chunked rtree rebuilds last, because one 400 MB import times out and rolls back; rows split so no statement exceeds D1's 100 KB limit), KV for caches. `npm run worker:dev` runs it locally against `.wrangler/state`; `wrangler d1 execute uk-drone-airspace --local --file build/d1.sql` loads a pack for local dev.
 - **Docker / --transport http**: Express in `transport/http.ts`.
 `format: "brief"` exists for voice: two or three sentences, no coordinates, one short "Sources:" sentence.
 Maps: with `PUBLIC_URL` set, location tools append `Map: <url>` to text output and return `structuredContent.view` (a tiny descriptor, never geometry); the MCP App HTML fetches `/api/view` itself. Keep tool results small; geometry only ever travels through `/api/view`.

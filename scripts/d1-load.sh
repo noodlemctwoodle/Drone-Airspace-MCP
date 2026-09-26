@@ -7,10 +7,17 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 PACK="${1:?usage: d1-load.sh <pack.sqlite>}"
 DB_NAME="${D1_DATABASE_NAME:-uk-drone-airspace}"
-SQL="build/d1-load.sql"
+PARTS="build/d1-parts"
 
-npx tsx scripts/export-d1.ts "$PACK" --out "$SQL" || exit 1
-npx wrangler d1 execute "$DB_NAME" --remote --yes --file "$SQL" || echo "[d1-load] wrangler exited non-zero; verifying counts"
+# One remote import of a whole national pack times out and rolls back, so the
+# export is split into numbered parts (schema first, indexes last) and each is
+# imported on its own. A failure part-way leaves D1 inconsistent; rerunning the
+# whole script starts again from the drops, so it is safe to retry.
+npx tsx scripts/export-d1.ts "$PACK" --parts "$PARTS" || exit 1
+for f in "$PARTS"/[0-9][0-9][0-9]-*.sql; do
+  echo "[d1-load] importing $f ($(du -h "$f" | cut -f1))"
+  npx wrangler d1 execute "$DB_NAME" --remote --yes --file "$f" || echo "[d1-load] wrangler exited non-zero on $f; continuing to the count check"
+done
 
 EXPECTED=$(node --no-warnings -e "
 const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync(process.argv[1], { readOnly: true });
