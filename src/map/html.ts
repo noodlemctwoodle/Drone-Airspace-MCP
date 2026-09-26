@@ -958,7 +958,7 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     setCounts(counts);
     var relevant = view.zones.filter(function (f) { return f.properties.relevant; }).length;
     chipsEl.innerHTML = [
-      [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas'], [OVERLAYS.reduce(function (n, o) { return n + (o.section === 'hazards' ? counts[o.key] : 0); }, 0), 'hazard', 'hazards']
+      [relevant, 'zone', 'zones', 'below 400 ft'], [view.notams.length, 'NOTAM', 'NOTAMs'], [view.rightsOfWay.length, 'path', 'paths'], [view.parking.length, 'parking spot', 'parking spots'], [counts.land, 'landowner rule', 'landowner rules'], [counts.access, 'access area', 'access areas'], [counts.designation, 'designation', 'designations'], [OVERLAYS.reduce(function (n, o) { return n + (o.section === 'hazards' ? counts[o.key] : 0); }, 0), 'hazard', 'hazards']
     ].map(function (c) { return '<span class="chip' + (c[0] ? '' : ' zero') + '"><b>' + c[0] + '</b> ' + (c[0] === 1 ? c[1] : c[2]) + (c[3] ? ' ' + c[3] : '') + '</span>'; }).join('');
     dataSources = view.attribution || [];
     updateSources();
