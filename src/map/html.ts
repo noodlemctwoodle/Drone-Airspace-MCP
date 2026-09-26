@@ -193,11 +193,10 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   #sources li { padding: 5px 0; border-top: 1px solid var(--line); line-height: 1.35; }
 
   /* Layers panel */
-  .layers { width: 256px; max-height: calc(100vh - 30px); overflow: auto; font-size: 13px; margin: 0 0 10px 10px !important; }
+  .layers { display: none; position: absolute; left: 10px; bottom: 64px; z-index: 1000; width: 256px; max-height: calc(100vh - 90px); overflow: auto; font-size: 13px; }
+  body.layers-open .layers { display: block; }
   .layers h2 { padding: 9px 12px 9px 14px; font-size: 13.5px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
   .layers h2 .chev { width: 14px; height: 14px; transition: transform .15s; color: var(--muted); }
-  .layers.closed h2 .chev { transform: rotate(-90deg); }
-  .layers.closed .body { display: none; }
   .layers .body { padding: 0 8px 10px; }
   .layers h3 { display: flex; align-items: center; gap: 8px; margin: 8px 6px 4px; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
   .layers h3::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
@@ -256,7 +255,9 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
   .wind-canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
   .leaflet-zoom-anim .wind-canvas { visibility: hidden; }
   #bottom { display: contents; }
-  #layers-fab { display: none; }
+  #layers-fab { position: absolute; left: 10px; bottom: 10px; z-index: 1001; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; padding: 0; color: var(--ink); cursor: pointer; }
+  #layers-fab svg { width: 24px; height: 24px; }
+  body.layers-open #layers-fab { background: var(--accent); color: #fff; }
 
   /* Phones: search on top, a bottom stack of credit pill + layers button, the layers sheet and the location sheet.
      Pinch replaces the zoom buttons; the location sheet starts collapsed so the map stays visible. */
@@ -267,18 +268,12 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     #bottom { display: flex; flex-direction: column; gap: 8px; position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; max-height: calc(100vh - 80px); }
     #bottom .fabrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
     #sources { position: static; max-width: calc(100vw - 80px); }
-    #layers-fab { display: flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; border: 0; padding: 0; color: var(--ink); cursor: pointer; }
-    #layers-fab svg { width: 24px; height: 24px; }
+    #layers-fab { position: static; flex: none; }
     #info, #info.closed { position: static; width: auto; max-width: none; overflow: auto; min-height: 0; }
     #info.closed .place { padding-bottom: 10px; }
     .drone-summary { font-size: 12.5px; }
-    .leaflet-bottom.leaflet-left .layers { display: none; }
-    #bottom .layers { display: none; width: auto; max-height: none; min-height: 0; overflow: auto; margin: 0 !important; }
-    body.layers-open #bottom .layers { display: block; }
+    .layers { position: static; width: auto; max-height: none; min-height: 0; }
     body.layers-open #info { display: none; }
-    body.layers-open #layers-fab { background: var(--accent); color: #fff; }
-    #bottom .layers.closed .body { display: block; }
-    #bottom .layers h2 .chev { transform: rotate(0); }
   }
 </style>
 </head>
@@ -419,18 +414,13 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
     if (kind === 'railway') return { color: colour, weight: 3, opacity: 0.85, dashArray: '8 5' };
     return { color: colour, weight: 3, opacity: 0.7 };
   }
-  var LayersPanel = L.Control.extend({
-    onAdd: function () {
-      var el = L.DomUtil.create('div', 'layers card' + (!SMALL && recall('layersOpen', true) ? '' : ' closed'));
-      layersEl = el;
-      L.DomEvent.disableClickPropagation(el);
-      L.DomEvent.disableScrollPropagation(el);
+  // Layers panel: one mechanism everywhere. The round button toggles it; on a desktop it pops up
+  // above the button, on a phone it is a sheet in the bottom stack. The header closes it.
+  function buildLayersPanel() {
+      var el = L.DomUtil.create('div', 'layers card');
       var h = L.DomUtil.create('h2', '', el);
-      h.innerHTML = 'Layers <svg class="chev" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
-      h.onclick = function () {
-        if (SMALL) { setLayersSheet(false); return; }
-        el.classList.toggle('closed'); remember('layersOpen', !el.classList.contains('closed'));
-      };
+      h.innerHTML = 'Layers <svg class="chev" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+      h.onclick = function () { setLayersSheet(false); };
       var body = L.DomUtil.create('div', 'body', el);
       var b = L.DomUtil.create('h3', '', body); b.textContent = 'Base map';
       var seg = L.DomUtil.create('div', 'seg', body);
@@ -469,19 +459,18 @@ export function mapHtml(opts: { mode: 'page' | 'app'; apiBase: string | null }):
         });
       });
       return el;
-    }
-  });
-  var layersEl = null;
-  new LayersPanel({ position: 'bottomleft' }).addTo(map);
-  function setLayersSheet(open) { document.body.classList.toggle('layers-open', open); if (open) infoEl.classList.add('closed'); }
-  if (SMALL && layersEl) {
-    // On a phone the panel is a sheet in the bottom stack, opened from the layers button, not a map control.
-    layersEl.classList.remove('closed');
-    document.getElementById('bottom').insertBefore(layersEl, infoEl);
-    L.DomEvent.disableClickPropagation(document.getElementById('bottom'));
-    L.DomEvent.disableScrollPropagation(document.getElementById('bottom'));
   }
+  function setLayersSheet(open) {
+    document.body.classList.toggle('layers-open', open);
+    if (open && SMALL) infoEl.classList.add('closed');
+    if (!SMALL) remember('layersOpen', open);
+  }
+  var layersEl = buildLayersPanel();
+  document.getElementById('bottom').insertBefore(layersEl, infoEl);
+  L.DomEvent.disableClickPropagation(document.getElementById('bottom'));
+  L.DomEvent.disableScrollPropagation(document.getElementById('bottom'));
   document.getElementById('layers-fab').onclick = function () { setLayersSheet(!document.body.classList.contains('layers-open')); };
+  if (!SMALL && recall('layersOpen', false)) setLayersSheet(true);
   updateSources();
   function setCounts(counts) {
     Array.prototype.forEach.call(document.querySelectorAll('.layers .row[data-key]'), function (row) {
