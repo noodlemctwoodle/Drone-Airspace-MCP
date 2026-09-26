@@ -34,7 +34,7 @@ const SHORT: Record<string, string> = {
   byelaws: 'the council byelaw list',
   coverage: 'ONS boundaries',
   parking: 'OpenStreetMap parking',
-  nominatim: 'OpenStreetMap',
+  nominatim: 'OpenStreetMap place search',
   os_names: 'Ordnance Survey',
   postcodes_io: 'postcodes.io',
   notam: 'the NATS NOTAM bulletin',
