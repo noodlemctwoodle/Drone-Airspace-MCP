@@ -882,10 +882,17 @@ ${iconLinks}
   var IS_ANDROID = /Android/.test(UA);
   function directionsHref(lat, lon, label) {
     var ll = lat.toFixed(5) + ',' + lon.toFixed(5);
-    if (IS_IOS) return 'https://maps.apple.com/?daddr=' + ll + '&dirflg=d';
+    if (IS_IOS) return 'maps://?daddr=' + ll + '&dirflg=d';
     if (IS_ANDROID) return 'geo:' + ll + '?q=' + ll + '(' + encodeURIComponent(label || 'Destination') + ')';
     return 'https://www.google.com/maps/dir/?api=1&destination=' + ll;
   }
+  var openExternal = null; // set in MCP App mode: asks the host to open a link outside the sandbox
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a.dir') : null;
+    if (!a) return;
+    if (openExternal) { e.preventDefault(); openExternal(a.href); }
+    else if (!/^https?:/.test(a.href)) { e.preventDefault(); window.location.href = a.href; } // geo: and maps: schemes hand off to the app
+  });
   function directionsLink(lat, lon, label) {
     return '<a class="dir" href="' + directionsHref(lat, lon, label) + '" target="_blank" rel="noopener">' +
       '<svg viewBox="0 0 16 16"><path d="M8 1.5l6.5 6.5L8 14.5 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6 9.5V7h3.5M8 5.5L9.5 7 8 8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Directions</a>';
@@ -1202,6 +1209,10 @@ ${iconLinks}
     // MCP App: JSON-RPC over postMessage with the host (ui/initialize, then ui/notifications/tool-result).
     var nextId = 1;
     function send(msg) { window.parent.postMessage(msg, '*'); }
+    openExternal = function (url) {
+      send({ jsonrpc: '2.0', id: nextId++, method: 'ui/open-link', params: { url: url } });
+      try { window.open(url, '_blank', 'noopener'); } catch (err) { /* the host request above is the real path */ }
+    };
     window.addEventListener('message', function (ev) {
       var m = ev.data;
       if (!m || m.jsonrpc !== '2.0') return;
