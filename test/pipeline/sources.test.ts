@@ -4,6 +4,7 @@ import { parseRowmapsGeojson, parseRowmapsProps, scrapeAuthorityIndex } from '..
 import { fetchAllFeatures, normaliseNtFeature } from '../../pipeline/sources/nt/arcgis.js';
 import { loadByelaws } from '../../pipeline/sources/byelaws/loader.js';
 import { parseCountries } from '../../pipeline/sources/countries/ons.js';
+import { makeCountryFilter } from '../../pipeline/sources/osm/country-filter.js';
 import { parseLads } from '../../pipeline/sources/lad/ons.js';
 import { normaliseCrowFeature, normaliseNationalParkFeature, normaliseSssiFeature } from '../../pipeline/sources/access/natural-england.js';
 import { normaliseNrwAccessFeature, normaliseNrwSssiFeature } from '../../pipeline/sources/access/nrw.js';
@@ -109,6 +110,15 @@ describe('byelaws', () => {
 });
 
 describe('countries and regions', () => {
+  it('builds a Northern Ireland point filter from the ONS boundaries', () => {
+    const rows = parseCountries(JSON.parse(readFileSync(new URL('../fixtures/countries/countries-thin.geojson', import.meta.url), 'utf8')));
+    const inNi = makeCountryFilter(rows, 'northern_ireland')!;
+    expect(inNi(-5.93, 54.6)).toBe(true); // Belfast
+    expect(inNi(-6.92, 54.92)).toBe(true); // Dungiven
+    expect(inNi(-6.27, 53.35)).toBe(false); // Dublin
+    expect(inNi(-2.58, 51.45)).toBe(false); // Bristol
+    expect(makeCountryFilter(rows.filter((r) => r.country !== 'northern_ireland'), 'northern_ireland')).toBeNull();
+  });
   it('parses the four UK countries', () => {
     const c = parseCountries(JSON.parse(readFileSync(fx('countries/countries-thin.geojson'), 'utf8')));
     expect(c.map((x) => x.country).sort()).toEqual(['england', 'northern_ireland', 'scotland', 'wales']);

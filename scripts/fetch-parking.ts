@@ -10,44 +10,54 @@ import readline from 'node:readline';
 import { createBuildLog } from '../pipeline/lib/log.js';
 import { parsePipelineArgs, writeReport, type PipelineArgs, type SourceReport } from '../pipeline/lib/cli.js';
 import { openNdjsonWriter } from '../pipeline/lib/ndjson.js';
-import { ensurePbf, PBF_URL, requireOsmium } from '../pipeline/sources/osm/pbf.js';
+import { ensurePbf, OSM_EXTRACTS, PBF_URL, requireOsmium } from '../pipeline/sources/osm/pbf.js';
+import { loadCountryFilter } from '../pipeline/sources/osm/country-filter.js';
 import { normaliseParkingFeature } from '../pipeline/sources/osm/parking.js';
 import { SOURCE_IDS } from '../src/pack/schema.js';
 
-export const OSM_ATTRIBUTION = 'Parking and laybys: © OpenStreetMap contributors, Open Database Licence (ODbL), via the Geofabrik Great Britain extract.';
+export const OSM_ATTRIBUTION = 'Parking and laybys: © OpenStreetMap contributors, Open Database Licence (ODbL), via the Geofabrik Great Britain and Ireland extracts.';
 
 export async function run(args: PipelineArgs): Promise<SourceReport> {
   const log = createBuildLog('parking');
   const dir = path.join(args.rawDir, 'osm');
   requireOsmium();
-  const { file, fetchedAt } = await ensurePbf(dir, args.offline, log);
-
-  const filtered = path.join(dir, 'parking.osm.pbf');
-  const geojson = path.join(dir, 'parking.geojsonseq');
-  log.info('extracting parking features with osmium');
-  execFileSync('osmium', ['tags-filter', '--overwrite', '-o', filtered, file, 'nwr/amenity=parking', 'nwr/highway=rest_area'], { stdio: ['ignore', 'ignore', 'inherit'] });
-  execFileSync('osmium', ['export', '--overwrite', '-f', 'geojsonseq', '--add-unique-id=type_id', '-o', geojson, filtered], { stdio: ['ignore', 'ignore', 'inherit'] });
+  // The Ireland extract is clipped to the ONS Northern Ireland boundary; without that boundary it is skipped.
+  const inNorthernIreland = await loadCountryFilter(args.normalisedDir, 'northern_ireland');
+  if (!inNorthernIreland) log.warn('no Northern Ireland boundary in coverage.ndjson (run the countries source first); skipping the Ireland extract');
 
   const writer = await openNdjsonWriter(path.join(args.normalisedDir, 'parking.ndjson'));
   const [w, s, e, n] = args.region.bbox;
   let kept = 0;
   let seen = 0;
-  const rl = readline.createInterface({ input: createReadStream(geojson, { encoding: 'utf8' }), crlfDelay: Infinity });
-  for await (const raw of rl) {
-    const line = raw.replace(/^\u001e/, '').trim();
-    if (!line) continue;
-    seen += 1;
-    let feature: { geometry?: never; properties?: Record<string, unknown> };
-    try {
-      feature = JSON.parse(line);
-    } catch {
-      continue;
+  let fetchedAt = new Date().toISOString();
+  for (const extract of OSM_EXTRACTS) {
+    const clip = extract.key === 'ie' ? inNorthernIreland : null;
+    if (extract.key === 'ie' && !clip) continue;
+    const pbf = await ensurePbf(dir, args.offline, log, extract);
+    if (extract.key === 'gb') fetchedAt = pbf.fetchedAt;
+    const filtered = path.join(dir, `parking-${extract.key}.osm.pbf`);
+    const geojson = path.join(dir, `parking-${extract.key}.geojsonseq`);
+    log.info(`extracting parking features from ${extract.name} with osmium`);
+    execFileSync('osmium', ['tags-filter', '--overwrite', '-o', filtered, pbf.file, 'nwr/amenity=parking', 'nwr/highway=rest_area'], { stdio: ['ignore', 'ignore', 'inherit'] });
+    execFileSync('osmium', ['export', '--overwrite', '-f', 'geojsonseq', '--add-unique-id=type_id', '-o', geojson, filtered], { stdio: ['ignore', 'ignore', 'inherit'] });
+    const rl = readline.createInterface({ input: createReadStream(geojson, { encoding: 'utf8' }), crlfDelay: Infinity });
+    for await (const raw of rl) {
+      const line = raw.replace(/^\u001e/, '').trim();
+      if (!line) continue;
+      seen += 1;
+      let feature: { geometry?: never; properties?: Record<string, unknown> };
+      try {
+        feature = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      const p = normaliseParkingFeature(feature);
+      if (!p) continue;
+      if (p.lon < w || p.lon > e || p.lat < s || p.lat > n) continue;
+      if (clip && !clip(p.lon, p.lat)) continue;
+      writer.write(p);
+      kept += 1;
     }
-    const p = normaliseParkingFeature(feature);
-    if (!p) continue;
-    if (p.lon < w || p.lon > e || p.lat < s || p.lat > n) continue;
-    writer.write(p);
-    kept += 1;
   }
   await writer.close();
   log.info(`wrote ${kept} parking features (from ${seen} OSM features)`);
@@ -63,7 +73,7 @@ export async function run(args: PipelineArgs): Promise<SourceReport> {
       effectiveTo: null,
       version: fetchedAt.slice(0, 10),
       featureCount: kept,
-      notes: 'amenity=parking and highway=rest_area; private access excluded from results by default',
+      notes: 'amenity=parking and highway=rest_area from the Great Britain extract plus the Ireland extract clipped to Northern Ireland; private access excluded from results by default',
     },
     warnings: [...log.warnings],
   };

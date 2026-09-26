@@ -241,8 +241,8 @@ No arguments. Reports pack tag, AIRAC effective dates, per-source fetch dates an
 | Forestry England land | [Forestry England Legal Boundary](https://data-forestry.opendata.arcgis.com/) | With the pack | OGL v3 with acknowledgement, see [licences/forestry-england.md](licences/forestry-england.md); byelaws need a permit for drones |
 | Scottish core paths | [Core Paths - Scotland, Improvement Service Spatial Hub](https://data.spatialhub.scot/dataset/core_paths-is) (needs a free account key, `SPATIALHUB_AUTHKEY`) | Weekly | OGL v3 per council, see [licences/improvement-service-core-paths.md](licences/improvement-service-core-paths.md) |
 | Local authorities | [ONS Local Authority Districts (May 2026) BSC](https://geoportal.statistics.gov.uk/) | With the pack | OGL v3, see [licences/ONS.md](licences/ONS.md) |
-| Ground hazards | OpenStreetMap via the Geofabrik extract: railways, motorways and trunk roads, power lines and minor lines, pylons, substations, generators, helipads, masts, military land, schools, nurseries, hospitals, fire and fuel stations, parks, cemeteries | Weekly | ODbL, see [licences/openstreetmap-ODbL.md](licences/openstreetmap-ODbL.md); advisory only |
-| Parking and laybys | OpenStreetMap via the [Geofabrik Great Britain extract](https://download.geofabrik.de/europe/great-britain.html) (`amenity=parking`, `highway=rest_area`) | Weekly | ODbL |
+| Ground hazards | OpenStreetMap via the Geofabrik Great Britain and Ireland extracts (the latter clipped to Northern Ireland): railways, motorways and trunk roads, power lines and minor lines, pylons, substations, generators, helipads, masts, military land, schools, nurseries, hospitals, fire and fuel stations, parks, cemeteries | Weekly | ODbL, see [licences/openstreetmap-ODbL.md](licences/openstreetmap-ODbL.md); advisory only |
+| Parking and laybys | OpenStreetMap via the [Geofabrik Great Britain extract](https://download.geofabrik.de/europe/great-britain.html) plus the Ireland extract clipped to Northern Ireland (`amenity=parking`, `highway=rest_area`) | Weekly | ODbL |
 | Country boundaries | ONS Countries (December 2024) BUC | Yearly | OGL v3 |
 | Geocoding | postcodes.io, OS Names API (optional), Nominatim | Live, cached 30 days | OGL v3; ODbL |
 | Weather | [Open-Meteo](https://open-meteo.com/) forecast API | Live, cached 15 min | CC BY 4.0 |
@@ -261,7 +261,7 @@ The permanent layers are assembled into a data pack by [`.github/workflows/build
 | `ELEVATION_CACHE_TTL_SECONDS` | `2592000` | Terrain does not change |
 | `NOAA_KP_URL` | `https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json` | |
 | `SPACE_WEATHER_CACHE_TTL_SECONDS` | `900` | |
-| `OSM_PBF_URL`, `NE_CROW_URL`, `NE_SSSI_URL`, `NE_NATIONAL_PARKS_URL`, `NRW_WFS_URL`, `FE_LEGAL_BOUNDARY_URL`, `ONS_LAD_URL`, `SPATIALHUB_WFS_URL` | (upstream defaults) | Build only: override a source endpoint when a publisher moves it; the `NRW_*_TYPENAME` and `SPATIALHUB_TYPENAME` variables do the same for WFS layer names |
+| `OSM_PBF_URL`, `OSM_PBF_URL_IRELAND`, `NE_CROW_URL`, `NE_SSSI_URL`, `NE_NATIONAL_PARKS_URL`, `NRW_WFS_URL`, `FE_LEGAL_BOUNDARY_URL`, `ONS_LAD_URL`, `SPATIALHUB_WFS_URL` | (upstream defaults) | Build only: override a source endpoint when a publisher moves it; the `NRW_*_TYPENAME` and `SPATIALHUB_TYPENAME` variables do the same for WFS layer names |
 | `SPATIALHUB_AUTHKEY` | (unset) | Build only: Spatial Hub account key for Scottish core paths; without it the pack has none |
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org/search` | Self-host to lift the 1 req/s limit |
 | `POSTCODES_IO_URL` | `https://api.postcodes.io` | |
