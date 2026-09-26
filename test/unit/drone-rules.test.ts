@@ -9,7 +9,7 @@ describe('drone catalogue', () => {
     expect(new Set(DRONE_CATALOGUE.map((d) => d.id)).size).toBe(DRONE_CATALOGUE.length);
     for (const d of DRONE_CATALOGUE) {
       expect(d.weightG, d.id).toBeGreaterThan(50);
-      expect(d.weightG, d.id).toBeLessThan(5000);
+      expect(d.weightG, d.id).toBeLessThan(25_000);
       expect(d.verified, d.id).toMatch(/^\d{4}-\d{2}$/);
       if (d.euClass === 'C0') expect(d.weightG, `${d.id} C0 must be under 250 g`).toBeLessThanOrEqual(250);
       if (d.euClass === 'C1') expect(d.weightG, `${d.id} C1 must be under 900 g`).toBeLessThan(900);
@@ -24,8 +24,14 @@ describe('drone catalogue', () => {
     expect(findDrone('air 3s')).toMatchObject({ status: 'found', drone: { id: 'dji-air-3s' } });
     expect(findDrone('EVO Lite+')).toMatchObject({ status: 'found', drone: { id: 'autel-evo-lite-plus' } });
     expect(findDrone('Skydio 2')).toEqual({ status: 'not_found' });
-    const pro = findDrone('pro');
-    expect(pro.status).toBe('ambiguous');
+    expect(findDrone('M300 RTK')).toMatchObject({ status: 'found', drone: { id: 'dji-matrice-300-rtk' } });
+    expect(findDrone('mavic 3t')).toMatchObject({ status: 'found', drone: { id: 'dji-mavic-3-thermal' } });
+    expect(findDrone('phantom 4')).toMatchObject({ status: 'found', drone: { id: 'dji-phantom-4' } });
+    expect(findDrone('Inspire 3')).toMatchObject({ status: 'found', drone: { id: 'dji-inspire-3' } });
+    expect(findDrone('tello')).toMatchObject({ status: 'found', drone: { id: 'ryze-tello' } });
+    const p3 = findDrone('phantom 3');
+    expect(p3.status).toBe('ambiguous');
+    expect(p3.status === 'ambiguous' && p3.candidates.length).toBe(3);
   });
 });
 
@@ -102,6 +108,6 @@ describe('resolveDrone', () => {
     expect(resolveDrone({ weight_g: 900, class_mark: 'C9' })).toHaveProperty('error');
     expect(resolveDrone({ model: 'Skydio 2' })).toHaveProperty('error');
     expect(resolveDrone({})).toHaveProperty('error');
-    expect(resolveDrone({ model: 'pro' })).toHaveProperty('ambiguous');
+    expect(resolveDrone({ model: 'phantom 3' })).toHaveProperty('ambiguous');
   });
 });

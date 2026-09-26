@@ -320,7 +320,7 @@ describe('check_drone_rules', () => {
   it('lists candidates for an ambiguous model and errors on an unknown one', async () => {
     const { handlers } = setup();
     const h = handlers.get('check_drone_rules')!;
-    expect(text(await h({ model: 'pro' }))).toContain('Several models match');
+    expect(text(await h({ model: 'phantom 3' }))).toContain('Several models match');
     await expect(h({ model: 'Skydio 2' })).rejects.toThrow(/not in the drone catalogue/);
   });
 });
