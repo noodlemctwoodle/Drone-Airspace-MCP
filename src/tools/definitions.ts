@@ -57,7 +57,7 @@ export const toolDefinitions: ToolDefinition[] = [
     description:
       'Check permanent airspace restrictions along a drone route or across an area. Give either waypoints (at least two; each a [lon, lat] pair or a place name) ' +
       'or an area (bbox [west, south, east, north] or a GeoJSON Polygon). Returns the zones crossed, deduplicated, with the distance along the route at which each is first entered. ' +
-      'Place-name waypoints are geocoded; ambiguous names are returned for you to resolve.',
+      'Place-name waypoints are geocoded; ambiguous names are returned for you to resolve. For ground elevation along the route call check_terrain.',
     inputSchema: {
       waypoints: z.array(waypointSchema).min(2).max(50).optional().describe('Ordered route points: [lon, lat] pairs or place names.'),
       area: z

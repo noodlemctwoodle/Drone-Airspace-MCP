@@ -203,7 +203,7 @@ Which UK open category rules apply to a consumer drone. Give `model` (looked up 
 
 ### Maps
 
-The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map, `GET /api/view` as the JSON behind it, and `GET /api/wind?bbox=w,s,e,n&z=` for the wind field (one Open-Meteo request per view, snapped to a fixed lattice of at most 64 points and cached per point). It also publishes an MCP App resource (`ui://uk-drone-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer. Claude web, desktop and mobile render it; Claude Code shows the text only.
+The hosted server serves `GET /map?lat=&lon=[&radius=][&route=lon,lat;lon,lat]` as a standalone Leaflet map, `GET /api/view` as the JSON behind it, and `GET /api/wind?bbox=w,s,e,n&z=` for the wind field (one Open-Meteo request per view, snapped to a fixed lattice of at most 64 points and cached per point). It also publishes an MCP App resource (`ui://uk-drone-airspace/map`) attached to `check_location`, `check_takeoff_site`, `check_route` and `find_parking`, so hosts that support MCP Apps show the map inline with the answer; `preflight_briefing`, `check_terrain` and `find_takeoff_spots` carry it too, the last with its spots numbered on the map. Claude web, desktop and mobile render it; Claude Code shows the text only.
 
 The layers panel (top left) offers Map or Satellite base layers and a checkbox for every overlay, grouped into Airspace (each zone class and NOTAMs), On the ground (rights of way, landowner land, parking, route) and Weather. Prohibited and restricted areas and aerodrome FRZs are always drawn and cannot be switched off. Satellite is Esri World Imagery with a place-name overlay; add `basemap=satellite` to the `/map` URL to open in that view. Weather has three toggles: Conditions now (a badge with the Open-Meteo flyability rating for the coming hour, including the wind at 120 m), Wind flow (animated streamlines over the visible map, as on a forecast chart, coloured by the advisory thresholds; a still frame when the browser prefers reduced motion) and Rain radar (the latest RainViewer frame, coarse at about 600 m per pixel on the free tier). `weather=0` on `/api/view` skips the forecast. Base layer, overlay and panel choices are remembered per browser.
 
@@ -259,6 +259,7 @@ The permanent layers are assembled into a data pack by [`.github/workflows/build
 | `ELEVATION_CACHE_TTL_SECONDS` | `2592000` | Terrain does not change |
 | `NOAA_KP_URL` | `https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json` | |
 | `SPACE_WEATHER_CACHE_TTL_SECONDS` | `900` | |
+| `OSM_PBF_URL`, `NE_CROW_URL`, `NE_SSSI_URL`, `NE_NATIONAL_PARKS_URL`, `NRW_WFS_URL`, `FE_LEGAL_BOUNDARY_URL`, `ONS_LAD_URL`, `SPATIALHUB_WFS_URL` | (upstream defaults) | Build only: override a source endpoint when a publisher moves it; the `NRW_*_TYPENAME` and `SPATIALHUB_TYPENAME` variables do the same for WFS layer names |
 | `SPATIALHUB_AUTHKEY` | (unset) | Build only: Spatial Hub account key for Scottish core paths; without it the pack has none |
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org/search` | Self-host to lift the 1 req/s limit |
 | `POSTCODES_IO_URL` | `https://api.postcodes.io` | |
